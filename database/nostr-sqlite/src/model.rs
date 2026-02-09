@@ -1,30 +1,41 @@
 use nostr::event::Event;
 use nostr::secp256k1::schnorr::Signature;
 use nostr::{EventId, Kind, PublicKey, SingleLetterTag, Tags, Timestamp};
-use sqlx::types::Json;
-use sqlx::FromRow;
+use rusqlite::Row;
 
 use crate::error::Error;
 
-#[derive(Debug, Clone, FromRow)]
+#[derive(Debug, Clone)]
 pub(crate) struct EventDb {
     pub id: Vec<u8>,
     pub pubkey: Vec<u8>,
     pub created_at: i64,
-    pub kind: u16,
+    pub kind: i64,
     pub content: String,
-    pub tags: Json<Tags>,
+    pub tags: String,
     pub sig: Vec<u8>,
 }
 
 impl EventDb {
+    pub(crate) fn from_row(row: &Row<'_>) -> Result<Self, rusqlite::Error> {
+        Ok(Self {
+            id: row.get("id")?,
+            pubkey: row.get("pubkey")?,
+            created_at: row.get("created_at")?,
+            kind: row.get("kind")?,
+            content: row.get("content")?,
+            tags: row.get("tags")?,
+            sig: row.get("sig")?,
+        })
+    }
+
     #[allow(clippy::wrong_self_convention)]
     pub(crate) fn to_event(self) -> Result<Event, Error> {
         let id: EventId = EventId::from_slice(&self.id)?;
         let pubkey: PublicKey = PublicKey::from_slice(&self.pubkey)?;
         let created_at: Timestamp = self.created_at.try_into()?;
-        let kind: Kind = Kind::from_u16(self.kind);
-        let tags: Tags = self.tags.0;
+        let kind: Kind = Kind::from_u16(self.kind.try_into()?);
+        let tags: Tags = serde_json::from_str(&self.tags)?;
         let sig: Signature = Signature::from_slice(&self.sig)?;
 
         Ok(Event::new(

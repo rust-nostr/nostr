@@ -3,10 +3,7 @@
 use std::cmp;
 use std::collections::{BTreeSet, HashSet};
 use std::num::NonZeroUsize;
-use std::ops::{Deref, DerefMut};
 use std::path::Path;
-use std::sync::Arc;
-use std::time::Duration;
 
 use nostr::nips::nip17;
 use nostr::nips::nip65::{self, RelayMetadata};
@@ -18,102 +15,68 @@ use nostr_gossip::{
     BestRelaySelection, GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip,
     OutdatedPublicKey,
 };
-use sqlx::migrate::Migrator;
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
-use sqlx::{Executor, Sqlite, SqlitePool, Transaction};
-use tokio::sync::{Semaphore, SemaphorePermit};
+use rusqlite::{params, OptionalExtension, Transaction};
 
 use crate::constant::{READ_WRITE_FLAGS, RELAYS_QUERY_LIMIT, TTL_OUTDATED};
 use crate::error::Error;
+use crate::migration;
 use crate::model::ListRow;
-
-struct SqlTx<'a> {
-    tx: Transaction<'a, Sqlite>,
-    _permit: SemaphorePermit<'a>,
-}
-
-impl<'a> Deref for SqlTx<'a> {
-    type Target = Transaction<'a, Sqlite>;
-
-    fn deref(&self) -> &Self::Target {
-        &self.tx
-    }
-}
-
-impl DerefMut for SqlTx<'_> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.tx
-    }
-}
-
-impl SqlTx<'_> {
-    #[inline]
-    async fn commit(self) -> Result<(), Error> {
-        Ok(self.tx.commit().await?)
-    }
-}
+use crate::pool::Pool;
 
 /// Nostr Gossip SQLite store.
 #[derive(Debug, Clone)]
 pub struct NostrGossipSqlite {
-    pool: SqlitePool,
-    write_semaphore: Arc<Semaphore>,
+    pool: Pool,
 }
 
 impl NostrGossipSqlite {
-    async fn new(opts: SqliteConnectOptions) -> Result<Self, Error> {
-        // Create a connection pool.
-        let pool: SqlitePool = SqlitePool::connect_with(opts).await?;
+    async fn new(pool: Pool) -> nostr::Result<Self, Error> {
+        pool.interact(|conn| {
+            if conn.pragma_update(None, "journal_mode", "WAL").is_err() {
+                conn.pragma_update(None, "journal_mode", "DELETE")?;
+            }
+            conn.pragma_update(None, "foreign_keys", "ON")?;
 
-        // Run migrations
-        let migrator: Migrator = sqlx::migrate!();
-        migrator.run(&pool).await?;
+            let tx = conn.transaction()?;
 
-        // Construct
-        Ok(Self {
-            pool,
-            // Limit concurrent writes to 1
-            write_semaphore: Arc::new(Semaphore::new(1)),
+            // Run migrations
+            migration::run(&tx)?;
+
+            tx.commit()?;
+
+            Ok(())
         })
+        .await?;
+
+        Ok(Self { pool })
     }
 
-    /// Open a persistent database
-    pub async fn open<P>(path: P) -> Result<Self, Error>
+    /// Creates an in-memory database
+    pub async fn in_memory() -> nostr::Result<Self, Error> {
+        let pool: Pool = Pool::open_in_memory()?;
+        Self::new(pool).await
+    }
+
+    /// Connect to a SQL database
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn open<P>(path: P) -> nostr::Result<Self, Error>
     where
         P: AsRef<Path>,
     {
-        // Built options
-        let opts: SqliteConnectOptions = SqliteConnectOptions::new()
-            .busy_timeout(Duration::from_secs(60))
-            .journal_mode(SqliteJournalMode::Wal)
-            .create_if_missing(true)
-            .filename(path);
+        let path = path.as_ref().to_path_buf();
 
-        // Create instance
-        Self::new(opts).await
+        let pool: Pool = Pool::open_with_path(path).await?;
+
+        Self::new(pool).await
     }
 
-    // TODO: at the moment seems that the migrations don't work with the in-memory mode
-    // /// Open an in-memory database
-    // pub async fn in_memory() -> Result<Self, Error> {
-    //     // Built options
-    //     let opts: SqliteConnectOptions = SqliteConnectOptions::new().in_memory(true).shared_cache(true);
-    //
-    //     // Create instance
-    //     Self::new(opts).await
-    // }
-
-    async fn write_tx(&self) -> Result<SqlTx, Error> {
-        // Acquire permit to write
-        let permit = self.write_semaphore.acquire().await?;
-
-        // Being transaction
-        let tx: Transaction<Sqlite> = self.pool.begin().await?;
-
-        Ok(SqlTx {
-            tx,
-            _permit: permit,
-        })
+    /// Connect to a SQL database
+    pub async fn open_with_vfs<P>(path: P, vfs: &str) -> nostr::Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        let pool: Pool = Pool::open_with_vfs(path, vfs).await?;
+        Self::new(pool).await
     }
 
     async fn process_event(
@@ -121,34 +84,40 @@ impl NostrGossipSqlite {
         event: &Event,
         relay_url: Option<&RelayUrl>,
     ) -> Result<(), Error> {
-        // Beings a new transaction
-        let mut tx = self.write_tx().await?;
+        let event = event.clone();
+        let relay_url = relay_url.cloned();
 
-        // Save public key and get ID
-        let pk_id: i32 = get_or_save_public_key(&mut tx, &event.pubkey).await?;
+        self.pool
+            .interact(move |conn| {
+                let tx = conn.transaction()?;
 
-        // Check the event kind
-        match &event.kind {
-            // Extract NIP-65 relays
-            Kind::RelayList => {
-                update_nip65_relays(&mut tx, pk_id, nip65::extract_relay_list(event)).await?
-            }
-            // Extract NIP-17 relays
-            Kind::InboxRelays => {
-                update_nip17_relays(&mut tx, pk_id, nip17::extract_relay_list(event)).await?
-            }
-            // Extract hints
-            _ => update_hints(&mut tx, event).await?,
-        }
+                // Save public key and get ID
+                let pk_id: i32 = get_or_save_public_key(&tx, &event.pubkey)?;
 
-        if let Some(relay_url) = relay_url {
-            update_relay_per_user(&mut tx, pk_id, relay_url, GossipFlags::RECEIVED).await?;
-        }
+                // Check the event kind
+                match &event.kind {
+                    // Extract NIP-65 relays
+                    Kind::RelayList => {
+                        update_nip65_relays(&tx, pk_id, nip65::extract_relay_list(&event))?
+                    }
+                    // Extract NIP-17 relays
+                    Kind::InboxRelays => {
+                        update_nip17_relays(&tx, pk_id, nip17::extract_relay_list(&event))?
+                    }
+                    // Extract hints
+                    _ => update_hints(&tx, &event)?,
+                }
 
-        // Commit the transaction
-        tx.commit().await?;
+                if let Some(relay_url) = relay_url.as_ref() {
+                    update_relay_per_user(&tx, pk_id, relay_url, GossipFlags::RECEIVED)?;
+                }
 
-        Ok(())
+                // Commit the transaction
+                tx.commit()?;
+
+                Ok(())
+            })
+            .await
     }
 
     async fn get_status(
@@ -156,72 +125,76 @@ impl NostrGossipSqlite {
         public_key: &PublicKey,
         list: GossipListKind,
     ) -> Result<GossipPublicKeyStatus, Error> {
-        // Get public key ID
-        match get_id_by_public_key(&self.pool, public_key).await? {
-            Some(pk_id) => {
-                let row: Option<ListRow> = sqlx::query_as(
-                    "SELECT event_created_at, last_checked_at FROM lists WHERE public_key_id = $1 AND event_kind = $2",
-                )
-                    .bind(pk_id)
-                    .bind(list.to_event_kind().as_u16())
-                    .fetch_optional(&self.pool)
-                    .await?;
+        let public_key = *public_key;
 
-                match row {
-                    Some(row) => {
-                        let now: Timestamp = Timestamp::now();
-                        let last: i64 = row.last_checked_at.unwrap_or(0);
-                        let last: Timestamp = last.try_into()?;
+        self.pool
+            .interact(move |conn| {
+                let tx = conn.transaction()?;
 
-                        if last + TTL_OUTDATED < now {
-                            Ok(GossipPublicKeyStatus::Outdated {
-                                created_at: match row.event_created_at {
-                                    Some(t) => Some(t.try_into()?),
-                                    None => None,
-                                },
-                            })
-                        } else {
-                            Ok(GossipPublicKeyStatus::Updated)
+                match get_id_by_public_key(&tx, &public_key)? {
+                    Some(pk_id) => {
+                        let mut stmt = tx.prepare(
+                            "SELECT event_created_at, last_checked_at FROM lists WHERE public_key_id = ?1 AND event_kind = ?2",
+                        )?;
+                        let row: Option<ListRow> = stmt
+                            .query_row(
+                                params![pk_id, i64::from(list.to_event_kind().as_u16())],
+                                ListRow::from_row,
+                            )
+                            .optional()?;
+
+                        match row {
+                            Some(row) => {
+                                let now: Timestamp = Timestamp::now();
+                                let last: i64 = row.last_checked_at.unwrap_or(0);
+                                let last: Timestamp = last.try_into()?;
+
+                                if last + TTL_OUTDATED < now {
+                                    Ok(GossipPublicKeyStatus::Outdated {
+                                        created_at: match row.event_created_at {
+                                            Some(t) => Some(t.try_into()?),
+                                            None => None,
+                                        },
+                                    })
+                                } else {
+                                    Ok(GossipPublicKeyStatus::Updated)
+                                }
+                            }
+                            None => Ok(GossipPublicKeyStatus::Missing),
                         }
                     }
                     None => Ok(GossipPublicKeyStatus::Missing),
                 }
-            }
-            None => Ok(GossipPublicKeyStatus::Missing),
-        }
+            })
+            .await
     }
 
     async fn _update_fetch_attempt(
         &self,
-        public_key: &PublicKey,
+        public_key: PublicKey,
         list: GossipListKind,
     ) -> Result<(), Error> {
-        // Beings a new transaction
-        let mut tx = self.write_tx().await?;
+        self.pool
+            .interact(move |conn| {
+                let tx = conn.transaction()?;
 
-        // Save public key and get ID
-        let pk_id: i32 = get_or_save_public_key(&mut tx, public_key).await?;
+                let pk_id: i32 = get_or_save_public_key(&tx, &public_key)?;
+                let now: i64 = Timestamp::now().as_secs() as i64;
 
-        let now: i64 = Timestamp::now().as_secs() as i64;
-
-        sqlx::query(
-            r#"
+                tx.execute(
+                    r#"
             INSERT INTO lists (public_key_id, event_kind, last_checked_at)
-            VALUES ($1, $2, $3)
+            VALUES (?1, ?2, ?3)
             ON CONFLICT (public_key_id, event_kind)
             DO UPDATE SET last_checked_at = excluded.last_checked_at
             "#,
-        )
-        .bind(pk_id)
-        .bind(list.to_event_kind().as_u16())
-        .bind(now)
-        .execute(&mut **tx)
-        .await?;
+                    params![pk_id, i64::from(list.to_event_kind().as_u16()), now],
+                )?;
 
-        // Write changes
-        tx.commit().await?;
-
-        Ok(())
+                tx.commit()?;
+                Ok(())
+            })
+            .await
     }
 
     async fn get_outdated_public_keys(
@@ -231,41 +204,54 @@ impl NostrGossipSqlite {
     ) -> Result<BTreeSet<OutdatedPublicKey>, Error> {
         let now: i64 = Timestamp::now().as_secs() as i64;
         let threshold: i64 = now.saturating_sub(TTL_OUTDATED.as_secs() as i64);
+        self.pool
+            .interact(move |conn| {
+                let query = r#"
+                    SELECT pk.public_key, l.last_checked_at
+                    FROM lists l
+                    INNER JOIN public_keys pk ON l.public_key_id = pk.id
+                    WHERE l.event_kind = ?1
+                      AND COALESCE(l.last_checked_at, 0) > 0
+                      AND l.last_checked_at < ?2
+                    ORDER BY l.last_checked_at ASC
+                    LIMIT ?3
+                "#;
 
-        let rows: Vec<(Vec<u8>, Option<i64>)> = sqlx::query_as(
-            r#"
-            SELECT pk.public_key, l.last_checked_at
-            FROM lists l
-            INNER JOIN public_keys pk ON l.public_key_id = pk.id
-            WHERE l.event_kind = $1
-              AND COALESCE(l.last_checked_at, 0) > 0
-              AND l.last_checked_at < $2
-            ORDER BY l.last_checked_at ASC
-            LIMIT $3
-            "#,
-        )
-        .bind(list.to_event_kind().as_u16())
-        .bind(threshold)
-        .bind(limit.get() as i64)
-        .fetch_all(&self.pool)
-        .await?;
+                let mut stmt = conn.prepare(query)?;
+                let query_limit: i64 = limit.get().try_into()?;
+                let rows = stmt.query_map(
+                    params![
+                        i64::from(list.to_event_kind().as_u16()),
+                        threshold,
+                        query_limit
+                    ],
+                    |row| {
+                        let public_key: Vec<u8> = row.get(0)?;
+                        let last_checked_at: Option<i64> = row.get(1)?;
+                        Ok((public_key, last_checked_at))
+                    },
+                )?;
 
-        let mut public_keys: BTreeSet<OutdatedPublicKey> = BTreeSet::new();
+                let mut public_keys: BTreeSet<OutdatedPublicKey> = BTreeSet::new();
+                for row in rows {
+                    let (public_key, timestamp) = row?;
+                    let last: i64 = timestamp.unwrap_or(0);
 
-        for (pk, timestamp) in rows.into_iter() {
-            let last: i64 = timestamp.unwrap_or(0);
+                    if let (Ok(public_key), Ok(last)) =
+                        (PublicKey::from_slice(&public_key), last.try_into())
+                    {
+                        public_keys.insert(OutdatedPublicKey::new(public_key, last));
+                    }
+                }
 
-            if let (Ok(pk), Ok(last)) = (PublicKey::from_slice(&pk), last.try_into()) {
-                public_keys.insert(OutdatedPublicKey::new(pk, last));
-            }
-        }
-
-        Ok(public_keys)
+                Ok(public_keys)
+            })
+            .await
     }
 
     async fn _get_best_relays(
         &self,
-        public_key: &PublicKey,
+        public_key: PublicKey,
         selection: BestRelaySelection,
         allowed: GossipAllowedRelays,
     ) -> Result<HashSet<RelayUrl>, Error> {
@@ -349,165 +335,163 @@ impl NostrGossipSqlite {
 
     async fn get_relays_by_flag(
         &self,
-        public_key: &PublicKey,
+        public_key: PublicKey,
         flag: GossipFlags,
         allowed: GossipAllowedRelays,
         limit: u8,
     ) -> Result<Vec<RelayUrl>, Error> {
-        let query = r#"
+        self.pool
+            .interact(move |conn| {
+                let query = r#"
             SELECT r.url
             FROM relays_per_user rpu
             INNER JOIN relays r ON rpu.relay_id = r.id
             INNER JOIN public_keys pk ON rpu.public_key_id = pk.id
-            WHERE pk.public_key = $1 AND (rpu.bitflags & $2) = $2
+            WHERE pk.public_key = ?1 AND (rpu.bitflags & ?2) = ?2
             ORDER BY rpu.received_events DESC, rpu.last_received_event DESC
-            LIMIT $3
+            LIMIT ?3
         "#;
 
-        let query_limit: u8 = cmp::max(limit, RELAYS_QUERY_LIMIT);
+                let query_limit: u8 = cmp::max(limit, RELAYS_QUERY_LIMIT);
 
-        let rows: Vec<(String,)> = sqlx::query_as(query)
-            .bind(public_key.as_bytes().as_slice())
-            .bind(flag.as_u32())
-            .bind(query_limit)
-            .fetch_all(&self.pool)
-            .await?;
+                let mut stmt = conn.prepare(query)?;
+                let rows = stmt.query_map(
+                    params![
+                        public_key.as_bytes().as_slice(),
+                        flag.as_u32(),
+                        i64::from(query_limit)
+                    ],
+                    |row| row.get::<_, String>(0),
+                )?;
 
-        let mut relays = Vec::with_capacity(rows.len());
-        for (url,) in rows.into_iter() {
-            if relays.len() >= limit as usize {
-                break;
-            }
+                let mut relays = Vec::new();
+                for row in rows {
+                    let url = row?;
+                    if relays.len() >= limit as usize {
+                        break;
+                    }
 
-            if let Ok(relay_url) = RelayUrl::parse(&url) {
-                // Check if the relay is allowed by the allowed relays filter
-                if !allowed.is_allowed(&relay_url) {
-                    continue;
+                    if let Ok(relay_url) = RelayUrl::parse(&url) {
+                        if !allowed.is_allowed(&relay_url) {
+                            continue;
+                        }
+
+                        relays.push(relay_url);
+                    }
                 }
 
-                relays.push(relay_url);
-            }
-        }
-
-        Ok(relays)
+                Ok(relays)
+            })
+            .await
     }
 }
 
-async fn get_or_save_public_key(
-    tx: &mut Transaction<'_, Sqlite>,
-    public_key: &PublicKey,
-) -> Result<i32, Error> {
-    match get_id_by_public_key(&mut **tx, public_key).await? {
+fn get_or_save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Result<i32, Error> {
+    match get_id_by_public_key(tx, public_key)? {
         Some(id) => Ok(id),
-        None => save_public_key(tx, public_key).await,
+        None => save_public_key(tx, public_key),
     }
 }
 
-async fn get_id_by_public_key<'a, E>(
-    executor: E,
+fn get_id_by_public_key(
+    tx: &Transaction<'_>,
     public_key: &PublicKey,
-) -> Result<Option<i32>, Error>
-where
-    E: Executor<'a, Database = Sqlite>,
-{
-    let pk_id: Option<(i32,)> = sqlx::query_as("SELECT id FROM public_keys WHERE public_key = $1")
-        .bind(public_key.as_bytes().as_slice())
-        .fetch_optional(executor)
-        .await?;
-    Ok(pk_id.map(|(p,)| p))
-}
-
-async fn save_public_key(
-    tx: &mut Transaction<'_, Sqlite>,
-    public_key: &PublicKey,
-) -> Result<i32, Error> {
-    let pk_id: (i32,) = sqlx::query_as("INSERT INTO public_keys (public_key) VALUES ($1) ON CONFLICT (public_key) DO NOTHING RETURNING id")
-        .bind(public_key.as_bytes().as_slice())
-        .fetch_one(&mut **tx)
-        .await?;
-    Ok(pk_id.0)
-}
-
-async fn get_or_save_relay_url(
-    tx: &mut Transaction<'_, Sqlite>,
-    relay_url: &RelayUrl,
-) -> Result<i32, Error> {
-    match get_id_by_relay_url(tx, relay_url).await? {
-        Some(id) => Ok(id),
-        None => save_relay_url(tx, relay_url).await,
-    }
-}
-
-async fn get_id_by_relay_url(
-    tx: &mut Transaction<'_, Sqlite>,
-    relay_url: &RelayUrl,
 ) -> Result<Option<i32>, Error> {
-    let pk_id: Option<(i32,)> = sqlx::query_as("SELECT id FROM relays WHERE url = $1")
-        .bind(relay_url.as_str_without_trailing_slash())
-        .fetch_optional(&mut **tx)
-        .await?;
-    Ok(pk_id.map(|(p,)| p))
+    let pk_id: Option<i32> = tx
+        .query_row(
+            "SELECT id FROM public_keys WHERE public_key = ?1",
+            params![public_key.as_bytes().as_slice()],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(pk_id)
 }
 
-async fn save_relay_url(
-    tx: &mut Transaction<'_, Sqlite>,
-    relay_url: &RelayUrl,
-) -> Result<i32, Error> {
-    let pk_id: (i32,) = sqlx::query_as(
-        "INSERT INTO relays (url) VALUES ($1) ON CONFLICT (url) DO NOTHING RETURNING id",
-    )
-    .bind(relay_url.as_str_without_trailing_slash())
-    .fetch_one(&mut **tx)
-    .await?;
-    Ok(pk_id.0)
+fn save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Result<i32, Error> {
+    tx.execute(
+        "INSERT INTO public_keys (public_key) VALUES (?1) ON CONFLICT (public_key) DO NOTHING",
+        params![public_key.as_bytes().as_slice()],
+    )?;
+    let pk_id: i32 = tx.query_row(
+        "SELECT id FROM public_keys WHERE public_key = ?1",
+        params![public_key.as_bytes().as_slice()],
+        |row| row.get(0),
+    )?;
+    Ok(pk_id)
 }
 
-async fn remove_flag_from_user_relays(
-    tx: &mut Transaction<'_, Sqlite>,
+fn get_or_save_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<i32, Error> {
+    match get_id_by_relay_url(tx, relay_url)? {
+        Some(id) => Ok(id),
+        None => save_relay_url(tx, relay_url),
+    }
+}
+
+fn get_id_by_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<Option<i32>, Error> {
+    let relay_id: Option<i32> = tx
+        .query_row(
+            "SELECT id FROM relays WHERE url = ?1",
+            params![relay_url.as_str_without_trailing_slash()],
+            |row| row.get(0),
+        )
+        .optional()?;
+    Ok(relay_id)
+}
+
+fn save_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<i32, Error> {
+    tx.execute(
+        "INSERT INTO relays (url) VALUES (?1) ON CONFLICT (url) DO NOTHING",
+        params![relay_url.as_str_without_trailing_slash()],
+    )?;
+    let relay_id: i32 = tx.query_row(
+        "SELECT id FROM relays WHERE url = ?1",
+        params![relay_url.as_str_without_trailing_slash()],
+        |row| row.get(0),
+    )?;
+    Ok(relay_id)
+}
+
+fn remove_flag_from_user_relays(
+    tx: &Transaction<'_>,
     public_key_id: i32,
     flags_to_remove: GossipFlags,
 ) -> Result<(), Error> {
-    sqlx::query("UPDATE relays_per_user SET bitflags = (bitflags & ~$1) WHERE public_key_id = $2")
-        .bind(flags_to_remove.as_u32())
-        .bind(public_key_id)
-        .execute(&mut **tx)
-        .await?;
+    tx.execute(
+        "UPDATE relays_per_user SET bitflags = (bitflags & ~?1) WHERE public_key_id = ?2",
+        params![flags_to_remove.as_u32(), public_key_id],
+    )?;
     Ok(())
 }
 
 /// Add relay per user or update the received events and bitflags.
-async fn update_relay_per_user(
-    tx: &mut Transaction<'_, Sqlite>,
+fn update_relay_per_user(
+    tx: &Transaction<'_>,
     public_key_id: i32,
     relay_url: &RelayUrl,
     flags: GossipFlags,
 ) -> Result<(), Error> {
-    let relay_id: i32 = get_or_save_relay_url(tx, relay_url).await?;
+    let relay_id: i32 = get_or_save_relay_url(tx, relay_url)?;
 
     let now: u64 = Timestamp::now().as_secs();
 
-    sqlx::query(
+    tx.execute(
         r#"
         INSERT INTO relays_per_user (public_key_id, relay_id, bitflags, received_events, last_received_event)
-        VALUES ($1, $2, $3, 1, $4)
+        VALUES (?1, ?2, ?3, 1, ?4)
         ON CONFLICT (public_key_id, relay_id)
         DO UPDATE SET
             bitflags = bitflags | excluded.bitflags,
             received_events = received_events + 1,
             last_received_event = excluded.last_received_event
-        "#)
-        .bind(public_key_id)
-        .bind(relay_id)
-        .bind(flags.as_u32())
-        .bind(now as i64)
-        .execute(&mut **tx)
-        .await?;
+        "#,
+        params![public_key_id, relay_id, flags.as_u32(), now as i64],
+    )?;
 
     Ok(())
 }
 
-async fn update_nip65_relays<'a, I>(
-    tx: &mut Transaction<'_, Sqlite>,
+fn update_nip65_relays<'a, I>(
+    tx: &Transaction<'_>,
     public_key_id: i32,
     iter: I,
 ) -> Result<(), Error>
@@ -515,12 +499,12 @@ where
     I: IntoIterator<Item = (&'a RelayUrl, &'a Option<RelayMetadata>)>,
 {
     // Remove all READ and WRITE flags from the relays of the public key
-    remove_flag_from_user_relays(tx, public_key_id, READ_WRITE_FLAGS).await?;
+    remove_flag_from_user_relays(tx, public_key_id, READ_WRITE_FLAGS)?;
 
     // Extract relay list
     for (relay_url, metadata) in iter {
         // Save relay and get ID
-        let relay_id: i32 = get_or_save_relay_url(tx, relay_url).await?;
+        let relay_id: i32 = get_or_save_relay_url(tx, relay_url)?;
 
         // New bitflag for the relay
         let bitflag: GossipFlags = match metadata {
@@ -530,27 +514,23 @@ where
         };
 
         // Update bitflag
-        sqlx::query(
+        tx.execute(
             r#"
                     INSERT INTO relays_per_user (public_key_id, relay_id, bitflags)
-                    VALUES ($1, $2, $3)
+                    VALUES (?1, ?2, ?3)
                     ON CONFLICT (public_key_id, relay_id)
                     DO UPDATE SET
                         bitflags = bitflags | excluded.bitflags
                     "#,
-        )
-        .bind(public_key_id)
-        .bind(relay_id)
-        .bind(bitflag.as_u32())
-        .execute(&mut **tx)
-        .await?;
+            params![public_key_id, relay_id, bitflag.as_u32()],
+        )?;
     }
 
     Ok(())
 }
 
-async fn update_nip17_relays<'a, I>(
-    tx: &mut Transaction<'_, Sqlite>,
+fn update_nip17_relays<'a, I>(
+    tx: &Transaction<'_>,
     public_key_id: i32,
     iter: I,
 ) -> Result<(), Error>
@@ -558,32 +538,32 @@ where
     I: IntoIterator<Item = &'a RelayUrl>,
 {
     // Remove all PRIVATE_MESSAGE flag from the relays of the public key
-    remove_flag_from_user_relays(tx, public_key_id, GossipFlags::PRIVATE_MESSAGE).await?;
+    remove_flag_from_user_relays(tx, public_key_id, GossipFlags::PRIVATE_MESSAGE)?;
 
     // Extract relay list
     for relay_url in iter {
-        let relay_id: i32 = get_or_save_relay_url(tx, relay_url).await?;
+        let relay_id: i32 = get_or_save_relay_url(tx, relay_url)?;
 
-        sqlx::query(
+        tx.execute(
             r#"
                     INSERT INTO relays_per_user (public_key_id, relay_id, bitflags)
-                    VALUES ($1, $2, $3)
+                    VALUES (?1, ?2, ?3)
                     ON CONFLICT (public_key_id, relay_id)
                     DO UPDATE SET
                         bitflags = bitflags | excluded.bitflags
                     "#,
-        )
-        .bind(public_key_id)
-        .bind(relay_id)
-        .bind(GossipFlags::PRIVATE_MESSAGE.as_u32())
-        .execute(&mut **tx)
-        .await?;
+            params![
+                public_key_id,
+                relay_id,
+                GossipFlags::PRIVATE_MESSAGE.as_u32()
+            ],
+        )?;
     }
 
     Ok(())
 }
 
-async fn update_hints(tx: &mut Transaction<'_, Sqlite>, event: &Event) -> Result<(), Error> {
+fn update_hints(tx: &Transaction<'_>, event: &Event) -> Result<(), Error> {
     for tag in event.tags.filter_standardized(TagKind::p()) {
         if let TagStandard::PublicKey {
             public_key,
@@ -591,8 +571,8 @@ async fn update_hints(tx: &mut Transaction<'_, Sqlite>, event: &Event) -> Result
             ..
         } = tag
         {
-            let p_tag_pk_id: i32 = get_or_save_public_key(tx, public_key).await?;
-            update_relay_per_user(tx, p_tag_pk_id, relay_url, GossipFlags::HINT).await?;
+            let p_tag_pk_id: i32 = get_or_save_public_key(tx, public_key)?;
+            update_relay_per_user(tx, p_tag_pk_id, relay_url, GossipFlags::HINT)?;
         }
     }
 
@@ -630,7 +610,7 @@ impl NostrGossip for NostrGossipSqlite {
         list: GossipListKind,
     ) -> BoxedFuture<'a, Result<(), GossipError>> {
         Box::pin(async move {
-            self._update_fetch_attempt(public_key, list)
+            self._update_fetch_attempt(*public_key, list)
                 .await
                 .map_err(GossipError::backend)
         })
@@ -655,7 +635,7 @@ impl NostrGossip for NostrGossipSqlite {
         allowed: GossipAllowedRelays,
     ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>> {
         Box::pin(async move {
-            self._get_best_relays(public_key, selection, allowed)
+            self._get_best_relays(*public_key, selection, allowed)
                 .await
                 .map_err(GossipError::backend)
         })

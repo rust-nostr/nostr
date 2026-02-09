@@ -4,16 +4,47 @@ use std::fmt;
 use std::num::TryFromIntError;
 
 use tokio::sync::AcquireError;
+use tokio::task::JoinError;
+
+/// Migration error
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MigrationError {
+    /// Migration is in a dirty state
+    Dirty(i64),
+    /// Database version is newer than supported one
+    NewerVersion {
+        /// Current database version
+        current: i64,
+        /// Supported database version
+        supported: i64,
+    },
+}
+
+impl std::error::Error for MigrationError {}
+
+impl fmt::Display for MigrationError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Dirty(version) => write!(f, "migration {version} is partially applied"),
+            Self::NewerVersion { current, supported } => write!(
+                f,
+                "database version {current} is newer than supported version {supported}"
+            ),
+        }
+    }
+}
 
 /// Gossip SQLite error
 #[derive(Debug)]
 pub enum Error {
     /// TryFromInt error
     TryFromInt(TryFromIntError),
-    /// SQLx error
-    Sqlx(sqlx::Error),
-    /// SQLx migration error
-    Migrate(sqlx::migrate::MigrateError),
+    /// Rusqlite error
+    Rusqlite(rusqlite::Error),
+    /// Migration error
+    Migration(MigrationError),
+    /// Thread error
+    Thread(JoinError),
     /// Failed to acquire semaphore
     Acquire(AcquireError),
 }
@@ -24,8 +55,9 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::TryFromInt(e) => e.fmt(f),
-            Self::Sqlx(e) => e.fmt(f),
-            Self::Migrate(e) => e.fmt(f),
+            Self::Rusqlite(e) => e.fmt(f),
+            Self::Migration(e) => e.fmt(f),
+            Self::Thread(e) => e.fmt(f),
             Self::Acquire(e) => e.fmt(f),
         }
     }
@@ -37,15 +69,21 @@ impl From<TryFromIntError> for Error {
     }
 }
 
-impl From<sqlx::Error> for Error {
-    fn from(err: sqlx::Error) -> Self {
-        Self::Sqlx(err)
+impl From<rusqlite::Error> for Error {
+    fn from(e: rusqlite::Error) -> Self {
+        Self::Rusqlite(e)
     }
 }
 
-impl From<sqlx::migrate::MigrateError> for Error {
-    fn from(err: sqlx::migrate::MigrateError) -> Self {
-        Self::Migrate(err)
+impl From<MigrationError> for Error {
+    fn from(e: MigrationError) -> Self {
+        Self::Migration(e)
+    }
+}
+
+impl From<JoinError> for Error {
+    fn from(e: JoinError) -> Self {
+        Self::Thread(e)
     }
 }
 

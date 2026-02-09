@@ -16,13 +16,16 @@ all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
 [features]
-default = []
-unbundled = ["sqlx/sqlite-unbundled"]
+default = ["bundled"]
+bundled = ["rusqlite/bundled"]
 
 [dependencies]
+async-utility.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-database.workspace = true
-sqlx = { workspace = true, features = ["json", "migrate", "runtime-tokio", "sqlite"] }
+rusqlite = { workspace = true, default-features = false }
+serde_json.workspace = true
+tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 nostr-database-test-suite.workspace = true

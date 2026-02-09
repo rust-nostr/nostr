@@ -1,18 +1,18 @@
 //! Nostr SQLite database
 
 use std::cmp::Ordering;
-use std::fmt;
 use std::path::Path;
-use std::time::Duration;
+#[cfg(not(target_arch = "wasm32"))]
+use std::path::PathBuf;
 
 use nostr_database::prelude::*;
-use sqlx::migrate::Migrator;
-use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode, SqlitePool};
-use sqlx::types::Json;
-use sqlx::{Executor, QueryBuilder, Sqlite, Transaction};
+use rusqlite::types::Value;
+use rusqlite::{params, params_from_iter, Connection, OptionalExtension, Transaction};
 
 use crate::error::Error;
+use crate::migration;
 use crate::model::{extract_tags, EventDb};
+use crate::pool::Pool;
 
 const EVENTS_QUERY_LIMIT: usize = 10_000;
 
@@ -24,77 +24,94 @@ enum SqlSelectClause {
 }
 
 /// Nostr SQLite database
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct NostrSqlite {
-    pool: SqlitePool,
-}
-
-impl fmt::Debug for NostrSqlite {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("NostrSqlite")
-            .field("pool", &self.pool)
-            .finish()
-    }
+    pool: Pool,
 }
 
 impl NostrSqlite {
-    /// Connect to a SQL database
-    pub async fn open<P>(path: P) -> Result<Self, Error>
-    where
-        P: AsRef<Path>,
-    {
-        let opts: SqliteConnectOptions = SqliteConnectOptions::new()
-            .busy_timeout(Duration::from_secs(60))
-            .journal_mode(SqliteJournalMode::Wal)
-            .create_if_missing(true)
-            .filename(path);
+    async fn new(pool: Pool) -> Result<Self, Error> {
+        pool.interact(|conn| {
+            if conn.pragma_update(None, "journal_mode", "WAL").is_err() {
+                conn.pragma_update(None, "journal_mode", "DELETE")?;
+            }
+            conn.pragma_update(None, "foreign_keys", "ON")?;
 
-        let pool: SqlitePool = SqlitePool::connect_with(opts).await?;
+            let tx = conn.transaction()?;
 
-        // Run migrations
-        let migrator: Migrator = sqlx::migrate!();
-        migrator.run(&pool).await?;
+            // Run migrations
+            migration::run(&tx)?;
+
+            tx.commit()?;
+
+            Ok(())
+        })
+        .await?;
 
         Ok(Self { pool })
     }
 
-    /// Returns true if successfully inserted
-    async fn insert_event_tx(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        event: &Event,
-    ) -> Result<bool, Error> {
-        let result = sqlx::query("INSERT OR IGNORE INTO events (id, pubkey, created_at, kind, content, tags, sig) VALUES ($1, $2, $3, $4, $5, $6, $7)")
-            .bind(event.id.as_bytes().as_slice())
-            .bind(event.pubkey.as_bytes().as_slice())
-            .bind(event.created_at.as_secs() as i64)
-            .bind(event.kind.as_u16())
-            .bind(&event.content)
-            .bind(Json(&event.tags))
-            .bind(event.sig.as_ref().as_slice())
-            .execute(&mut **tx)
-            .await?;
-
-        Ok(result.rows_affected() > 0)
+    /// Creates an in-memory database
+    pub async fn in_memory() -> Result<Self, Error> {
+        let pool: Pool = Pool::open_in_memory()?;
+        Self::new(pool).await
     }
 
-    async fn handle_deletion_event(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        event: &Event,
-    ) -> Result<bool, Error> {
+    /// Connect to a SQL database
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn open<P>(path: P) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        let path: PathBuf = path.as_ref().to_path_buf();
+
+        let pool: Pool = Pool::open_with_path(path).await?;
+
+        Self::new(pool).await
+    }
+
+    /// Connect to a SQL database
+    pub async fn open_with_vfs<P>(path: P, vfs: &str) -> Result<Self, Error>
+    where
+        P: AsRef<Path>,
+    {
+        let pool: Pool = Pool::open_with_vfs(path, vfs).await?;
+        Self::new(pool).await
+    }
+
+    /// Returns true if successfully inserted
+    fn insert_event_tx(tx: &Transaction<'_>, event: &Event) -> Result<bool, Error> {
+        let tags = serde_json::to_string(&event.tags)?;
+
+        let rows = tx.execute(
+            "INSERT OR IGNORE INTO events (id, pubkey, created_at, kind, content, tags, sig) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            params![
+                event.id.as_bytes().as_slice(),
+                event.pubkey.as_bytes().as_slice(),
+                event.created_at.as_secs() as i64,
+                event.kind.as_u16() as i64,
+                &event.content,
+                tags,
+                event.sig.as_ref().as_slice(),
+            ],
+        )?;
+
+        Ok(rows > 0)
+    }
+
+    fn handle_deletion_event(tx: &Transaction<'_>, event: &Event) -> Result<bool, Error> {
         for id in event.tags.event_ids() {
-            if let Some(pubkey) = self.get_pubkey_of_event_by_id(tx, id).await? {
+            if let Some(pubkey) = Self::get_pubkey_of_event_by_id(tx, id)? {
                 // Author must match
                 if pubkey != event.pubkey {
                     return Ok(true);
                 }
 
                 // Mark the event ID as deleted (for NIP-09 deletion events)
-                self.mark_event_as_deleted(tx, id).await?;
+                Self::mark_event_as_deleted(tx, id)?;
 
                 // Remove event from store
-                self.remove_event(tx, id).await?;
+                Self::remove_event(tx, id)?;
             }
         }
 
@@ -105,50 +122,45 @@ impl NostrSqlite {
             }
 
             // Mark deleted
-            self.mark_coordinate_deleted(tx, &coordinate.borrow(), event.created_at)
-                .await?;
+            Self::mark_coordinate_deleted(tx, &coordinate.borrow(), event.created_at)?;
 
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
-                self.remove_replaceable(tx, coordinate, &event.created_at)
-                    .await?;
+                Self::remove_replaceable(tx, coordinate, &event.created_at)?;
             } else if coordinate.kind.is_addressable() {
-                self.remove_addressable(tx, coordinate, event.created_at)
-                    .await?;
+                Self::remove_addressable(tx, coordinate, event.created_at)?;
             }
         }
 
         Ok(false)
     }
 
-    async fn _save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
+    fn save_event_sync(conn: &mut Connection, event: &Event) -> Result<SaveEventStatus, Error> {
         if event.kind.is_ephemeral() {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Ephemeral));
         }
 
-        let mut tx = self.pool.begin().await?;
+        let tx = conn.transaction()?;
 
         // Already exists
-        if self.has_event(&mut *tx, &event.id).await? {
+        if Self::has_event(&tx, &event.id)? {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate));
         }
 
         // Reject event if ID was deleted
-        if self.event_is_deleted(&mut *tx, &event.id).await? {
+        if Self::event_is_deleted(&tx, &event.id)? {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Deleted));
         }
 
         // Reject event if the public key was vanished
-        if self.pubkey_is_vanished(&mut tx, &event.pubkey).await? {
+        if Self::pubkey_is_vanished(&tx, &event.pubkey)? {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Vanished));
         }
 
         // Reject event if ADDR was deleted after it's created_at date
         // (non-parameterized or parameterized)
         if let Some(coordinate) = event.coordinate() {
-            let timestamp: Option<Timestamp> = self
-                .when_is_coordinate_deleted(&mut tx, &coordinate)
-                .await?;
+            let timestamp: Option<Timestamp> = Self::when_is_coordinate_deleted(&tx, &coordinate)?;
 
             if let Some(time) = timestamp {
                 if event.created_at <= time {
@@ -160,12 +172,17 @@ impl NostrSqlite {
         // Remove replaceable events being replaced
         if event.kind.is_replaceable() {
             // Find existing replaceable event
-            let existing: Option<EventDb> =
-                sqlx::query_as("SELECT * FROM events WHERE pubkey = $1 AND kind = $2 LIMIT 1")
-                    .bind(event.pubkey.as_bytes().as_slice())
-                    .bind(event.kind.as_u16())
-                    .fetch_optional(&mut *tx)
-                    .await?;
+            let mut stmt =
+                tx.prepare("SELECT * FROM events WHERE pubkey = ?1 AND kind = ?2 LIMIT 1")?;
+            let existing: Option<EventDb> = stmt
+                .query_row(
+                    params![
+                        event.pubkey.as_bytes().as_slice(),
+                        event.kind.as_u16() as i64
+                    ],
+                    EventDb::from_row,
+                )
+                .optional()?;
 
             if let Some(stored) = existing {
                 // Check if new event should replace stored
@@ -175,28 +192,26 @@ impl NostrSqlite {
                 }
 
                 // Delete the old event (CASCADE will delete tags too)
-                sqlx::query("DELETE FROM events WHERE id = $1")
-                    .bind(stored.id.as_slice())
-                    .execute(&mut *tx)
-                    .await?;
+                tx.execute("DELETE FROM events WHERE id = ?1", params![stored.id])?;
             }
         }
 
         // Remove addressable events being replaced
         if event.kind.is_addressable() {
             if let Some(identifier) = event.tags.identifier() {
-                let existing: Option<EventDb> = sqlx::query_as(
-                    "SELECT e.* FROM events e
-                 INNER JOIN event_tags t ON e.id = t.event_id
-                 WHERE e.pubkey = ?1 AND e.kind = ?2
-                 AND t.tag_name = 'd' AND t.tag_value = ?3
-                 LIMIT 1",
-                )
-                .bind(event.pubkey.as_bytes().as_slice())
-                .bind(event.kind.as_u16())
-                .bind(identifier)
-                .fetch_optional(&mut *tx)
-                .await?;
+                let mut stmt = tx.prepare(
+                    "SELECT e.* FROM events e\n                 INNER JOIN event_tags t ON e.id = t.event_id\n                 WHERE e.pubkey = ?1 AND e.kind = ?2\n                 AND t.tag_name = 'd' AND t.tag_value = ?3\n                 LIMIT 1",
+                )?;
+                let existing: Option<EventDb> = stmt
+                    .query_row(
+                        params![
+                            event.pubkey.as_bytes().as_slice(),
+                            event.kind.as_u16() as i64,
+                            identifier
+                        ],
+                        EventDb::from_row,
+                    )
+                    .optional()?;
 
                 if let Some(stored) = existing {
                     if has_event_been_replaced(&stored, event) {
@@ -204,20 +219,17 @@ impl NostrSqlite {
                     }
 
                     // Delete the old addressable event
-                    sqlx::query("DELETE FROM events WHERE id = $1")
-                        .bind(stored.id.as_slice())
-                        .execute(&mut *tx)
-                        .await?;
+                    tx.execute("DELETE FROM events WHERE id = ?1", params![stored.id])?;
                 }
             }
         }
 
         // Handle deletion events
         if event.kind == Kind::EventDeletion {
-            let invalid: bool = self.handle_deletion_event(&mut tx, event).await?;
+            let invalid: bool = Self::handle_deletion_event(&tx, event)?;
 
             if invalid {
-                tx.rollback().await?;
+                tx.rollback()?;
                 return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
             }
         }
@@ -225,136 +237,118 @@ impl NostrSqlite {
         if event.kind == Kind::RequestToVanish {
             // For now, handling `ALL_RELAYS` only
             if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
-                self.handle_request_to_vanish(&mut tx, &event.pubkey)
-                    .await?;
+                Self::handle_request_to_vanish(&tx, &event.pubkey)?;
             }
         }
 
         // Insert event first
-        let inserted: bool = self.insert_event_tx(&mut tx, event).await?;
+        let inserted: bool = Self::insert_event_tx(&tx, event)?;
 
         // Check if the event has been inserted
         if inserted {
             // Insert tags
             for tag in extract_tags(event) {
-                sqlx::query("INSERT OR IGNORE INTO event_tags(event_id, tag_name, tag_value) VALUES ($1, $2, $3)")
-                    .bind(tag.event_id)
-                    .bind(tag.tag_name.as_str())
-                    .bind(tag.tag_value)
-                    .execute(&mut *tx)
-                    .await?;
+                tx.execute(
+                    "INSERT OR IGNORE INTO event_tags(event_id, tag_name, tag_value) VALUES (?1, ?2, ?3)",
+                    params![tag.event_id, tag.tag_name.as_str(), tag.tag_value],
+                )?;
             }
 
             // Commit transaction
-            tx.commit().await?;
+            tx.commit()?;
 
             Ok(SaveEventStatus::Success)
         } else {
             // Event has not been inserted, rollback transaction
-            tx.rollback().await?;
+            tx.rollback()?;
             Ok(SaveEventStatus::Rejected(RejectedReason::Duplicate))
         }
     }
 
-    async fn mark_event_as_deleted(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        id: &EventId,
-    ) -> Result<(), Error> {
-        sqlx::query("INSERT OR IGNORE INTO deleted_ids(event_id) VALUES ($1)")
-            .bind(id.as_bytes().as_slice())
-            .execute(&mut **tx)
-            .await?;
+    fn mark_event_as_deleted(tx: &Transaction<'_>, id: &EventId) -> Result<(), Error> {
+        tx.execute(
+            "INSERT OR IGNORE INTO deleted_ids(event_id) VALUES (?1)",
+            params![id.as_bytes().as_slice()],
+        )?;
         Ok(())
     }
 
-    async fn mark_coordinate_deleted(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
+    fn mark_coordinate_deleted(
+        tx: &Transaction<'_>,
         coordinate: &CoordinateBorrow<'_>,
         deleted_at: Timestamp,
     ) -> Result<(), Error> {
-        sqlx::query("INSERT OR IGNORE INTO deleted_coordinates(pubkey, kind, identifier, deleted_at) VALUES ($1, $2, $3, $4)")
-            .bind(coordinate.public_key.as_bytes().as_slice())
-            .bind(coordinate.kind.as_u16())
-            .bind(coordinate.identifier.unwrap_or_default())
-            .bind(deleted_at.as_secs() as i64)
-            .execute(&mut **tx)
-            .await?;
+        tx.execute(
+            "INSERT OR IGNORE INTO deleted_coordinates(pubkey, kind, identifier, deleted_at) VALUES (?1, ?2, ?3, ?4)",
+            params![
+                coordinate.public_key.as_bytes().as_slice(),
+                coordinate.kind.as_u16() as i64,
+                coordinate.identifier.unwrap_or_default(),
+                deleted_at.as_secs() as i64
+            ],
+        )?;
         Ok(())
     }
 
-    async fn event_is_deleted<'a, E>(&self, executor: E, id: &EventId) -> Result<bool, Error>
-    where
-        E: Executor<'a, Database = Sqlite>,
-    {
-        let is_deleted: bool =
-            sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM deleted_ids WHERE event_id = $1)")
-                .bind(id.as_bytes().as_slice())
-                .fetch_one(executor)
-                .await?;
-        Ok(is_deleted)
+    fn event_is_deleted(tx: &Transaction<'_>, id: &EventId) -> Result<bool, Error> {
+        let is_deleted: i64 = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM deleted_ids WHERE event_id = ?1)",
+            params![id.as_bytes().as_slice()],
+            |row| row.get(0),
+        )?;
+        Ok(is_deleted != 0)
     }
 
-    async fn when_is_coordinate_deleted(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
+    fn when_is_coordinate_deleted(
+        tx: &Transaction<'_>,
         coordinate: &CoordinateBorrow<'_>,
     ) -> Result<Option<Timestamp>, Error> {
-        let timestamp: Option<(i64,)> = sqlx::query_as("SELECT deleted_at FROM deleted_coordinates WHERE pubkey = $1 AND kind = $2 AND identifier = $3")
-            .bind(coordinate.public_key.as_bytes().as_slice())
-            .bind(coordinate.kind.as_u16())
-            .bind(coordinate.identifier.unwrap_or_default())
-            .fetch_optional(&mut **tx)
-            .await?;
+        let timestamp: Option<i64> = tx
+            .query_row(
+                "SELECT deleted_at FROM deleted_coordinates WHERE pubkey = ?1 AND kind = ?2 AND identifier = ?3",
+                params![
+                    coordinate.public_key.as_bytes().as_slice(),
+                    coordinate.kind.as_u16() as i64,
+                    coordinate.identifier.unwrap_or_default()
+                ],
+                |row| row.get(0),
+            )
+            .optional()?;
 
         match timestamp {
-            Some((timestamp,)) => Ok(Some(timestamp.try_into()?)),
+            Some(timestamp) => Ok(Some(timestamp.try_into()?)),
             None => Ok(None),
         }
     }
 
-    async fn pubkey_is_vanished(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        pubkey: &PublicKey,
-    ) -> Result<bool, Error> {
-        let is_vanished: bool = sqlx::query_scalar(
-            "SELECT EXISTS(SELECT 1 FROM vanished_public_keys WHERE pubkey = $1)",
-        )
-        .bind(pubkey.as_bytes().as_slice())
-        .fetch_one(&mut **tx)
-        .await?;
-        Ok(is_vanished)
+    fn pubkey_is_vanished(tx: &Transaction<'_>, pubkey: &PublicKey) -> Result<bool, Error> {
+        let is_vanished: i64 = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM vanished_public_keys WHERE pubkey = ?1)",
+            params![pubkey.as_bytes().as_slice()],
+            |row| row.get(0),
+        )?;
+        Ok(is_vanished != 0)
     }
 
-    async fn mark_pubkey_as_vanished(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        pubkey: &PublicKey,
-    ) -> Result<(), Error> {
-        sqlx::query("INSERT OR IGNORE INTO vanished_public_keys(pubkey) VALUES ($1)")
-            .bind(pubkey.as_bytes().as_slice())
-            .execute(&mut **tx)
-            .await?;
+    fn mark_pubkey_as_vanished(tx: &Transaction<'_>, pubkey: &PublicKey) -> Result<(), Error> {
+        tx.execute(
+            "INSERT OR IGNORE INTO vanished_public_keys(pubkey) VALUES (?1)",
+            params![pubkey.as_bytes().as_slice()],
+        )?;
         Ok(())
     }
 
-    async fn handle_request_to_vanish(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        pubkey: &PublicKey,
-    ) -> Result<(), Error> {
-        self.mark_pubkey_as_vanished(tx, pubkey).await?;
+    fn handle_request_to_vanish(tx: &Transaction<'_>, pubkey: &PublicKey) -> Result<(), Error> {
+        Self::mark_pubkey_as_vanished(tx, pubkey)?;
 
         // Delete all user events
-        sqlx::query("DELETE FROM events where pubkey = $1")
-            .bind(pubkey.as_bytes().as_slice())
-            .execute(&mut **tx)
-            .await?;
+        tx.execute(
+            "DELETE FROM events where pubkey = ?1",
+            params![pubkey.as_bytes().as_slice()],
+        )?;
 
         // Delete all gift wraps that mention the public key
-        sqlx::query(
+        tx.execute(
             r#"
         DELETE FROM events
         WHERE id IN (
@@ -365,111 +359,95 @@ impl NostrSqlite {
             WHERE
                 e.kind = 1059 AND
                 et.tag_name = 'p' AND
-                et.tag_value = $1
+                et.tag_value = ?1
         )
         "#,
-        )
-        .bind(pubkey.to_hex())
-        .execute(&mut **tx)
-        .await?;
+            params![pubkey.to_hex()],
+        )?;
 
         Ok(())
     }
 
-    async fn has_event<'a, E>(&self, executor: E, id: &EventId) -> Result<bool, Error>
-    where
-        E: Executor<'a, Database = Sqlite>,
-    {
-        let exists: bool = sqlx::query_scalar("SELECT EXISTS(SELECT 1 FROM events WHERE id = $1)")
-            .bind(id.as_bytes().as_slice())
-            .fetch_one(executor)
-            .await?;
-        Ok(exists)
+    fn has_event(tx: &Transaction<'_>, id: &EventId) -> Result<bool, Error> {
+        let exists: i64 = tx.query_row(
+            "SELECT EXISTS(SELECT 1 FROM events WHERE id = ?1)",
+            params![id.as_bytes().as_slice()],
+            |row| row.get(0),
+        )?;
+        Ok(exists != 0)
     }
 
-    async fn get_pubkey_of_event_by_id(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
+    fn get_pubkey_of_event_by_id(
+        tx: &Transaction<'_>,
         id: &EventId,
     ) -> Result<Option<PublicKey>, Error> {
-        let pubkey: Option<(Vec<u8>,)> = sqlx::query_as("SELECT pubkey FROM events WHERE id = $1")
-            .bind(id.as_bytes().as_slice())
-            .fetch_optional(&mut **tx)
-            .await?;
+        let pubkey: Option<Vec<u8>> = tx
+            .query_row(
+                "SELECT pubkey FROM events WHERE id = ?1",
+                params![id.as_bytes().as_slice()],
+                |row| row.get(0),
+            )
+            .optional()?;
         match pubkey {
-            Some((pk,)) => Ok(Some(PublicKey::from_slice(&pk)?)),
+            Some(pk) => Ok(Some(PublicKey::from_slice(&pk)?)),
             None => Ok(None),
         }
     }
 
-    async fn get_event_by_id(&self, id: &EventId) -> Result<Option<Event>, Error> {
-        let event: Option<EventDb> = sqlx::query_as("SELECT * FROM events WHERE id = $1")
-            .bind(id.as_bytes().as_slice())
-            .fetch_optional(&self.pool)
-            .await?;
+    fn get_event_by_id(conn: &Connection, id: &EventId) -> Result<Option<Event>, Error> {
+        let mut stmt = conn.prepare("SELECT * FROM events WHERE id = ?1")?;
+        let event: Option<EventDb> = stmt
+            .query_row(params![id.as_bytes().as_slice()], EventDb::from_row)
+            .optional()?;
         match event {
             Some(event) => Ok(Some(event.to_event()?)),
             None => Ok(None),
         }
     }
 
-    async fn remove_event(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
-        id: &EventId,
-    ) -> Result<(), Error> {
-        sqlx::query("DELETE FROM events where id = $1")
-            .bind(id.as_bytes().as_slice())
-            .execute(&mut **tx)
-            .await?;
+    fn remove_event(tx: &Transaction<'_>, id: &EventId) -> Result<(), Error> {
+        tx.execute(
+            "DELETE FROM events where id = ?1",
+            params![id.as_bytes().as_slice()],
+        )?;
         Ok(())
     }
 
     /// Remove all replaceable events with the matching author-kind
     /// Kind must be a replaceable (not parameterized replaceable) event kind
-    async fn remove_replaceable(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
+    fn remove_replaceable(
+        tx: &Transaction<'_>,
         coordinate: &Coordinate,
         until: &Timestamp,
     ) -> Result<(), Error> {
-        sqlx::query(
-            "DELETE FROM events
-         WHERE pubkey = $1 AND kind = $2 AND created_at <= $3",
-        )
-        .bind(coordinate.public_key.as_bytes().as_slice())
-        .bind(coordinate.kind.as_u16())
-        .bind(until.as_secs() as i64)
-        .execute(&mut **tx)
-        .await?;
+        tx.execute(
+            "DELETE FROM events\n         WHERE pubkey = ?1 AND kind = ?2 AND created_at <= ?3",
+            params![
+                coordinate.public_key.as_bytes().as_slice(),
+                coordinate.kind.as_u16() as i64,
+                until.as_secs() as i64
+            ],
+        )?;
 
         Ok(())
     }
 
     /// Remove all parameterized-replaceable events with the matching author-kind-identifier
     /// Kind must be a parameterized-replaceable (addressable) event kind
-    async fn remove_addressable(
-        &self,
-        tx: &mut Transaction<'_, Sqlite>,
+    fn remove_addressable(
+        tx: &Transaction<'_>,
         coordinate: &Coordinate,
         until: Timestamp,
     ) -> Result<(), Error> {
-        sqlx::query(
-            "DELETE FROM events
-         WHERE id IN (
-             SELECT e.id FROM events e
-             INNER JOIN event_tags t ON e.id = t.event_id
-             WHERE e.pubkey = $1 AND e.kind = $2
-             AND t.tag_name = 'd' AND t.tag_value = $3
-             AND e.created_at <= $4
-         )",
-        )
-        .bind(coordinate.public_key.as_bytes().as_slice())
-        .bind(coordinate.kind.as_u16())
-        .bind(&coordinate.identifier)
-        .bind(until.as_secs() as i64)
-        .execute(&mut **tx)
-        .await?;
+        tx.execute(
+            "DELETE FROM events\n         WHERE id IN (\n             SELECT e.id FROM events e\n             INNER JOIN event_tags t ON e.id = t.event_id\n             WHERE e.pubkey = ?1 AND e.kind = ?2\n             AND t.tag_name = 'd' AND t.tag_value = ?3\n             AND e.created_at <= ?4\n         )",
+            params![
+                coordinate.public_key.as_bytes().as_slice(),
+                coordinate.kind.as_u16() as i64,
+                &coordinate.identifier,
+                until.as_secs() as i64
+            ],
+        )?;
 
         Ok(())
     }
@@ -494,7 +472,9 @@ impl NostrDatabase for NostrSqlite {
         event: &'a Event,
     ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
         Box::pin(async move {
-            self._save_event(event)
+            let event = event.clone();
+            self.pool
+                .interact(move |conn| Self::save_event_sync(conn, &event))
                 .await
                 .map_err(DatabaseError::backend)
         })
@@ -505,21 +485,21 @@ impl NostrDatabase for NostrSqlite {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
         Box::pin(async move {
-            if self
-                .event_is_deleted(&self.pool, event_id)
+            let event_id = *event_id;
+            self.pool
+                .interact(move |conn| {
+                    let tx = conn.transaction()?;
+
+                    if Self::event_is_deleted(&tx, &event_id)? {
+                        Ok(DatabaseEventStatus::Deleted)
+                    } else if Self::has_event(&tx, &event_id)? {
+                        Ok(DatabaseEventStatus::Saved)
+                    } else {
+                        Ok(DatabaseEventStatus::NotExistent)
+                    }
+                })
                 .await
-                .map_err(DatabaseError::backend)?
-            {
-                Ok(DatabaseEventStatus::Deleted)
-            } else if self
-                .has_event(&self.pool, event_id)
-                .await
-                .map_err(DatabaseError::backend)?
-            {
-                Ok(DatabaseEventStatus::Saved)
-            } else {
-                Ok(DatabaseEventStatus::NotExistent)
-            }
+                .map_err(DatabaseError::backend)
         })
     }
 
@@ -528,7 +508,9 @@ impl NostrDatabase for NostrSqlite {
         event_id: &'a EventId,
     ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
         Box::pin(async move {
-            self.get_event_by_id(event_id)
+            let event_id = *event_id;
+            self.pool
+                .interact(move |conn| Self::get_event_by_id(conn, &event_id))
                 .await
                 .map_err(DatabaseError::backend)
         })
@@ -536,43 +518,40 @@ impl NostrDatabase for NostrSqlite {
 
     fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
         Box::pin(async move {
-            // Limit filter query
-            let filter: Filter = with_limit(filter, EVENTS_QUERY_LIMIT);
-
-            let mut sql: QueryBuilder<Sqlite> = build_filter(&filter, SqlSelectClause::Count);
-
-            let count: (i64,) = sql
-                .build_query_as()
-                .fetch_one(&self.pool)
+            let filter = with_limit(filter, EVENTS_QUERY_LIMIT);
+            self.pool
+                .interact(move |conn| {
+                    let query = build_filter(&filter, SqlSelectClause::Count);
+                    let mut stmt = conn.prepare(&query.sql)?;
+                    let count: i64 =
+                        stmt.query_row(params_from_iter(query.params), |row| row.get(0))?;
+                    Ok(count as usize)
+                })
                 .await
-                .map_err(DatabaseError::backend)?;
-
-            Ok(count.0 as usize)
+                .map_err(DatabaseError::backend)
         })
     }
 
     fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
         Box::pin(async move {
-            // Limit filter query
-            let filter: Filter = with_limit(filter, EVENTS_QUERY_LIMIT);
+            let filter = with_limit(filter, EVENTS_QUERY_LIMIT);
+            self.pool
+                .interact(move |conn| {
+                    let mut events = Events::new(&filter);
+                    let query = build_filter(&filter, SqlSelectClause::Select);
+                    let mut stmt = conn.prepare(&query.sql)?;
+                    let rows = stmt.query_map(params_from_iter(query.params), EventDb::from_row)?;
 
-            let mut events: Events = Events::new(&filter);
+                    for row in rows {
+                        if let Ok(event) = row?.to_event() {
+                            events.insert(event);
+                        }
+                    }
 
-            let mut sql: QueryBuilder<Sqlite> = build_filter(&filter, SqlSelectClause::Select);
-
-            let row_events: Vec<EventDb> = sql
-                .build_query_as()
-                .fetch_all(&self.pool)
+                    Ok(events)
+                })
                 .await
-                .map_err(DatabaseError::backend)?;
-
-            for event in row_events.into_iter() {
-                if let Ok(event) = event.to_event() {
-                    events.insert(event);
-                }
-            }
-
-            Ok(events)
+                .map_err(DatabaseError::backend)
         })
     }
 
@@ -580,42 +559,33 @@ impl NostrDatabase for NostrSqlite {
 
     fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move {
-            let mut sql: QueryBuilder<Sqlite> = build_filter(&filter, SqlSelectClause::Delete);
-
-            sql.build()
-                .execute(&self.pool)
+            self.pool
+                .interact(move |conn| {
+                    let query = build_filter(&filter, SqlSelectClause::Delete);
+                    conn.execute(&query.sql, params_from_iter(query.params))?;
+                    Ok(())
+                })
                 .await
-                .map_err(DatabaseError::backend)?;
-
-            Ok(())
+                .map_err(DatabaseError::backend)
         })
     }
 
     fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
         Box::pin(async move {
-            // Delete all data (CASCADE will handle event_tags)
-            sqlx::query("DELETE FROM events")
-                .execute(&self.pool)
-                .await
-                .map_err(DatabaseError::backend)?;
+            self.pool
+                .interact(move |conn| {
+                    // Delete all data (CASCADE will handle event_tags)
+                    conn.execute("DELETE FROM events", [])?;
+                    conn.execute("DELETE FROM deleted_ids", [])?;
+                    conn.execute("DELETE FROM deleted_coordinates", [])?;
 
-            sqlx::query("DELETE FROM deleted_ids")
-                .execute(&self.pool)
-                .await
-                .map_err(DatabaseError::backend)?;
+                    // Vacuum to reclaim space
+                    conn.execute("VACUUM", [])?;
 
-            sqlx::query("DELETE FROM deleted_coordinates")
-                .execute(&self.pool)
+                    Ok(())
+                })
                 .await
-                .map_err(DatabaseError::backend)?;
-
-            // Vacuum to reclaim space
-            sqlx::query("VACUUM")
-                .execute(&self.pool)
-                .await
-                .map_err(DatabaseError::backend)?;
-
-            Ok(())
+                .map_err(DatabaseError::backend)
         })
     }
 }
@@ -633,146 +603,177 @@ fn has_event_been_replaced(stored: &EventDb, event: &Event) -> bool {
     }
 }
 
-fn build_filter(filter: &Filter, select_clause: SqlSelectClause) -> QueryBuilder<Sqlite> {
+struct FilterQuery {
+    sql: String,
+    params: Vec<Value>,
+}
+
+fn build_filter(filter: &Filter, select_clause: SqlSelectClause) -> FilterQuery {
     // If no filters, simple query without JOIN
     if filter.is_empty() {
-        let mut query_builder = QueryBuilder::new(match select_clause {
+        let mut sql = String::from(match select_clause {
             SqlSelectClause::Select => "SELECT * FROM events",
             SqlSelectClause::Count => "SELECT COUNT(*) FROM events",
             SqlSelectClause::Delete => "DELETE FROM events",
         });
 
         if let SqlSelectClause::Select | SqlSelectClause::Count = select_clause {
-            query_builder.push(" ORDER BY created_at DESC");
+            sql.push_str(" ORDER BY created_at DESC");
             if let Some(limit) = filter.limit {
-                query_builder.push(" LIMIT ");
-                query_builder.push_bind(limit as i64);
+                sql.push_str(" LIMIT ?");
+                return FilterQuery {
+                    sql,
+                    params: vec![Value::Integer(limit as i64)],
+                };
             }
         }
 
-        return query_builder;
+        return FilterQuery {
+            sql,
+            params: Vec::new(),
+        };
     }
 
-    let mut query_builder: QueryBuilder<Sqlite> = match select_clause {
-        SqlSelectClause::Select => QueryBuilder::new("SELECT DISTINCT e.*"),
-        SqlSelectClause::Count => QueryBuilder::new("SELECT COUNT(DISTINCT e.id)"),
+    let mut sql = match select_clause {
+        SqlSelectClause::Select => "SELECT DISTINCT e.*".to_string(),
+        SqlSelectClause::Count => "SELECT COUNT(DISTINCT e.id)".to_string(),
         // For DELETE, we need to use a subquery because SQLite doesn't support DELETE with JOIN directly
         SqlSelectClause::Delete => {
-            let mut query_builder = QueryBuilder::new(
-                "DELETE FROM events WHERE id IN (SELECT DISTINCT e.id FROM events e",
-            );
+            let mut sql =
+                "DELETE FROM events WHERE id IN (SELECT DISTINCT e.id FROM events e".to_string();
 
             // Only JOIN if we have tag filters
             if !filter.generic_tags.is_empty() {
-                query_builder.push(" INNER JOIN event_tags et ON e.id = et.event_id");
+                sql.push_str(" INNER JOIN event_tags et ON e.id = et.event_id");
             }
 
-            query_builder.push(" WHERE 1=1");
+            sql.push_str(" WHERE 1=1");
 
-            // Add all the filter conditions
-            add_filter_conditions(filter, &mut query_builder);
+            let mut query = FilterQuery {
+                sql,
+                params: Vec::new(),
+            };
 
-            query_builder.push(")"); // Close the subquery
+            add_filter_conditions(filter, &mut query);
 
-            return query_builder;
+            query.sql.push(')');
+            return query;
         }
     };
 
-    query_builder.push(" FROM events e");
+    sql.push_str(" FROM events e");
 
     // Only JOIN if we have tag filters
     if !filter.generic_tags.is_empty() {
-        query_builder.push(" INNER JOIN event_tags et ON e.id = et.event_id");
+        sql.push_str(" INNER JOIN event_tags et ON e.id = et.event_id");
     }
 
-    query_builder.push(" WHERE 1=1");
+    sql.push_str(" WHERE 1=1");
+
+    let mut query = FilterQuery {
+        sql,
+        params: Vec::new(),
+    };
 
     // Add all the filter conditions
-    add_filter_conditions(filter, &mut query_builder);
+    add_filter_conditions(filter, &mut query);
 
     // Only add ORDER BY and LIMIT for SELECT queries
-    query_builder.push(" ORDER BY e.created_at DESC");
+    query.sql.push_str(" ORDER BY e.created_at DESC");
 
     if let Some(limit) = filter.limit {
-        query_builder.push(" LIMIT ");
-        query_builder.push_bind(limit as i64);
+        query.sql.push_str(" LIMIT ?");
+        query.params.push(Value::Integer(limit as i64));
     }
 
-    query_builder
+    query
 }
 
 // Extract filter conditions to avoid duplication
-fn add_filter_conditions<'a>(filter: &'a Filter, query_builder: &mut QueryBuilder<'a, Sqlite>) {
-    // Add filters
+fn add_filter_conditions(filter: &Filter, query: &mut FilterQuery) {
     if let Some(ids) = &filter.ids {
         if !ids.is_empty() {
-            query_builder.push(" AND e.id IN (");
-            let mut separated = query_builder.separated(", ");
-            for id in ids.iter() {
-                separated.push_bind(id.as_bytes().as_slice());
+            query.sql.push_str(" AND e.id IN (");
+            for (idx, id) in ids.iter().enumerate() {
+                if idx > 0 {
+                    query.sql.push_str(", ");
+                }
+                query.sql.push('?');
+                query
+                    .params
+                    .push(Value::Blob(id.as_bytes().as_slice().to_vec()));
             }
-            query_builder.push(")");
+            query.sql.push(')');
         }
     }
 
     if let Some(authors) = &filter.authors {
         if !authors.is_empty() {
-            query_builder.push(" AND e.pubkey IN (");
-            let mut separated = query_builder.separated(", ");
-            for author in authors.iter() {
-                separated.push_bind(author.as_bytes().as_slice());
+            query.sql.push_str(" AND e.pubkey IN (");
+            for (idx, author) in authors.iter().enumerate() {
+                if idx > 0 {
+                    query.sql.push_str(", ");
+                }
+                query.sql.push('?');
+                query
+                    .params
+                    .push(Value::Blob(author.as_bytes().as_slice().to_vec()));
             }
-            query_builder.push(")");
+            query.sql.push(')');
         }
     }
 
     if let Some(kinds) = &filter.kinds {
         if !kinds.is_empty() {
-            query_builder.push(" AND e.kind IN (");
-            let mut separated = query_builder.separated(", ");
-            for kind in kinds {
-                separated.push_bind(kind.as_u16() as i64);
+            query.sql.push_str(" AND e.kind IN (");
+            for (idx, kind) in kinds.iter().enumerate() {
+                if idx > 0 {
+                    query.sql.push_str(", ");
+                }
+                query.sql.push('?');
+                query.params.push(Value::Integer(kind.as_u16() as i64));
             }
-            query_builder.push(")");
+            query.sql.push(')');
         }
     }
 
     if let Some(since) = filter.since {
-        query_builder.push(" AND e.created_at >= ");
-        query_builder.push_bind(since.as_secs() as i64);
+        query.sql.push_str(" AND e.created_at >= ?");
+        query.params.push(Value::Integer(since.as_secs() as i64));
     }
 
     if let Some(until) = filter.until {
-        query_builder.push(" AND e.created_at <= ");
-        query_builder.push_bind(until.as_secs() as i64);
+        query.sql.push_str(" AND e.created_at <= ?");
+        query.params.push(Value::Integer(until.as_secs() as i64));
     }
 
     // Search filter (if exists)
     if let Some(search) = &filter.search {
-        query_builder.push(" AND (e.content LIKE ");
-        query_builder.push_bind(format!("%{}%", search));
-        query_builder.push(" OR EXISTS (SELECT 1 FROM event_tags et_search WHERE et_search.event_id = e.id AND et_search.tag_value LIKE ");
-        query_builder.push_bind(format!("%{}%", search));
-        query_builder.push("))");
+        let like = format!("%{}%", search);
+        query.sql.push_str(" AND (e.content LIKE ?");
+        query.params.push(Value::Text(like.clone()));
+        query.sql.push_str(
+            " OR EXISTS (SELECT 1 FROM event_tags et_search WHERE et_search.event_id = e.id AND et_search.tag_value LIKE ?))",
+        );
+        query.params.push(Value::Text(like));
     }
 
     if !filter.generic_tags.is_empty() {
         for (tag, values) in &filter.generic_tags {
             if !values.is_empty() {
-                query_builder.push(
-                    " AND EXISTS (
-                    SELECT 1 FROM event_tags et2
-                    WHERE et2.event_id = e.id
-                    AND et2.tag_name = ",
+                query.sql.push_str(
+                    " AND EXISTS (\n                    SELECT 1 FROM event_tags et2\n                    WHERE et2.event_id = e.id\n                    AND et2.tag_name = ? AND et2.tag_value IN (",
                 );
-                query_builder.push_bind(tag.to_string());
-                query_builder.push(" AND et2.tag_value IN (");
+                query.params.push(Value::Text(tag.to_string()));
 
-                let mut separated = query_builder.separated(", ");
-                for value in values {
-                    separated.push_bind(value.to_string());
+                for (idx, value) in values.iter().enumerate() {
+                    if idx > 0 {
+                        query.sql.push_str(", ");
+                    }
+                    query.sql.push('?');
+                    query.params.push(Value::Text(value.to_string()));
                 }
-                query_builder.push("))");
+                query.sql.push_str("))");
             }
         }
     }
@@ -789,14 +790,11 @@ fn with_limit(filter: Filter, default_limit: usize) -> Filter {
 #[cfg(test)]
 mod tests {
     use nostr_database_test_suite::database_unit_tests;
-    use tempfile::TempDir;
 
     use super::*;
 
     struct TempDatabase {
         db: NostrSqlite,
-        // Needed to avoid the drop and deletion of temp folder
-        _temp: TempDir,
     }
 
     impl Deref for TempDatabase {
@@ -809,12 +807,8 @@ mod tests {
 
     impl TempDatabase {
         async fn new() -> Self {
-            let path = tempfile::tempdir().unwrap();
             Self {
-                db: NostrSqlite::open(path.path().join("temp.db"))
-                    .await
-                    .unwrap(),
-                _temp: path,
+                db: NostrSqlite::in_memory().await.unwrap(),
             }
         }
     }
