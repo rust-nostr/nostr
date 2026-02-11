@@ -48,6 +48,7 @@
 - Remove `Client::handle_notifications` and `Relay_handle_notifications` (https://github.com/rust-nostr/nostr/pull/1245)
 - Remove `timeout` from `WebSocketTransport`
 - Remove `tor` feature (https://github.com/rust-nostr/nostr/pull/1253)
+- Remove `pow-multi-thread`, `all-nips`, `nip03`,`nip04`, `nip06`, `nip44`, `nip47`, `nip49`, `nip57`, `nip59`, `nip96` and `nip98`features (https://github.com/rust-nostr/nostr/pull/1254)
 
 ### Changed
 

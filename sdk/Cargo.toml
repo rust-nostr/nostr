@@ -15,21 +15,6 @@ keywords = ["nostr", "sdk"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-[features]
-default = []
-pow-multi-thread = ["nostr/pow-multi-thread"]
-all-nips = ["nostr/all-nips", "nip04", "nip06", "nip44", "nip47", "nip49", "nip57", "nip59", "nip96", "nip98"]
-nip03 = ["nostr/nip03"]
-nip04 = ["nostr/nip04"]
-nip06 = ["nostr/nip06"]
-nip44 = ["nostr/nip44"]
-nip47 = ["nostr/nip47"]
-nip49 = ["nostr/nip49"]
-nip57 = ["nostr/nip57"]
-nip59 = ["nostr/nip59"]
-nip96 = ["nostr/nip96"]
-nip98 = ["nostr/nip98"]
-
 [dependencies]
 async-utility.workspace = true
 async-wsocket = { workspace = true, features = ["socks"] }
@@ -45,6 +30,7 @@ tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
+nostr = { workspace = true, features = ["all-nips"] }
 nostr-connect.workspace = true
 nostr-lmdb.workspace = true
 nostr-ndb.workspace = true
@@ -70,18 +56,15 @@ name = "fetch-events"
 
 [[example]]
 name = "gossip"
-required-features = ["all-nips"]
 
 [[example]]
 name = "monitor"
 
 [[example]]
 name = "nostr-connect"
-required-features = ["nip59"]
 
 [[example]]
 name = "bot"
-required-features = ["all-nips"]
 
 [[example]]
 name = "nostrdb"
@@ -94,7 +77,6 @@ name = "subscriptions"
 
 [[example]]
 name = "tor"
-required-features = ["nip59"]
 
 [[example]]
 name = "lmdb"

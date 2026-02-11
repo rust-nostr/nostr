@@ -30,9 +30,6 @@ pub enum Error {
     EventBuilder(event::builder::Error),
     /// Json error
     Json(serde_json::Error),
-    /// NIP59
-    #[cfg(feature = "nip59")]
-    NIP59(nip59::Error),
     /// Signer not configured
     SignerNotConfigured,
     /// Gossip is not configured
@@ -56,8 +53,6 @@ impl fmt::Display for Error {
             Self::Gossip(e) => e.fmt(f),
             Self::EventBuilder(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
-            #[cfg(feature = "nip59")]
-            Self::NIP59(e) => e.fmt(f),
             Self::SignerNotConfigured => f.write_str("signer not configured"),
             Self::GossipNotConfigured => f.write_str("gossip not configured"),
             Self::GossipFiltersEmpty => {
@@ -113,12 +108,5 @@ impl From<event::builder::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
-    }
-}
-
-#[cfg(feature = "nip59")]
-impl From<nip59::Error> for Error {
-    fn from(e: nip59::Error) -> Self {
-        Self::NIP59(e)
     }
 }

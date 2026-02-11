@@ -56,8 +56,6 @@ jobs:
           - nostr-keyring
           - nostr-keyring --features async
           - nostr-sdk
-          - nostr-sdk --features all-nips
-          - nostr-sdk --all-features
           - nostr-relay-builder
           - nostr-connect
           - nwc

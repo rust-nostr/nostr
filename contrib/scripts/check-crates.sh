@@ -30,8 +30,6 @@ buildargs=(
     "-p nostr-keyring"
     "-p nostr-keyring --features async"
     "-p nostr-sdk"                                                # No default features
-    "-p nostr-sdk --features all-nips"                            # Only NIPs features
-    "-p nostr-sdk --all-features"                                 # All features
     "-p nostr-relay-builder"
     "-p nostr-connect"
     "-p nwc"

@@ -77,23 +77,6 @@ AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target w
 
 NOTE: Currently `nip03` feature not support WASM.
 
-## Crate Feature Flags
-
-The following crate feature flags are available:
-
-| Feature            | Default | Description                                                           |
-|--------------------|:-------:|-----------------------------------------------------------------------|
-| `pow-multi-thread` |   No    | Enable event POW mining using multi-threads                           |
-| `all-nips`         |   No    | Enable all NIPs                                                       |
-| `nip03`            |   No    | Enable NIP-03: OpenTimestamps Attestations for Events                 |
-| `nip04`            |   No    | Enable NIP-04: Encrypted Direct Message                               |
-| `nip06`            |   No    | Enable NIP-06: Basic key derivation from mnemonic seed phrase         |
-| `nip44`            |   No    | Enable NIP-44: Encrypted Payloads (Versioned)                         |
-| `nip47`            |   No    | Enable NIP-47: Nostr Wallet Connect                                   |
-| `nip49`            |   No    | Enable NIP-49: Private Key Encryption                                 |
-| `nip57`            |   No    | Enable NIP-57: Zaps                                                   |
-| `nip59`            |   No    | Enable NIP-59: Gift Wrap                                              |
-
 ## Changelog
 
 All notable changes to this library are documented in the [CHANGELOG.md](CHANGELOG.md).
