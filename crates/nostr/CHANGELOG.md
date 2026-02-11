@@ -59,6 +59,7 @@
 
 - Remove unnecessary `#[cfg(feature = "std")]` from `UnsignedEvent::sign` method
 - Remove `url-fork` dependency (https://github.com/rust-nostr/nostr/pull/1179)
+- Remove nip47 `multi_*` methods following spec cleanup (https://github.com/nostr-protocol/nips/pull/2210)
 
 ### Fixed
 

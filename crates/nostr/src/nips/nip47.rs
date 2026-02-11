@@ -151,12 +151,8 @@ impl fmt::Display for NIP47Error {
 pub enum Method {
     /// Pay Invoice
     PayInvoice,
-    /// Multi Pay Invoice
-    MultiPayInvoice,
     /// Pay Keysend
     PayKeysend,
-    /// Multi Pay Keysend
-    MultiPayKeysend,
     /// Make Invoice
     MakeInvoice,
     /// Lookup Invoice
@@ -214,9 +210,7 @@ impl Method {
     pub fn as_str(&self) -> &str {
         match self {
             Self::PayInvoice => "pay_invoice",
-            Self::MultiPayInvoice => "multi_pay_invoice",
             Self::PayKeysend => "pay_keysend",
-            Self::MultiPayKeysend => "multi_pay_keysend",
             Self::MakeInvoice => "make_invoice",
             Self::LookupInvoice => "lookup_invoice",
             Self::ListTransactions => "list_transactions",
@@ -236,9 +230,7 @@ impl FromStr for Method {
     fn from_str(method: &str) -> Result<Self, Self::Err> {
         match method {
             "pay_invoice" => Ok(Self::PayInvoice),
-            "multi_pay_invoice" => Ok(Self::MultiPayInvoice),
             "pay_keysend" => Ok(Self::PayKeysend),
-            "multi_pay_keysend" => Ok(Self::MultiPayKeysend),
             "make_invoice" => Ok(Self::MakeInvoice),
             "lookup_invoice" => Ok(Self::LookupInvoice),
             "list_transactions" => Ok(Self::ListTransactions),
@@ -276,12 +268,8 @@ impl<'de> Deserialize<'de> for Method {
 pub enum RequestParams {
     /// Pay Invoice
     PayInvoice(PayInvoiceRequest),
-    /// Multiple Pay Invoice
-    MultiPayInvoice(MultiPayInvoiceRequest),
     /// Pay Keysend
     PayKeysend(PayKeysendRequest),
-    /// Multiple Pay Keysend
-    MultiPayKeysend(MultiPayKeysendRequest),
     /// Make Invoice
     MakeInvoice(MakeInvoiceRequest),
     /// Lookup Invoice
@@ -307,9 +295,7 @@ impl Serialize for RequestParams {
     {
         match self {
             RequestParams::PayInvoice(p) => p.serialize(serializer),
-            RequestParams::MultiPayInvoice(p) => p.serialize(serializer),
             RequestParams::PayKeysend(p) => p.serialize(serializer),
-            RequestParams::MultiPayKeysend(p) => p.serialize(serializer),
             RequestParams::MakeInvoice(p) => p.serialize(serializer),
             RequestParams::LookupInvoice(p) => p.serialize(serializer),
             RequestParams::ListTransactions(p) => p.serialize(serializer),
@@ -356,13 +342,6 @@ impl PayInvoiceRequest {
     }
 }
 
-/// Multiple Pay Invoice Request
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MultiPayInvoiceRequest {
-    /// Requested invoices
-    pub invoices: Vec<PayInvoiceRequest>,
-}
-
 /// TLVs to be added to the keysend payment
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct KeysendTLVRecord {
@@ -390,13 +369,6 @@ pub struct PayKeysendRequest {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub tlv_records: Vec<KeysendTLVRecord>,
-}
-
-/// Multiple Pay Keysend Request
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct MultiPayKeysendRequest {
-    /// Requested keysends
-    pub keysends: Vec<PayKeysendRequest>,
 }
 
 /// Make Invoice Request
@@ -544,15 +516,6 @@ impl Request {
         }
     }
 
-    /// Compose `multi_pay_invoice` request
-    #[inline]
-    pub fn multi_pay_invoice(params: MultiPayInvoiceRequest) -> Self {
-        Self {
-            method: Method::MultiPayInvoice,
-            params: RequestParams::MultiPayInvoice(params),
-        }
-    }
-
     /// Compose `pay_keysend` request
     #[inline]
     pub fn pay_keysend(params: PayKeysendRequest) -> Self {
@@ -616,17 +579,9 @@ impl Request {
                 let params: PayInvoiceRequest = serde_json::from_value(template.params)?;
                 RequestParams::PayInvoice(params)
             }
-            Method::MultiPayInvoice => {
-                let params: MultiPayInvoiceRequest = serde_json::from_value(template.params)?;
-                RequestParams::MultiPayInvoice(params)
-            }
             Method::PayKeysend => {
                 let params: PayKeysendRequest = serde_json::from_value(template.params)?;
                 RequestParams::PayKeysend(params)
-            }
-            Method::MultiPayKeysend => {
-                let params: MultiPayKeysendRequest = serde_json::from_value(template.params)?;
-                RequestParams::MultiPayKeysend(params)
             }
             Method::MakeInvoice => {
                 let params: MakeInvoiceRequest = serde_json::from_value(template.params)?;
@@ -892,12 +847,8 @@ pub struct SettleHoldInvoiceResponse {}
 pub enum ResponseResult {
     /// Pay Invoice
     PayInvoice(PayInvoiceResponse),
-    /// Multiple Pay Invoice
-    MultiPayInvoice(PayInvoiceResponse),
     /// Pay Keysend
     PayKeysend(PayKeysendResponse),
-    /// Multiple Pay Keysend
-    MultiPayKeysend(PayKeysendResponse),
     /// Make Invoice
     MakeInvoice(MakeInvoiceResponse),
     /// Lookup Invoice
@@ -923,9 +874,7 @@ impl Serialize for ResponseResult {
     {
         match self {
             ResponseResult::PayInvoice(p) => p.serialize(serializer),
-            ResponseResult::MultiPayInvoice(p) => p.serialize(serializer),
             ResponseResult::PayKeysend(p) => p.serialize(serializer),
-            ResponseResult::MultiPayKeysend(p) => p.serialize(serializer),
             ResponseResult::MakeInvoice(p) => p.serialize(serializer),
             ResponseResult::LookupInvoice(p) => p.serialize(serializer),
             ResponseResult::ListTransactions(p) => {
@@ -987,17 +936,9 @@ impl Response {
                     let result: PayInvoiceResponse = serde_json::from_value(result)?;
                     ResponseResult::PayInvoice(result)
                 }
-                Method::MultiPayInvoice => {
-                    let result: PayInvoiceResponse = serde_json::from_value(result)?;
-                    ResponseResult::MultiPayInvoice(result)
-                }
                 Method::PayKeysend => {
                     let result: PayKeysendResponse = serde_json::from_value(result)?;
                     ResponseResult::PayKeysend(result)
-                }
-                Method::MultiPayKeysend => {
-                    let result: PayKeysendResponse = serde_json::from_value(result)?;
-                    ResponseResult::MultiPayKeysend(result)
                 }
                 Method::MakeInvoice => {
                     let result: MakeInvoiceResponse = serde_json::from_value(result)?;
@@ -1565,16 +1506,8 @@ mod tests {
             Method::Unknown(String::from("pay_invoice"))
         );
         assert_eq!(
-            Method::MultiPayInvoice,
-            Method::Unknown(String::from("multi_pay_invoice"))
-        );
-        assert_eq!(
             Method::PayKeysend,
             Method::Unknown(String::from("pay_keysend"))
-        );
-        assert_eq!(
-            Method::MultiPayKeysend,
-            Method::Unknown(String::from("multi_pay_keysend"))
         );
         assert_eq!(
             Method::MakeInvoice,
@@ -1843,7 +1776,7 @@ mod tests {
     // - https://github.com/getAlby/hub/issues/1746
     #[test]
     fn test_parse_get_info_response_with_empty_strings() {
-        let json = r#"{"alias":"","color":"","pubkey":"","network":"","block_height":0,"block_hash":"","methods":["pay_invoice","pay_keysend","multi_pay_invoice","multi_pay_keysend","get_info","get_balance"],"notifications":[],"lud16":""}"#;
+        let json = r#"{"alias":"","color":"","pubkey":"","network":"","block_height":0,"block_hash":"","methods":["pay_invoice","pay_keysend","get_info","get_balance"],"notifications":[],"lud16":""}"#;
         let response: GetInfoResponse = serde_json::from_str(json).unwrap();
 
         assert_eq!(
@@ -1858,8 +1791,6 @@ mod tests {
                 methods: vec![
                     Method::PayInvoice,
                     Method::PayKeysend,
-                    Method::MultiPayInvoice,
-                    Method::MultiPayKeysend,
                     Method::GetInfo,
                     Method::GetBalance,
                 ],
