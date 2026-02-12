@@ -147,6 +147,10 @@ pub struct ClientBuilder {
     pub automatic_authentication: bool,
     /// Notification channel size
     pub notification_channel_size: usize,
+    /// Connection timeout (default: 15 sec)
+    ///
+    /// This is the default timeout use when attempting to establish a connection with the relay
+    pub connect_timeout: Duration,
     /// Relay limits
     pub relay_limits: RelayLimits,
     /// Max average latency
@@ -173,6 +177,7 @@ impl Default for ClientBuilder {
             connection: Connection::default(),
             max_relays: None,
             automatic_authentication: true,
+            connect_timeout: Duration::from_secs(15),
             relay_limits: RelayLimits::default(),
             max_avg_latency: None,
             sleep_when_idle: SleepWhenIdle::default(),
@@ -288,6 +293,15 @@ impl ClientBuilder {
     #[inline]
     pub fn automatic_authentication(mut self, enabled: bool) -> Self {
         self.automatic_authentication = enabled;
+        self
+    }
+
+    /// Connection timeout (default: 15 sec)
+    ///
+    /// This is the default timeout use when attempting to establish a connection with the relay
+    #[inline]
+    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+        self.connect_timeout = timeout;
         self
     }
 

@@ -1,8 +1,6 @@
 use core::ops::RangeInclusive;
 use core::time::Duration;
 
-pub(super) const DEFAULT_CONNECTION_TIMEOUT: Duration = Duration::from_secs(60);
-
 /// Relay default notification channel size
 pub(super) const DEFAULT_NOTIFICATION_CHANNEL_SIZE: usize = 2048;
 

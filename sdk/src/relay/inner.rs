@@ -18,8 +18,8 @@ use tokio::sync::{broadcast, oneshot, Mutex, MutexGuard, Notify, RwLock, RwLockW
 
 use super::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use super::constants::{
-    DEFAULT_CONNECTION_TIMEOUT, JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE,
-    PING_INTERVAL, SLEEP_INTERVAL, WEBSOCKET_TX_TIMEOUT,
+    JITTER_RANGE, MAX_RETRY_INTERVAL, MIN_ATTEMPTS, MIN_SUCCESS_RATE, PING_INTERVAL,
+    SLEEP_INTERVAL, WEBSOCKET_TX_TIMEOUT,
 };
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions};
 use super::ping::PingTracker;
@@ -250,11 +250,11 @@ impl InnerRelay {
         // - the status is different from `RelayStatus::Connected`
         // - the relay has already exceeded the minimum number of attempts
         // - the connection success rate is lower than the minimum success rate
-        // - the relay woke up from sleep from more than `DEFAULT_CONNECTION_TIMEOUT` (needed if the relay has just waked up!)
+        // - the relay woke up from sleep from more than defaul connection timeout (needed if the relay has just waked up!)
         if !status.is_connected()
             && self.stats.attempts() > MIN_ATTEMPTS
             && self.stats.success_rate() < MIN_SUCCESS_RATE
-            && self.stats.woke_up_at() + DEFAULT_CONNECTION_TIMEOUT < Timestamp::now()
+            && self.stats.woke_up_at() + self.opts.connect_timeout < Timestamp::now()
         {
             return Err(Error::NotConnected);
         }
@@ -707,7 +707,7 @@ impl InnerRelay {
             // No stream is passed, try to connect
             // Set the status to "disconnected" to allow to automatic retries
             None => match self
-                ._try_connect(DEFAULT_CONNECTION_TIMEOUT, RelayStatus::Disconnected)
+                ._try_connect(self.opts.connect_timeout, RelayStatus::Disconnected)
                 .await
             {
                 // Connection success, go to post-connection stage

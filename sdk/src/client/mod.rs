@@ -42,6 +42,7 @@ struct ClientConfig {
     #[cfg(not(target_arch = "wasm32"))]
     connection: Connection,
     gossip_config: GossipConfig,
+    connect_timeout: Duration,
     relay_limits: RelayLimits,
     max_avg_latency: Option<Duration>,
     sleep_when_idle: SleepWhenIdle,
@@ -116,6 +117,7 @@ impl Client {
                 #[cfg(not(target_arch = "wasm32"))]
                 connection: builder.connection,
                 gossip_config: builder.gossip_config,
+                connect_timeout: builder.connect_timeout,
                 relay_limits: builder.relay_limits,
                 max_avg_latency: builder.max_avg_latency,
                 sleep_when_idle: builder.sleep_when_idle,
@@ -289,7 +291,8 @@ impl Client {
         };
 
         // Set limits
-        opts.limits(self.config.relay_limits.clone())
+        opts.connect_timeout(self.config.connect_timeout)
+            .limits(self.config.relay_limits.clone())
             .max_avg_latency(self.config.max_avg_latency)
             .verify_subscriptions(self.config.verify_subscriptions)
             .ban_relay_on_mismatch(self.config.ban_relay_on_mismatch)

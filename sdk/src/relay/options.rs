@@ -13,6 +13,7 @@ pub struct RelayOptions {
     pub(crate) ping: bool,
     pub(crate) reconnect: bool,
     pub(crate) sleep_when_idle: bool,
+    pub(crate) connect_timeout: Duration,
     pub(crate) idle_timeout: Duration,
     pub(crate) retry_interval: Duration,
     pub(crate) adjust_retry_interval: bool,
@@ -30,6 +31,7 @@ impl Default for RelayOptions {
             ping: true,
             reconnect: true,
             sleep_when_idle: false,
+            connect_timeout: Duration::from_secs(15),
             idle_timeout: Duration::from_secs(300),
             retry_interval: DEFAULT_RETRY_INTERVAL,
             adjust_retry_interval: true,
@@ -53,6 +55,14 @@ impl RelayOptions {
     #[inline]
     pub fn connection_mode(mut self, mode: ConnectionMode) -> Self {
         self.connection_mode = mode;
+        self
+    }
+
+    /// Connection timeout (default: 15 sec)
+    ///
+    /// This is the default timeout use when attempting to establish a connection with the relay
+    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+        self.connect_timeout = timeout;
         self
     }
 

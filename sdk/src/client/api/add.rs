@@ -39,6 +39,14 @@ impl<'client, 'url> AddRelay<'client, 'url> {
         self
     }
 
+    /// Connection timeout (default: 15 sec)
+    ///
+    /// This is the default timeout use when attempting to establish a connection with the relay
+    pub fn connect_timeout(mut self, timeout: Duration) -> Self {
+        self.opts.connect_timeout = timeout;
+        self
+    }
+
     /// Set connection mode
     #[inline]
     pub fn connection_mode(mut self, mode: ConnectionMode) -> Self {
