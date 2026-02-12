@@ -53,3 +53,35 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use nostr::{Filter, RelayUrl, SubscriptionId};
+
+    use super::*;
+
+    // At the moment, before consider a relay disconnected, are required at least 2 attempts and a success rate < 90%
+    #[tokio::test]
+    async fn test_send_message_to_non_connected_relay() {
+        let url = RelayUrl::parse("ws://127.0.0.1:11123").unwrap();
+        let relay: Relay = Relay::new(url);
+
+        let msg = ClientMessage::req(SubscriptionId::generate(), Filter::new().limit(10));
+
+        // First attempt
+        let res = relay.try_connect().timeout(Duration::from_secs(1)).await;
+        assert!(matches!(res.unwrap_err(), Error::Transport(_)));
+
+        // Relay is disconnected, but is required another attempt before consider it non-connected
+        let res = relay.send_msg(msg.clone()).await;
+        assert!(res.is_ok());
+
+        // Second attempt
+        let res = relay.try_connect().timeout(Duration::from_secs(1)).await;
+        assert!(matches!(res.unwrap_err(), Error::Transport(_)));
+
+        // Relay is disconnected, we have a 2 attempts and success rate is < 90%
+        let res = relay.send_msg(msg).await;
+        assert!(matches!(res.unwrap_err(), Error::NotConnected));
+    }
+}
