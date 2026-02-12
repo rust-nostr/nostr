@@ -14,7 +14,7 @@ use async_wsocket::ConnectionMode;
 use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
-use nostr_gossip::{GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip};
+use nostr_gossip::{GossipListKind, GossipPublicKeyStatus, NostrGossip};
 use tokio::sync::oneshot;
 
 mod api;
@@ -41,8 +41,7 @@ use crate::stream::{BoxedStream, NotificationStream};
 struct ClientConfig {
     #[cfg(not(target_arch = "wasm32"))]
     connection: Connection,
-    gossip_limits: GossipRelayLimits,
-    gossip_allowed: GossipAllowedRelays,
+    gossip_config: GossipConfig,
     relay_limits: RelayLimits,
     max_avg_latency: Option<Duration>,
     sleep_when_idle: SleepWhenIdle,
@@ -116,8 +115,7 @@ impl Client {
             config: ClientConfig {
                 #[cfg(not(target_arch = "wasm32"))]
                 connection: builder.connection,
-                gossip_limits: builder.gossip_limits,
-                gossip_allowed: builder.gossip_allowed,
+                gossip_config: builder.gossip_config,
                 relay_limits: builder.relay_limits,
                 max_avg_latency: builder.max_avg_latency,
                 sleep_when_idle: builder.sleep_when_idle,
@@ -1384,7 +1382,10 @@ impl Client {
 
         // Negentropy sync
         // NOTE: the received events are automatically processed in the middleware!
-        let opts: SyncOptions = SyncOptions::default().direction(SyncDirection::Down);
+        let opts: SyncOptions = SyncOptions::default()
+            .initial_timeout(self.config.gossip_config.sync_initial_timeout)
+            .idle_timeout(self.config.gossip_config.sync_idle_timeout)
+            .direction(SyncDirection::Down);
         let output: Output<SyncSummary> = self.sync(filter.clone()).with(urls).opts(opts).await?;
 
         // Get events from the database
@@ -1459,8 +1460,8 @@ impl Client {
             "Fetching outdated gossip data from relays."
         );
 
-        // Split filters in chunks of 10
-        for chunk in filters.chunks(10) {
+        // Split filters in chunks
+        for chunk in filters.chunks(self.config.gossip_config.fetch_chunks) {
             // Fetch the events
             // NOTE: the received events are automatically processed in the middleware!
 
@@ -1474,7 +1475,7 @@ impl Client {
                 .pool
                 .stream_events(
                     targets,
-                    Some(Duration::from_secs(5)),
+                    Some(self.config.gossip_config.fetch_timeout),
                     ReqExitPolicy::ExitOnEOSE,
                 )
                 .await?;
@@ -1537,7 +1538,7 @@ impl Client {
             .pool
             .stream_events(
                 targets,
-                Some(Duration::from_secs(10)),
+                Some(self.config.gossip_config.fetch_timeout),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await?;
@@ -1590,8 +1591,8 @@ impl Client {
             .break_down_filter(
                 filter,
                 pattern,
-                &self.config.gossip_limits,
-                self.config.gossip_allowed,
+                &self.config.gossip_config.limits,
+                self.config.gossip_config.allowed,
             )
             .await?
         {

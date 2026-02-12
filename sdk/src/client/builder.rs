@@ -53,6 +53,74 @@ impl Default for GossipRelayLimits {
     }
 }
 
+/// Gossip config
+#[derive(Debug, Clone)]
+pub struct GossipConfig {
+    /// Max number of gossip relays to use
+    pub limits: GossipRelayLimits,
+    /// Allowed relays during gossip selection
+    pub allowed: GossipAllowedRelays,
+    /// Timeout for checking if negentropy is supported, when updating gossip data
+    pub sync_initial_timeout: Duration,
+    /// Idle timeout when syncing gossip data
+    pub sync_idle_timeout: Duration,
+    /// Fetch timeout when updating gossip data (fallback of the sync)
+    pub fetch_timeout: Duration,
+    /// REQ chunks when fetching gossip data
+    pub fetch_chunks: usize,
+}
+
+impl Default for GossipConfig {
+    fn default() -> Self {
+        Self {
+            limits: GossipRelayLimits::default(),
+            allowed: GossipAllowedRelays::default(),
+            sync_initial_timeout: Duration::from_secs(10),
+            sync_idle_timeout: Duration::from_secs(10),
+            fetch_timeout: Duration::from_secs(10),
+            fetch_chunks: 10,
+        }
+    }
+}
+
+impl GossipConfig {
+    /// Max number of gossip relays to use
+    pub fn limits(mut self, limits: GossipRelayLimits) -> Self {
+        self.limits = limits;
+        self
+    }
+
+    /// Allowed relays during gossip selection
+    pub fn allowed(mut self, allowed: GossipAllowedRelays) -> Self {
+        self.allowed = allowed;
+        self
+    }
+
+    /// Timeout for checking if negentropy is supported, when updating gossip data
+    pub fn sync_initial_timeout(mut self, timeout: Duration) -> Self {
+        self.sync_initial_timeout = timeout;
+        self
+    }
+
+    /// Idle timeout when syncing gossip data
+    pub fn sync_idle_timeout(mut self, timeout: Duration) -> Self {
+        self.sync_idle_timeout = timeout;
+        self
+    }
+
+    /// Fetch timeout when updating gossip data (fallback of the sync)
+    pub fn fetch_timeout(mut self, timeout: Duration) -> Self {
+        self.fetch_timeout = timeout;
+        self
+    }
+
+    /// REQ chunks when fetching gossip data
+    pub fn fetch_chunks(mut self, chunks: usize) -> Self {
+        self.fetch_chunks = chunks;
+        self
+    }
+}
+
 /// Client builder
 #[derive(Debug, Clone)]
 pub struct ClientBuilder {
@@ -66,10 +134,8 @@ pub struct ClientBuilder {
     pub database: Arc<dyn NostrDatabase>,
     /// Gossip
     pub gossip: Option<Arc<dyn NostrGossip>>,
-    /// Max number of gossip relays to use
-    pub gossip_limits: GossipRelayLimits,
-    /// Allowed relays during gossip selection
-    pub gossip_allowed: GossipAllowedRelays,
+    /// Gossip config
+    pub gossip_config: GossipConfig,
     /// Relay monitor
     pub monitor: Option<Monitor>,
     /// Connection
@@ -101,8 +167,7 @@ impl Default for ClientBuilder {
             admit_policy: None,
             database: Arc::new(MemoryDatabase::default()),
             gossip: None,
-            gossip_limits: GossipRelayLimits::default(),
-            gossip_allowed: GossipAllowedRelays::default(),
+            gossip_config: GossipConfig::default(),
             monitor: None,
             #[cfg(not(target_arch = "wasm32"))]
             connection: Connection::default(),
@@ -186,17 +251,10 @@ impl ClientBuilder {
         self
     }
 
-    /// Set gossip limits
+    /// Set gossip config
     #[inline]
-    pub fn gossip_limits(mut self, limits: GossipRelayLimits) -> Self {
-        self.gossip_limits = limits;
-        self
-    }
-
-    /// Set allowed relays during gossip selection
-    #[inline]
-    pub fn gossip_allowed(mut self, allowed: GossipAllowedRelays) -> Self {
-        self.gossip_allowed = allowed;
+    pub fn gossip_config(mut self, config: GossipConfig) -> Self {
+        self.gossip_config = config;
         self
     }
 
