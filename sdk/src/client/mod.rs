@@ -1316,6 +1316,11 @@ impl Client {
         // Keep track of the missing public keys
         let mut missing_public_keys: BTreeSet<PublicKey> = outdated_public_keys;
 
+        // Keys with locally stored list events are not missing.
+        for event in stored_events.iter() {
+            missing_public_keys.remove(&event.pubkey);
+        }
+
         // Check if sync failed for some relay
         if !output.failed.is_empty() {
             tracing::debug!(sync_id,
@@ -1346,6 +1351,15 @@ impl Client {
                 )
                 .await?;
             }
+        } else if !missing_public_keys.is_empty() {
+            // Sync succeeded for all relays, but some keys have no list events anywhere.
+            // Mark fetch attempt to avoid re-syncing them on every request.
+            self.update_fetch_attempt_for_public_keys(
+                gossip.store(),
+                gossip_kinds,
+                missing_public_keys,
+            )
+            .await?;
         }
 
         tracing::debug!(sync_id, kind = ?gossip_kinds, "Gossip sync terminated.");
@@ -1551,9 +1565,27 @@ impl Client {
         while let Some(..) = stream.next().await {}
 
         // Update the last check for the missing public keys
-        for pk in missing_public_keys.into_iter() {
+        self.update_fetch_attempt_for_public_keys(gossip, gossip_kinds, missing_public_keys)
+            .await?;
+
+        Ok(())
+    }
+
+    /// Update the last check for the specified public keys
+    async fn update_fetch_attempt_for_public_keys<I>(
+        &self,
+        gossip: &Arc<dyn NostrGossip>,
+        gossip_kinds: &[GossipListKind],
+        public_keys: I,
+    ) -> Result<(), Error>
+    where
+        I: IntoIterator<Item = PublicKey>,
+    {
+        for public_key in public_keys {
             for gossip_kind in gossip_kinds {
-                gossip.update_fetch_attempt(&pk, *gossip_kind).await?;
+                gossip
+                    .update_fetch_attempt(&public_key, *gossip_kind)
+                    .await?;
             }
         }
 
