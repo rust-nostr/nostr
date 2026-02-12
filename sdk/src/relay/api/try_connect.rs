@@ -18,11 +18,11 @@ impl<'relay> TryConnect<'relay> {
     pub(crate) fn new(relay: &'relay Relay) -> Self {
         Self {
             relay,
-            timeout: Duration::from_secs(120),
+            timeout: Duration::from_secs(15),
         }
     }
 
-    /// Timeout (default: 120 sec)
+    /// Timeout (default: 15 sec)
     #[inline]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
