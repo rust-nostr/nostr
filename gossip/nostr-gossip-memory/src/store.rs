@@ -3,7 +3,6 @@
 use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::num::NonZeroUsize;
-use std::sync::Arc;
 
 use indexmap::IndexMap;
 use lru::LruCache;
@@ -44,23 +43,23 @@ impl Default for PkData {
 }
 
 /// Gossip in-memory storage.
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct NostrGossipMemory {
-    public_keys: Arc<RwLock<LruCache<PublicKey, PkData>>>,
+    public_keys: RwLock<LruCache<PublicKey, PkData>>,
 }
 
 impl NostrGossipMemory {
     /// Construct a new **unbounded** instance
     pub fn unbounded() -> Self {
         Self {
-            public_keys: Arc::new(RwLock::new(LruCache::unbounded())),
+            public_keys: RwLock::new(LruCache::unbounded()),
         }
     }
 
     /// Construct a new **bounded** instance
     pub fn bounded(limit: NonZeroUsize) -> Self {
         Self {
-            public_keys: Arc::new(RwLock::new(LruCache::new(limit))),
+            public_keys: RwLock::new(LruCache::new(limit)),
         }
     }
 
