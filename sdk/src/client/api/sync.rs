@@ -66,7 +66,7 @@ impl SyncSummary {
 pub struct SyncEvents<'client, 'url> {
     client: &'client Client,
     filter: Filter,
-    with: Vec<RelayUrlArg<'url>>,
+    with: Option<Vec<RelayUrlArg<'url>>>,
     opts: SyncOptions,
 }
 
@@ -76,7 +76,7 @@ impl<'client, 'url> SyncEvents<'client, 'url> {
         Self {
             client,
             filter,
-            with: Vec::new(),
+            with: None,
             opts: SyncOptions::new(),
         }
     }
@@ -88,7 +88,9 @@ impl<'client, 'url> SyncEvents<'client, 'url> {
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'url>>,
     {
-        self.with.extend(relays.into_iter().map(Into::into));
+        let mut list: Vec<RelayUrlArg<'url>> = self.with.unwrap_or_default();
+        list.extend(relays.into_iter().map(Into::into));
+        self.with = Some(list);
         self
     }
 
@@ -147,9 +149,9 @@ where
         Box::pin(async move {
             // Build targets
             let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> =
-                match (&self.client.gossip, self.with.is_empty()) {
+                match (&self.client.gossip, self.with) {
                     // Gossip is available, and there are no specified relays: use gossip
-                    (Some(gossip), true) => {
+                    (Some(gossip), None) => {
                         // Break down filter
                         let filters: HashMap<RelayUrl, Filter> =
                             self.client.break_down_filter(gossip, self.filter).await?;
@@ -158,16 +160,16 @@ where
                         make_sync_targets(self.client, filters).await?
                     }
                     // There are specified relays: use them as targets
-                    (_, false) => {
+                    (_, Some(with)) => {
                         // Construct filters
                         let filters: HashMap<RelayUrl, Filter> =
-                            construct_filters(self.with, self.filter)?;
+                            construct_filters(with, self.filter)?;
 
                         // Make targets
                         make_sync_targets(self.client, filters).await?
                     }
                     // Gossip is not available, and there are no specified targets: use all relays as targets
-                    (None, true) => {
+                    (None, None) => {
                         // Get all READ and WRITE relays from pool
                         let urls: HashSet<RelayUrl> = self
                             .client
@@ -188,5 +190,27 @@ where
 
             Ok(self.client.pool.sync(targets, self.opts).await?)
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use nostr::Kind;
+
+    use super::*;
+    use crate::pool;
+
+    #[tokio::test]
+    async fn test_sync_with_empty_list_of_relays() {
+        let client = Client::default();
+
+        let filter = Filter::default().kind(Kind::TextNote).limit(100);
+        let relays: Vec<RelayUrl> = Vec::new();
+        let res = client.sync(filter).with(relays).await;
+
+        assert!(matches!(
+            res.unwrap_err(),
+            Error::RelayPool(pool::Error::NoRelaysSpecified)
+        ))
     }
 }
