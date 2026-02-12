@@ -156,12 +156,12 @@ async fn gossip_send_event(
         // Get only p tags since the author of a gift wrap is randomized
         let public_keys = event.tags.public_keys().copied();
         client
-            .check_and_update_gossip(gossip, public_keys, kind)
+            .check_and_update_gossip(gossip, public_keys, &[kind])
             .await?;
     } else if is_contact_list {
         // Contact list, update only author
         client
-            .check_and_update_gossip(gossip, [event.pubkey], GossipListKind::Nip65)
+            .check_and_update_gossip(gossip, [event.pubkey], &[GossipListKind::Nip65])
             .await?;
     } else {
         // Get all public keys involved in the event: author + p tags
@@ -171,7 +171,7 @@ async fn gossip_send_event(
             .copied()
             .chain(iter::once(event.pubkey));
         client
-            .check_and_update_gossip(gossip, public_keys, GossipListKind::Nip65)
+            .check_and_update_gossip(gossip, public_keys, &[GossipListKind::Nip65])
             .await?;
     };
 
