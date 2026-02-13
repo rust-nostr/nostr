@@ -57,8 +57,6 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
     /// - [`SendEvent::to`]
     /// - [`SendEvent::to_nip17`]
     /// - [`SendEvent::to_nip65`]
-    ///
-    /// [`RelayCapabilities::WRITE`]: crate::relay::RelayCapabilities::WRITE
     #[inline]
     pub fn broadcast(mut self) -> Self {
         self.policy = Some(OverwritePolicy::Broadcast);
@@ -134,14 +132,12 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
     }
 }
 
-async fn gossip_send_event(
+async fn gossip_prepare_urls(
     client: &Client,
     gossip: &Gossip,
     event: &Event,
     is_nip17: bool,
-    wait_for_ok_timeout: Duration,
-    wait_for_authentication_timeout: Duration,
-) -> Result<Output<EventId>, Error> {
+) -> Result<HashSet<RelayUrl>, Error> {
     let is_contact_list: bool = event.kind == Kind::ContactList;
     let is_gift_wrap: bool = event.kind == Kind::GiftWrap;
 
@@ -176,7 +172,7 @@ async fn gossip_send_event(
     };
 
     // Check if NIP17 or NIP65
-    let urls: HashSet<RelayUrl> = if is_nip17 && is_gift_wrap {
+    if is_nip17 && is_gift_wrap {
         // Get NIP17 relays
         // Get only for relays for p tags since gift wraps are signed with random key (random author)
         let relays = gossip
@@ -207,7 +203,7 @@ async fn gossip_send_event(
                 .await?;
         }
 
-        relays
+        Ok(relays)
     } else {
         // Get OUTBOX, HINTS and MOST_RECEIVED relays for the author
         let mut relays: HashSet<RelayUrl> = gossip
@@ -259,19 +255,8 @@ async fn gossip_send_event(
         relays.extend(write_relays);
 
         // Return all relays
-        relays
-    };
-
-    // Send event
-    Ok(client
-        .pool
-        .send_event(
-            urls,
-            event,
-            wait_for_ok_timeout,
-            wait_for_authentication_timeout,
-        )
-        .await?)
+        Ok(relays)
+    }
 }
 
 impl<'client, 'event, 'url> IntoFuture for SendEvent<'client, 'event, 'url>
@@ -294,34 +279,18 @@ where
                 gossip.store().process(self.event, None).await?;
             }
 
-            match (self.policy, &self.client.gossip) {
+            let urls: HashSet<RelayUrl> = match (self.policy, &self.client.gossip) {
                 // No overwrite policy or send to NIP-65 and gossip available: send to NIP-65 relays
                 (None | Some(OverwritePolicy::ToNip65), Some(gossip)) => {
-                    gossip_send_event(
-                        self.client,
-                        gossip,
-                        self.event,
-                        false,
-                        self.wait_for_ok_timeout,
-                        self.wait_for_authentication_timeout,
-                    )
-                    .await
+                    gossip_prepare_urls(self.client, gossip, self.event, false).await?
                 }
                 // Send to NIP-17 and gossip available: send to NIP-17 relays
                 (Some(OverwritePolicy::ToNip17), Some(gossip)) => {
-                    gossip_send_event(
-                        self.client,
-                        gossip,
-                        self.event,
-                        true,
-                        self.wait_for_ok_timeout,
-                        self.wait_for_authentication_timeout,
-                    )
-                    .await
+                    gossip_prepare_urls(self.client, gossip, self.event, true).await?
                 }
                 // Send to gossip, but gossip is not available: error
                 (Some(OverwritePolicy::ToNip17 | OverwritePolicy::ToNip65), None) => {
-                    Err(Error::GossipNotConfigured)
+                    return Err(Error::GossipNotConfigured);
                 }
                 // Send to specific relays
                 (Some(OverwritePolicy::To(list)), _) => {
@@ -331,46 +300,26 @@ where
                         urls.insert(url.try_into_relay_url()?.into_owned());
                     }
 
-                    Ok(self
-                        .client
-                        .pool
-                        .send_event(
-                            urls,
-                            self.event,
-                            self.wait_for_ok_timeout,
-                            self.wait_for_authentication_timeout,
-                        )
-                        .await?)
+                    urls
                 }
-                // Send to all WRITE relays
-                (Some(OverwritePolicy::Broadcast), _) => {
-                    let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
-                    Ok(self
-                        .client
-                        .pool
-                        .send_event(
-                            urls,
-                            self.event,
-                            self.wait_for_ok_timeout,
-                            self.wait_for_authentication_timeout,
-                        )
-                        .await?)
+                // - Broadcast policy,
+                // - Or, no overwrite policy and no gossip available
+                // -> Send to all WRITE relays
+                (Some(OverwritePolicy::Broadcast), _) | (None, None) => {
+                    self.client.pool.write_relay_urls().await
                 }
-                // No overwrite policy and no gossip available: send to all WRITE relays
-                (None, None) => {
-                    let urls: HashSet<RelayUrl> = self.client.pool.write_relay_urls().await;
-                    Ok(self
-                        .client
-                        .pool
-                        .send_event(
-                            urls,
-                            self.event,
-                            self.wait_for_ok_timeout,
-                            self.wait_for_authentication_timeout,
-                        )
-                        .await?)
-                }
-            }
+            };
+
+            Ok(self
+                .client
+                .pool
+                .send_event(
+                    urls,
+                    self.event,
+                    self.wait_for_ok_timeout,
+                    self.wait_for_authentication_timeout,
+                )
+                .await?)
         })
     }
 }
