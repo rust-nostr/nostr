@@ -1097,7 +1097,7 @@ impl Client {
     /// establish connections as needed.
     ///
     /// The operation completes once delivery attempts have finished according
-    /// to the selected policy and timeouts.
+    /// to the selected routing, acknowledgement policy, and timeouts.
     ///
     /// # Configuration
     ///
@@ -1110,9 +1110,9 @@ impl Client {
     /// - [`SendEvent::to_nip65`]: send the event to NIP-65 relays (requires gossip)
     /// - [`SendEvent::save_into_database`]: control whether the event is saved
     ///   locally before sending
+    /// - [`SendEvent::ack_policy`]: control relay `OK` acknowledgement behavior
     /// - [`SendEvent::ok_timeout`]: set a timeout for waiting for `OK` responses
-    /// - [`SendEvent::authentication_timeout`]: set a timeout for relay
-    ///   authentication
+    /// - [`SendEvent::authentication_timeout`]: set a timeout for relay authentication
     ///
     /// # Target Resolution
     ///
@@ -1134,6 +1134,15 @@ impl Client {
     /// sent to relays.
     ///
     /// This behavior can be disabled via [`SendEvent::save_into_database`].
+    ///
+    /// # Acknowledgement Policy
+    ///
+    /// By default, [`AckPolicy::all`] is used, so each selected relay send waits
+    /// for an `OK` response.
+    ///
+    /// You can disable waiting for relay `OK` via [`SendEvent::ack_policy`] with
+    /// [`AckPolicy::none`]. In that mode, relay results are reported after
+    /// dispatching the `EVENT` message without waiting for relay confirmation.
     ///
     /// # Errors
     ///

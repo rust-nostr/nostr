@@ -10,6 +10,7 @@ use std::time::Duration;
 use std::vec::IntoIter;
 
 use async_utility::task;
+use futures::stream::FuturesUnordered;
 use futures::{future, StreamExt};
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, mpsc, Mutex, RwLock};
@@ -19,7 +20,7 @@ mod error;
 
 pub(crate) use self::builder::RelayPoolBuilder;
 pub(crate) use self::error::Error;
-use crate::client::{ClientNotification, Output, SyncSummary};
+use crate::client::{ClientNotification, InnerAckPolicy, Output, SyncSummary};
 use crate::monitor::Monitor;
 use crate::relay::{
     self, AtomicRelayCapabilities, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
@@ -472,6 +473,7 @@ impl RelayPool {
         &self,
         urls: I,
         event: &Event,
+        wait_policy: InnerAckPolicy,
         wait_for_ok_timeout: Duration,
         wait_for_authentication_timeout: Duration,
     ) -> Result<Output<EventId>, Error>
@@ -489,34 +491,35 @@ impl RelayPool {
         // Lock with read shared access
         let relays = self.relays.read().await;
 
-        let mut urls: Vec<RelayUrl> = Vec::with_capacity(set.len());
-        let mut futures = Vec::with_capacity(set.len());
-        let mut output: Output<EventId> = Output {
-            val: event.id,
-            success: HashSet::new(),
-            failed: HashMap::new(),
+        let mut futures: FuturesUnordered<_> = FuturesUnordered::new();
+        let mut output: Output<EventId> = Output::new(event.id);
+
+        let wait_for_ok: bool = match wait_policy {
+            InnerAckPolicy::All => true,
+            InnerAckPolicy::None => false,
         };
 
         // Compose futures
         for url in set.into_iter() {
+            // Try to get relay
             let relay: &Relay = relays
                 .get(&url)
                 .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
-            urls.push(url);
-            futures.push(
-                relay
+
+            // Create the future request
+            futures.push(async move {
+                let result = relay
                     .send_event(event)
+                    .wait_for_ok(wait_for_ok)
                     .ok_timeout(wait_for_ok_timeout)
                     .authentication_timeout(wait_for_authentication_timeout)
-                    .into_future(),
-            );
+                    .into_future()
+                    .await;
+                (url, result)
+            });
         }
 
-        // Join futures
-        let list = future::join_all(futures).await;
-
-        // Iter results and construct output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+        while let Some((url, result)) = futures.next().await {
             match result {
                 Ok(id) => {
                     // The ID must match

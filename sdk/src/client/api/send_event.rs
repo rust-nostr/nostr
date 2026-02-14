@@ -23,6 +23,92 @@ enum OverwritePolicy<'url> {
     ToNip65,
 }
 
+// /// Error returned when building an invalid [`AckPolicy`].
+// #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+// pub enum AckPolicyError {
+//     /// `AtLeast` ratio must satisfy `0.0 < ratio <= 1.0`.
+//     InvalidAtLeastRatio,
+// }
+//
+// impl std::error::Error for AckPolicyError {}
+//
+// impl fmt::Display for AckPolicyError {
+//     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+//         match self {
+//             Self::InvalidAtLeastRatio => {
+//                 f.write_str("invalid ack policy ratio: expected 0.0 < ratio <= 1.0")
+//             }
+//         }
+//     }
+// }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) enum InnerAckPolicy {
+    All,
+    None,
+    // FirstSuccess,
+    // // 0.0 < p <= 1.0
+    // AtLeast(f64),
+}
+
+/// Policy for relay `OK` acknowledgements when sending events.
+///
+/// This policy controls whether each relay send waits for an `OK` response
+/// after dispatching the `EVENT` message.
+#[derive(Debug, Clone)]
+pub struct AckPolicy(InnerAckPolicy);
+
+impl Default for AckPolicy {
+    /// Wait for relay `OK` acknowledgements ([`AckPolicy::all`]).
+    #[inline]
+    fn default() -> Self {
+        Self::all()
+    }
+}
+
+impl AckPolicy {
+    /// Wait for relay `OK` acknowledgement from each selected relay (default).
+    #[inline]
+    pub const fn all() -> Self {
+        Self(InnerAckPolicy::All)
+    }
+
+    /// Do not wait for relay `OK` acknowledgements.
+    ///
+    /// The operation still sends to all selected relays, but each relay result
+    /// is reported immediately after dispatch.
+    #[inline]
+    pub const fn none() -> Self {
+        Self(InnerAckPolicy::None)
+    }
+
+    // /// Return as soon as the first relay succeeds.
+    // #[inline]
+    // pub const fn first_success() -> Self {
+    //     Self(InnerAckPolicy::FirstSuccess)
+    // }
+    //
+    // /// Return once at least `ratio` of selected relays succeeds.
+    // ///
+    // /// The ratio is expressed in `(0.0, 1.0]` space (e.g. `0.6` = 60%).
+    // ///
+    // /// Returns [`AckPolicyError::InvalidAtLeastRatio`] when `ratio` is not
+    // /// finite or outside `0.0 < ratio <= 1.0`.
+    // #[inline]
+    // pub fn at_least(ratio: f64) -> Result<Self, AckPolicyError> {
+    //     if !ratio.is_finite() || ratio <= 0.0 || ratio > 1.0 {
+    //         return Err(AckPolicyError::InvalidAtLeastRatio);
+    //     }
+    //
+    //     Ok(Self(InnerAckPolicy::AtLeast(ratio)))
+    // }
+
+    #[inline]
+    pub(crate) fn into_inner(self) -> InnerAckPolicy {
+        self.0
+    }
+}
+
 /// Send event
 #[must_use = "Does nothing unless you await!"]
 pub struct SendEvent<'client, 'event, 'url> {
@@ -34,6 +120,7 @@ pub struct SendEvent<'client, 'event, 'url> {
     client: &'client Client,
     event: &'event Event,
     policy: Option<OverwritePolicy<'url>>,
+    ack_policy: AckPolicy,
     save_into_database: bool,
     wait_for_ok_timeout: Duration,
     wait_for_authentication_timeout: Duration,
@@ -45,6 +132,7 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
             client,
             event,
             policy: None,
+            ack_policy: AckPolicy::default(),
             save_into_database: true,
             wait_for_ok_timeout: Duration::from_secs(10),
             wait_for_authentication_timeout: Duration::from_secs(10),
@@ -117,14 +205,27 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
         self
     }
 
-    /// Timeout for waiting for the `OK` message from relay (default: 10 sec)
+    /// Set how relay `OK` acknowledgements are handled.
+    ///
+    /// Default is [`AckPolicy::all`].
+    #[inline]
+    pub fn ack_policy(mut self, policy: AckPolicy) -> Self {
+        self.ack_policy = policy;
+        self
+    }
+
+    /// Timeout for waiting for relay `OK` (default: 10 sec).
+    ///
+    /// Used only when waiting for relay `OK` is enabled.
     #[inline]
     pub fn ok_timeout(mut self, timeout: Duration) -> Self {
         self.wait_for_ok_timeout = timeout;
         self
     }
 
-    /// Timeout for waiting that relay authenticates (default: 10 sec)
+    /// Timeout for waiting for relay authentication (default: 10 sec).
+    ///
+    /// Used only when waiting for relay `OK` is enabled.
     #[inline]
     pub fn authentication_timeout(mut self, timeout: Duration) -> Self {
         self.wait_for_authentication_timeout = timeout;
@@ -316,6 +417,7 @@ where
                 .send_event(
                     urls,
                     self.event,
+                    self.ack_policy.into_inner(),
                     self.wait_for_ok_timeout,
                     self.wait_for_authentication_timeout,
                 )

@@ -15,6 +15,7 @@ use crate::relay::{Error, Relay, RelayNotification};
 pub struct SendEvent<'relay, 'event> {
     relay: &'relay Relay,
     event: &'event Event,
+    wait_for_ok: bool,
     wait_for_ok_timeout: Duration,
     wait_for_authentication_timeout: Duration,
 }
@@ -24,9 +25,17 @@ impl<'relay, 'event> SendEvent<'relay, 'event> {
         Self {
             relay,
             event,
+            wait_for_ok: true,
             wait_for_ok_timeout: Duration::from_secs(10),
             wait_for_authentication_timeout: Duration::from_secs(10),
         }
+    }
+
+    /// Wait for OK confirmation by the relay (default: true)
+    #[inline]
+    pub fn wait_for_ok(mut self, enable: bool) -> Self {
+        self.wait_for_ok = enable;
+        self
     }
 
     /// Timeout for waiting for the `OK` message from relay (default: 10 sec)
@@ -52,6 +61,11 @@ impl<'relay, 'event> SendEvent<'relay, 'event> {
         self.relay
             .send_msg(ClientMessage::Event(Cow::Borrowed(event)))
             .await?;
+
+        // Check if we can skip the OK confirmation
+        if !self.wait_for_ok {
+            return Ok((true, String::new()));
+        }
 
         // Wait for OK
         self.relay
