@@ -56,6 +56,8 @@ pub enum WritePolicyResult {
     Accept,
     /// Stop processing the event and reply with a OK message with a status.
     Reject {
+        /// The message prefix
+        prefix: MachineReadablePrefix,
         /// The rejection message to be sent.
         message: Cow<'static, str>,
         /// Indicates whether the operation was successful.
@@ -64,27 +66,29 @@ pub enum WritePolicyResult {
 }
 
 impl WritePolicyResult {
-    /// Stops processing and send a success message. Check [MachineReadablePrefix]
+    /// Stops processing and send a success message.
     #[inline]
-    pub fn ok_msg<S>(msg: S) -> Self
+    pub fn ok_msg<S>(prefix: MachineReadablePrefix, msg: S) -> Self
     where
         S: Into<Cow<'static, str>>,
     {
         Self::Reject {
             message: msg.into(),
             status: true,
+            prefix,
         }
     }
 
-    /// Stops processing and send a rejection message. Check [MachineReadablePrefix]
+    /// Stops processing and send a rejection message.
     #[inline]
-    pub fn reject<S>(msg: S) -> Self
+    pub fn reject<S>(prefix: MachineReadablePrefix, msg: S) -> Self
     where
         S: Into<Cow<'static, str>>,
     {
         Self::Reject {
             message: msg.into(),
             status: false,
+            prefix,
         }
     }
 }
