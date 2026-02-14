@@ -5,7 +5,7 @@
 
 //! Relay messages
 
-use alloc::borrow::Cow;
+use alloc::borrow::{Cow, ToOwned};
 use alloc::string::String;
 use alloc::vec::IntoIter;
 use core::fmt;
@@ -17,8 +17,44 @@ use serde_json::{json, Value};
 use super::MessageHandleError;
 use crate::{Event, EventId, JsonUtil, SubscriptionId};
 
+/// A string that must be exactly one word.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SingleWord<'a>(Cow<'a, str>);
+
+impl<'a> SingleWord<'a> {
+    /// Parse a [`SingleWord`] from a string.
+    ///
+    /// Returns `None` if the `word` is empty or contains any ASCII whitespace.
+    pub fn parse<S>(word: S) -> Option<Self>
+    where
+        S: Into<Cow<'a, str>>,
+    {
+        let word: Cow<'a, str> = word.into();
+        let bytes = word.as_bytes();
+
+        if !is_single_word(bytes) {
+            return None;
+        }
+
+        Some(Self(word))
+    }
+
+    /// Parse a [`SingleWord`] from a static slice string.
+    ///
+    /// Returns `None` if the `word` is empty or contains any ASCII whitespace.
+    pub const fn from_static(word: &'static str) -> Option<SingleWord<'static>> {
+        let bytes = word.as_bytes();
+
+        if !is_single_word(bytes) {
+            return None;
+        }
+
+        Some(SingleWord(Cow::Borrowed(word)))
+    }
+}
+
 /// Machine-readable prefixes for `OK` and `CLOSED` relay messages
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MachineReadablePrefix {
     /// Duplicate
     ///
@@ -56,6 +92,8 @@ pub enum MachineReadablePrefix {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     Restricted,
+    /// Custom machine-readable prefix
+    Custom(SingleWord<'static>),
 }
 
 impl fmt::Display for MachineReadablePrefix {
@@ -77,7 +115,10 @@ impl MachineReadablePrefix {
             m if m.starts_with("unsupported:") => Some(Self::Unsupported),
             m if m.starts_with("auth-required:") => Some(Self::AuthRequired),
             m if m.starts_with("restricted:") => Some(Self::Restricted),
-            _ => None,
+            other => {
+                let (prefix, ..) = other.split_once(':')?;
+                Some(Self::Custom(SingleWord::parse(prefix.to_owned())?))
+            }
         }
     }
 
@@ -93,6 +134,7 @@ impl MachineReadablePrefix {
             Self::Unsupported => "unsupported",
             Self::AuthRequired => "auth-required",
             Self::Restricted => "restricted",
+            Self::Custom(SingleWord(ref custom)) => custom,
         }
     }
 }
@@ -431,6 +473,22 @@ where
         .next()
         .ok_or(MessageHandleError::InvalidMessageFormat)?;
     Ok(serde_json::from_value(val)?)
+}
+
+/// Returns true if the slice is not empty and has no ASCII whitespace
+const fn is_single_word(mut bytes: &[u8]) -> bool {
+    if bytes.is_empty() {
+        return false;
+    }
+
+    while let [b, rest @ ..] = bytes {
+        if b.is_ascii_whitespace() {
+            return false;
+        }
+        bytes = rest;
+    }
+
+    true
 }
 
 #[derive(Deserialize)]
