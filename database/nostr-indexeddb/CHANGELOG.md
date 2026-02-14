@@ -23,6 +23,22 @@
 
 -->
 
+## Unreleased
+
+### Breaking changes
+
+### Changed
+
+### Added
+
+- Support NIP-62 RequestToVanish event kind (https://github.com/rust-nostr/nostr/pull/1212)
+
+### Fixed
+
+### Removed
+
+### Deprecated
+
 ## v0.44.0 - 2025/11/06
 
 No notable changes in this release.
