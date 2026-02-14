@@ -6,17 +6,17 @@ SQLite storage backend for nostr apps.
 
 The following crate feature flags are available:
 
-| Feature     | Default | Description           |
-|-------------|:-------:|-----------------------|
-| `unbundled` |   No    | Uses unbundled SQLite |
+| Feature   | Default | Description         |
+|-----------|:-------:|---------------------|
+| `bundled` |   Yes   | Uses bundled SQLite |
 
 ## Supported NIPs
 
-| Supported | NIP                                                                                                  |
-|:---------:|------------------------------------------------------------------------------------------------------|
-|    ❌    | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md)                 |
-|    ✅    | [50 - Search Capability](https://github.com/nostr-protocol/nips/blob/master/50.md)                    |
-|    ✅*    | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)                   |
+| Supported | NIP                                                                                   |
+|:---------:|---------------------------------------------------------------------------------------|
+|     ❌     | [40 - Expiration Timestamp](https://github.com/nostr-protocol/nips/blob/master/40.md) |
+|     ✅     | [50 - Search Capability](https://github.com/nostr-protocol/nips/blob/master/50.md)    |
+|    ✅*     | [62 - Request to Vanish](https://github.com/nostr-protocol/nips/blob/master/62.md)    |
 
 *: `ALL_RELAYS` only
 

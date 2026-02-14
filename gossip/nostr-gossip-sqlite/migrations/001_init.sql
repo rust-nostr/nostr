@@ -1,3 +1,5 @@
+PRAGMA user_version = 1; -- Schema version
+
 CREATE TABLE public_keys(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     public_key BLOB NOT NULL UNIQUE,
