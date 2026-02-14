@@ -31,6 +31,7 @@
 - Add `rand` feature (https://github.com/rust-nostr/nostr/pull/1167)
 - Add `os-rng` feature (https://github.com/rust-nostr/nostr/pull/1171)
 - Replace `TryIntoUrl` trait with `RelayUrlArg` enum (https://github.com/rust-nostr/nostr/pull/1217)
+- Remove `Copy` trait from `MachineReadablePrefix` enum
 
 ### Changed
 
@@ -54,6 +55,7 @@
 - Add `Kind::BlossomServerList` variant (https://github.com/rust-nostr/nostr/pull/1195)
 - Add `EventBuilder::blossom_server_list` function (https://github.com/rust-nostr/nostr/pull/1195)
 - Add support for `nprofile` parsing in `PublicKey::from_bech32` (https://github.com/rust-nostr/nostr/pull/1248)
+- Add `MachineReadablePrefix::Custom` variant
 
 ### Removed
 

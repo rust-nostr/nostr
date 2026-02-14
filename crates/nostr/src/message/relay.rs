@@ -5,7 +5,7 @@
 
 //! Relay messages
 
-use alloc::borrow::Cow;
+use alloc::borrow::{Cow, ToOwned};
 use alloc::string::String;
 use alloc::vec::IntoIter;
 use core::fmt;
@@ -17,8 +17,43 @@ use serde_json::{json, Value};
 use super::MessageHandleError;
 use crate::{Event, EventId, JsonUtil, SubscriptionId};
 
+/// A string that must be exactly one word.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct SingleWord(Cow<'static, str>);
+
+impl SingleWord {
+    /// Creates a new [SingleWord] from the given string. Returns `None` if the
+    /// `word` contains any spaces.
+    pub fn new<S>(word: S) -> Option<Self>
+    where
+        S: Into<String>,
+    {
+        let word = word.into();
+
+        if !word.contains(' ') {
+            Some(Self(Cow::Owned(word)))
+        } else {
+            None
+        }
+    }
+
+    /// Create a new constant [SingleWord] from the given slice string. Returns
+    /// `None` if the `word` contains any spaces.
+    pub const fn new_const(word: &'static str) -> Option<Self> {
+        let mut bytes = word.as_bytes();
+        while let [b, reset @ ..] = bytes {
+            if *b == b' ' {
+                return None;
+            }
+            bytes = reset
+        }
+
+        Some(Self(Cow::Borrowed(word)))
+    }
+}
+
 /// Machine-readable prefixes for `OK` and `CLOSED` relay messages
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum MachineReadablePrefix {
     /// Duplicate
     ///
@@ -56,6 +91,8 @@ pub enum MachineReadablePrefix {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     Restricted,
+    /// Custom machine-readable prefix
+    Custom(SingleWord),
 }
 
 impl fmt::Display for MachineReadablePrefix {
@@ -67,17 +104,25 @@ impl fmt::Display for MachineReadablePrefix {
 impl MachineReadablePrefix {
     /// Parse machine-readable prefix
     pub fn parse(message: &str) -> Option<Self> {
-        match message {
-            m if m.starts_with("duplicate:") => Some(Self::Duplicate),
-            m if m.starts_with("pow:") => Some(Self::Pow),
-            m if m.starts_with("blocked:") => Some(Self::Blocked),
-            m if m.starts_with("rate-limited:") => Some(Self::RateLimited),
-            m if m.starts_with("invalid:") => Some(Self::Invalid),
-            m if m.starts_with("error:") => Some(Self::Error),
-            m if m.starts_with("unsupported:") => Some(Self::Unsupported),
-            m if m.starts_with("auth-required:") => Some(Self::AuthRequired),
-            m if m.starts_with("restricted:") => Some(Self::Restricted),
-            _ => None,
+        // Get the prefix
+        let (prefix, ..) = message.split_once(':')?;
+
+        // if it's not a single word, return None
+        if prefix.trim().contains(' ') {
+            return None;
+        }
+
+        match prefix.trim() {
+            "duplicate" => Some(Self::Duplicate),
+            "pow" => Some(Self::Pow),
+            "blocked" => Some(Self::Blocked),
+            "rate-limited" => Some(Self::RateLimited),
+            "invalid" => Some(Self::Invalid),
+            "error" => Some(Self::Error),
+            "unsupported" => Some(Self::Unsupported),
+            "auth-required" => Some(Self::AuthRequired),
+            "restricted" => Some(Self::Restricted),
+            custom => Some(Self::Custom(SingleWord(Cow::Owned(custom.to_owned())))),
         }
     }
 
@@ -93,6 +138,7 @@ impl MachineReadablePrefix {
             Self::Unsupported => "unsupported",
             Self::AuthRequired => "auth-required",
             Self::Restricted => "restricted",
+            Self::Custom(SingleWord(ref custom)) => custom,
         }
     }
 }
