@@ -630,6 +630,15 @@ mod benches {
     use super::*;
 
     #[bench]
+    fn bench_parse_machine_readable_prefix(bh: &mut Bencher) {
+        bh.iter(|| {
+            black_box(MachineReadablePrefix::parse(
+                "blocked: you are banned from posting here",
+            ));
+        })
+    }
+
+    #[bench]
     pub fn parse_ok_relay_message(bh: &mut Bencher) {
         let json: &str = r#"["OK", "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5", true, "pow: difficulty 25>=24"]"#;
         bh.iter(|| {
