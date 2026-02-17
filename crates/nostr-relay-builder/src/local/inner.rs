@@ -556,15 +556,18 @@ impl InnerLocalRelay {
 
                 // Check write policy
                 if let Some(policy) = self.write_policy.as_ref() {
-                    if let WritePolicyResult::Reject { message, status } =
-                        policy.admit_event(&event, addr).await
+                    if let WritePolicyResult::Reject {
+                        prefix,
+                        message,
+                        status,
+                    } = policy.admit_event(&event, addr).await
                     {
                         return send_msg(
                             ws_tx,
                             RelayMessage::Ok {
                                 event_id: event.id,
                                 status,
-                                message,
+                                message: Cow::Owned(format!("{prefix}: {message}")),
                             },
                         )
                         .await;

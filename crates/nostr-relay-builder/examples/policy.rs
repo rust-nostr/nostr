@@ -25,10 +25,7 @@ impl WritePolicy for AcceptKinds {
                 // Do nothing, keep processing the event
                 WritePolicyResult::Accept
             } else {
-                WritePolicyResult::reject(format!(
-                    "{}: kind not accepted",
-                    MachineReadablePrefix::Blocked
-                ))
+                WritePolicyResult::reject(MachineReadablePrefix::Blocked, "kind not accepted")
             }
         })
     }
