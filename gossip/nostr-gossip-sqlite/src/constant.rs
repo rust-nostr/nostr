@@ -6,7 +6,8 @@ use std::time::Duration;
 
 use nostr_gossip::flags::GossipFlags;
 
-pub(super) const PUBKEY_METADATA_OUTDATED_AFTER: Duration = Duration::from_secs(60 * 60); // 60 min
+// TODO: make this configurable
+pub(super) const TTL_OUTDATED: Duration = Duration::from_secs(24 * 60 * 60); // 24 hours
 
 pub(super) const READ_WRITE_FLAGS: GossipFlags = {
     let mut flags = GossipFlags::READ;

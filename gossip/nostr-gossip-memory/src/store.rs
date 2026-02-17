@@ -17,7 +17,7 @@ use nostr_gossip::{
 };
 use tokio::sync::RwLock;
 
-use crate::constant::{MAX_NIP17_SIZE, MAX_NIP65_SIZE, PUBKEY_METADATA_OUTDATED_AFTER};
+use crate::constant::{MAX_NIP17_SIZE, MAX_NIP65_SIZE, TTL_OUTDATED};
 
 #[derive(Default)]
 struct PkRelayData {
@@ -158,14 +158,14 @@ impl NostrGossipMemory {
 
                 match (list, pk_data.last_nip17_update, pk_data.last_nip65_update) {
                     (GossipListKind::Nip17, Some(last), _) => {
-                        if last + PUBKEY_METADATA_OUTDATED_AFTER < now {
+                        if last + TTL_OUTDATED < now {
                             GossipPublicKeyStatus::Outdated { created_at: None }
                         } else {
                             GossipPublicKeyStatus::Updated
                         }
                     }
                     (GossipListKind::Nip65, _, Some(last)) => {
-                        if last + PUBKEY_METADATA_OUTDATED_AFTER < now {
+                        if last + TTL_OUTDATED < now {
                             GossipPublicKeyStatus::Outdated { created_at: None }
                         } else {
                             GossipPublicKeyStatus::Updated

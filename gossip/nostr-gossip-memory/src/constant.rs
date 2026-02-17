@@ -4,6 +4,7 @@
 
 use std::time::Duration;
 
-pub(super) const PUBKEY_METADATA_OUTDATED_AFTER: Duration = Duration::from_secs(60 * 60); // 60 min
+// TODO: make this configurable
+pub(super) const TTL_OUTDATED: Duration = Duration::from_secs(24 * 60 * 60); // 24 hours
 pub(super) const MAX_NIP17_SIZE: usize = 7;
 pub(super) const MAX_NIP65_SIZE: usize = 7;

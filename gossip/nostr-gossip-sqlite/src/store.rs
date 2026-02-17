@@ -21,7 +21,7 @@ use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
 use sqlx::{Executor, Sqlite, SqlitePool, Transaction};
 use tokio::sync::{Semaphore, SemaphorePermit};
 
-use crate::constant::{PUBKEY_METADATA_OUTDATED_AFTER, READ_WRITE_FLAGS, RELAYS_QUERY_LIMIT};
+use crate::constant::{READ_WRITE_FLAGS, RELAYS_QUERY_LIMIT, TTL_OUTDATED};
 use crate::error::Error;
 use crate::model::ListRow;
 
@@ -171,7 +171,7 @@ impl NostrGossipSqlite {
                         let last: i64 = row.last_checked_at.unwrap_or(0);
                         let last: Timestamp = last.try_into()?;
 
-                        if last + PUBKEY_METADATA_OUTDATED_AFTER < now {
+                        if last + TTL_OUTDATED < now {
                             Ok(GossipPublicKeyStatus::Outdated {
                                 created_at: match row.event_created_at {
                                     Some(t) => Some(t.try_into()?),
