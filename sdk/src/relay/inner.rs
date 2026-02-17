@@ -1023,7 +1023,7 @@ impl InnerRelay {
                                 HandleClosedMsg::MarkAsClosed
                             }
                             Some(MachineReadablePrefix::Restricted) => HandleClosedMsg::Remove,
-                            None => {
+                            _ => {
                                 // Doesn't mach any prefix,
                                 // meaning that it probably closed without errors,
                                 // so remove it.
