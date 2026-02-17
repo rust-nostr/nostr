@@ -159,7 +159,7 @@ where
             // Add relay to the pool
             Ok(self
                 .client
-                .pool
+                .pool()
                 .add_relay(url, self.capabilities, self.connect, self.opts)
                 .await?)
         })

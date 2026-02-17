@@ -281,9 +281,9 @@ async fn gossip_prepare_urls(
             .get_relays(
                 event.tags.public_keys(),
                 BestRelaySelection::PrivateMessage {
-                    limit: client.config.gossip_config.limits.nip17_relays,
+                    limit: client.config().gossip_config.limits.nip17_relays,
                 },
-                client.config.gossip_config.allowed,
+                client.config().gossip_config.allowed,
             )
             .await?;
 
@@ -313,11 +313,15 @@ async fn gossip_prepare_urls(
                 &event.pubkey,
                 BestRelaySelection::All {
                     read: 0, // No read relays
-                    write: client.config.gossip_config.limits.write_relays_per_user,
-                    hints: client.config.gossip_config.limits.hint_relays_per_user,
-                    most_received: client.config.gossip_config.limits.most_used_relays_per_user,
+                    write: client.config().gossip_config.limits.write_relays_per_user,
+                    hints: client.config().gossip_config.limits.hint_relays_per_user,
+                    most_received: client
+                        .config()
+                        .gossip_config
+                        .limits
+                        .most_used_relays_per_user,
                 },
-                client.config.gossip_config.allowed,
+                client.config().gossip_config.allowed,
             )
             .await?;
 
@@ -328,12 +332,16 @@ async fn gossip_prepare_urls(
                 .get_relays(
                     event.tags.public_keys(),
                     BestRelaySelection::All {
-                        read: client.config.gossip_config.limits.read_relays_per_user,
+                        read: client.config().gossip_config.limits.read_relays_per_user,
                         write: 0, // No write relays
-                        hints: client.config.gossip_config.limits.hint_relays_per_user,
-                        most_received: client.config.gossip_config.limits.most_used_relays_per_user,
+                        hints: client.config().gossip_config.limits.hint_relays_per_user,
+                        most_received: client
+                            .config()
+                            .gossip_config
+                            .limits
+                            .most_used_relays_per_user,
                     },
-                    client.config.gossip_config.allowed,
+                    client.config().gossip_config.allowed,
                 )
                 .await?;
 
@@ -350,7 +358,7 @@ async fn gossip_prepare_urls(
         }
 
         // Get WRITE relays
-        let write_relays: HashSet<RelayUrl> = client.pool.write_relay_urls().await;
+        let write_relays: HashSet<RelayUrl> = client.pool().write_relay_urls().await;
 
         // Extend relays with WRITE ones
         relays.extend(write_relays);
@@ -376,11 +384,11 @@ where
             }
 
             // Process event for gossip, independently of the policy
-            if let Some(gossip) = &self.client.gossip {
+            if let Some(gossip) = self.client.gossip() {
                 gossip.store().process(self.event, None).await?;
             }
 
-            let urls: HashSet<RelayUrl> = match (self.policy, &self.client.gossip) {
+            let urls: HashSet<RelayUrl> = match (self.policy, self.client.gossip()) {
                 // No overwrite policy or send to NIP-65 and gossip available: send to NIP-65 relays
                 (None | Some(OverwritePolicy::ToNip65), Some(gossip)) => {
                     gossip_prepare_urls(self.client, gossip, self.event, false).await?
@@ -407,13 +415,13 @@ where
                 // - Or, no overwrite policy and no gossip available
                 // -> Send to all WRITE relays
                 (Some(OverwritePolicy::Broadcast), _) | (None, None) => {
-                    self.client.pool.write_relay_urls().await
+                    self.client.pool().write_relay_urls().await
                 }
             };
 
             Ok(self
                 .client
-                .pool
+                .pool()
                 .send_event(
                     urls,
                     self.event,

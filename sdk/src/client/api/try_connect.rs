@@ -40,6 +40,6 @@ impl<'client> IntoFuture for TryConnect<'client> {
     type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
-        Box::pin(async move { self.client.pool.try_connect(self.timeout).await })
+        Box::pin(async move { self.client.pool().try_connect(self.timeout).await })
     }
 }

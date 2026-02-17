@@ -149,7 +149,7 @@ where
         Box::pin(async move {
             // Build targets
             let targets: HashMap<RelayUrl, (Filter, Vec<(EventId, Timestamp)>)> =
-                match (&self.client.gossip, self.with) {
+                match (self.client.gossip(), self.with) {
                     // Gossip is available, and there are no specified relays: use gossip
                     (Some(gossip), None) => {
                         // Break down filter
@@ -173,7 +173,7 @@ where
                         // Get all READ and WRITE relays from pool
                         let urls: HashSet<RelayUrl> = self
                             .client
-                            .pool
+                            .pool()
                             .relay_urls_with_any_cap(
                                 RelayCapabilities::READ | RelayCapabilities::WRITE,
                             )
@@ -188,7 +188,7 @@ where
                     }
                 };
 
-            Ok(self.client.pool.sync(targets, self.opts).await?)
+            Ok(self.client.pool().sync(targets, self.opts).await?)
         })
     }
 }

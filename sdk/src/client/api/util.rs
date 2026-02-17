@@ -13,7 +13,7 @@ pub(super) async fn build_targets(
     target: ReqTarget<'_>,
 ) -> Result<HashMap<RelayUrl, Vec<Filter>>, Error> {
     // Build targets
-    match &client.gossip {
+    match client.gossip() {
         Some(gossip) => match target.into_inner() {
             // Gossip is configured and we need to break down filters before subscribing
             InnerReqTarget::Auto(filters) => client.break_down_filters(gossip, filters).await,
@@ -21,7 +21,7 @@ pub(super) async fn build_targets(
             InnerReqTarget::Manual(target) => Ok(convert_filters_arg_vec_to_map(target)?),
         },
         // No gossip configured: directly use the target
-        None => Ok(convert_filters_arg_to_targets(&client.pool, target).await?),
+        None => Ok(convert_filters_arg_to_targets(client.pool(), target).await?),
     }
 }
 

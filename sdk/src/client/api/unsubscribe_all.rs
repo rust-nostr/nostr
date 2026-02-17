@@ -23,7 +23,7 @@ impl<'client> IntoFuture for UnsubscribeAll<'client> {
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {
             // Unsubscribe
-            let output: Output<()> = self.client.pool.unsubscribe_all().await;
+            let output: Output<()> = self.client.pool().unsubscribe_all().await;
 
             Ok(output)
         })

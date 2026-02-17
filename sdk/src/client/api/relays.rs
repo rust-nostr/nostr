@@ -60,9 +60,9 @@ impl<'client> IntoFuture for GetRelays<'client> {
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {
             match self.policy {
-                Policy::All => self.client.pool.all_relays().await,
+                Policy::All => self.client.pool().all_relays().await,
                 Policy::WithCapabilities(capabilities) => {
-                    self.client.pool.relays_with_any_cap(capabilities).await
+                    self.client.pool().relays_with_any_cap(capabilities).await
                 }
             }
         })

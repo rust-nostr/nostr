@@ -60,7 +60,7 @@ where
 
             Ok(self
                 .client
-                .pool
+                .pool()
                 .subscribe(targets, self.id, self.auto_close)
                 .await?)
         })

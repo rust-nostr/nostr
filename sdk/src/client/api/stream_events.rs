@@ -71,7 +71,7 @@ where
             // Stream
             Ok(self
                 .client
-                .pool
+                .pool()
                 .stream_events(targets, self.timeout, self.policy)
                 .await?)
         })

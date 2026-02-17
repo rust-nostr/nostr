@@ -84,7 +84,7 @@ where
             let urls: HashSet<RelayUrl> = match self.policy {
                 Some(OverwritePolicy::Broadcast) | None => {
                     self.client
-                        .pool
+                        .pool()
                         .relay_urls_with_any_cap(RelayCapabilities::READ | RelayCapabilities::WRITE)
                         .await
                 }
@@ -102,7 +102,7 @@ where
 
             Ok(self
                 .client
-                .pool
+                .pool()
                 .send_msg(urls, self.msg, self.wait_until_sent)
                 .await?)
         })

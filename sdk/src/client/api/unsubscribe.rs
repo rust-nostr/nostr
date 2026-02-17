@@ -29,7 +29,7 @@ where
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {
             // Unsubscribe
-            let output: Output<()> = self.client.pool.unsubscribe(self.id).await;
+            let output: Output<()> = self.client.pool().unsubscribe(self.id).await;
 
             Ok(output)
         })

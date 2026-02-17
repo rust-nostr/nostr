@@ -39,10 +39,10 @@ impl<'client> IntoFuture for Connect<'client> {
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {
-            self.client.pool.connect().await;
+            self.client.pool().connect().await;
 
             if let Some(timeout) = self.wait {
-                self.client.pool.wait_for_connection(timeout).await;
+                self.client.pool().wait_for_connection(timeout).await;
             }
         })
     }

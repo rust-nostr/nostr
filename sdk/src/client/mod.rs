@@ -50,13 +50,16 @@ struct ClientConfig {
     ban_relay_on_mismatch: bool,
 }
 
-/// Nostr client
-#[derive(Debug, Clone)]
-pub struct Client {
-    pool: Arc<RelayPool>,
+#[derive(Debug)]
+struct InnerClient {
+    pool: RelayPool,
     gossip: Option<Gossip>,
     config: ClientConfig,
 }
+
+/// Nostr client
+#[derive(Debug, Clone)]
+pub struct Client(Arc<InnerClient>);
 
 impl Default for Client {
     #[inline]
@@ -109,9 +112,9 @@ impl Client {
             notification_channel_size: builder.notification_channel_size,
         };
 
-        // Construct client
-        Self {
-            pool: Arc::new(pool_builder.build()),
+        // Construct the inner client
+        let inner = InnerClient {
+            pool: pool_builder.build(),
             gossip: builder.gossip.map(Gossip::new),
             config: ClientConfig {
                 #[cfg(not(target_arch = "wasm32"))]
@@ -124,7 +127,25 @@ impl Client {
                 verify_subscriptions: builder.verify_subscriptions,
                 ban_relay_on_mismatch: builder.ban_relay_on_mismatch,
             },
-        }
+        };
+
+        // Construct the client
+        Self(Arc::new(inner))
+    }
+
+    #[inline]
+    fn pool(&self) -> &RelayPool {
+        &self.0.pool
+    }
+
+    #[inline]
+    fn config(&self) -> &ClientConfig {
+        &self.0.config
+    }
+
+    #[inline]
+    fn gossip(&self) -> Option<&Gossip> {
+        self.0.gossip.as_ref()
     }
 
     /// Get current nostr signer
@@ -132,25 +153,25 @@ impl Client {
     /// Returns `None` if no signer is configured.
     #[inline]
     pub fn signer(&self) -> Option<&Arc<dyn NostrSigner>> {
-        self.pool.state().signer()
+        self.pool().state().signer()
     }
 
     /// Get database
     #[inline]
     pub fn database(&self) -> &Arc<dyn NostrDatabase> {
-        self.pool.database()
+        self.pool().database()
     }
 
     /// Get the relay monitor
     #[inline]
     pub fn monitor(&self) -> Option<&Monitor> {
-        self.pool.monitor()
+        self.pool().monitor()
     }
 
     /// Check if the client is shutting down
     #[inline]
     pub fn is_shutdown(&self) -> bool {
-        self.pool.is_shutdown()
+        self.pool().is_shutdown()
     }
 
     /// Explicitly shutdown the client
@@ -158,7 +179,7 @@ impl Client {
     /// This method will shut down the client and all its relays.
     #[inline]
     pub async fn shutdown(&self) {
-        self.pool.shutdown().await
+        self.pool().shutdown().await
     }
 
     /// Get a new notification stream
@@ -173,7 +194,7 @@ impl Client {
         }
 
         // Subscribe to notifications
-        let rx = self.pool.notifications();
+        let rx = self.pool().notifications();
 
         // Create a oneshot channel
         let (tx, rx_done) = oneshot::channel();
@@ -200,7 +221,7 @@ impl Client {
     /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
     #[inline]
     pub fn automatic_authentication(&self, enable: bool) {
-        self.pool.state().automatic_authentication(enable);
+        self.pool().state().automatic_authentication(enable);
     }
 
     /// Get relays from the relay pool.
@@ -256,7 +277,7 @@ impl Client {
     {
         let url: RelayUrlArg<'a> = url.into();
         let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-        Ok(self.pool.relay(&url).await)
+        Ok(self.pool().relay(&url).await)
     }
 
     fn compose_relay_opts<'a>(&self, _url: &'a RelayUrlArg<'a>) -> RelayOptions {
@@ -265,15 +286,15 @@ impl Client {
         // Set connection mode
         #[cfg(not(target_arch = "wasm32"))]
         if let Ok(url) = _url.try_as_relay_url() {
-            match &self.config.connection.mode {
+            match &self.config().connection.mode {
                 ConnectionMode::Direct => {}
-                ConnectionMode::Proxy(..) => match self.config.connection.target {
+                ConnectionMode::Proxy(..) => match self.config().connection.target {
                     ConnectionTarget::All => {
-                        opts = opts.connection_mode(self.config.connection.mode.clone());
+                        opts = opts.connection_mode(self.config().connection.mode.clone());
                     }
                     ConnectionTarget::Onion => {
                         if url.is_onion() {
-                            opts = opts.connection_mode(self.config.connection.mode.clone())
+                            opts = opts.connection_mode(self.config().connection.mode.clone())
                         }
                     }
                 },
@@ -281,7 +302,7 @@ impl Client {
         }
 
         // Set sleep when idle
-        match self.config.sleep_when_idle {
+        match self.config().sleep_when_idle {
             // Do nothing
             SleepWhenIdle::Disabled => {}
             // Enable: update relay options
@@ -291,11 +312,11 @@ impl Client {
         };
 
         // Set limits
-        opts.connect_timeout(self.config.connect_timeout)
-            .limits(self.config.relay_limits.clone())
-            .max_avg_latency(self.config.max_avg_latency)
-            .verify_subscriptions(self.config.verify_subscriptions)
-            .ban_relay_on_mismatch(self.config.ban_relay_on_mismatch)
+        opts.connect_timeout(self.config().connect_timeout)
+            .limits(self.config().relay_limits.clone())
+            .max_avg_latency(self.config().max_avg_latency)
+            .verify_subscriptions(self.config().verify_subscriptions)
+            .ban_relay_on_mismatch(self.config().ban_relay_on_mismatch)
     }
 
     /// Add relay
@@ -426,7 +447,7 @@ impl Client {
     {
         let url: RelayUrlArg<'a> = url.into();
         let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-        Ok(self.pool.connect_relay(&url).await?)
+        Ok(self.pool().connect_relay(&url).await?)
     }
 
     /// Try to connect to a previously added relay
@@ -437,7 +458,7 @@ impl Client {
     {
         let url: RelayUrlArg<'a> = url.into();
         let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-        Ok(self.pool.try_connect_relay(&url, timeout).await?)
+        Ok(self.pool().try_connect_relay(&url, timeout).await?)
     }
 
     /// Disconnect relay
@@ -448,7 +469,7 @@ impl Client {
     {
         let url: RelayUrlArg<'a> = url.into();
         let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-        Ok(self.pool.disconnect_relay(&url).await?)
+        Ok(self.pool().disconnect_relay(&url).await?)
     }
 
     /// Connect to relays
@@ -529,19 +550,19 @@ impl Client {
     /// Disconnect from all relays
     #[inline]
     pub async fn disconnect(&self) {
-        self.pool.disconnect().await
+        self.pool().disconnect().await
     }
 
     /// Get subscriptions
     #[inline]
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, HashMap<RelayUrl, Vec<Filter>>> {
-        self.pool.subscriptions().await
+        self.pool().subscriptions().await
     }
 
     /// Get subscription
     #[inline]
     pub async fn subscription(&self, id: &SubscriptionId) -> HashMap<RelayUrl, Vec<Filter>> {
-        self.pool.subscription(id).await
+        self.pool().subscription(id).await
     }
 
     /// Subscribe to events from relays.
@@ -1402,15 +1423,15 @@ impl Client {
 
         // Get DISCOVERY and READ relays
         let urls: HashSet<RelayUrl> = self
-            .pool
+            .pool()
             .relay_urls_with_any_cap(RelayCapabilities::DISCOVERY | RelayCapabilities::READ)
             .await;
 
         // Negentropy sync
         // NOTE: the received events are automatically processed in the middleware!
         let opts: SyncOptions = SyncOptions::default()
-            .initial_timeout(self.config.gossip_config.sync_initial_timeout)
-            .idle_timeout(self.config.gossip_config.sync_idle_timeout)
+            .initial_timeout(self.config().gossip_config.sync_initial_timeout)
+            .idle_timeout(self.config().gossip_config.sync_idle_timeout)
             .direction(SyncDirection::Down);
         let output: Output<SyncSummary> = self.sync(filter.clone()).with(urls).opts(opts).await?;
 
@@ -1487,7 +1508,7 @@ impl Client {
         );
 
         // Split filters in chunks
-        for chunk in filters.chunks(self.config.gossip_config.fetch_chunks) {
+        for chunk in filters.chunks(self.config().gossip_config.fetch_chunks) {
             // Fetch the events
             // NOTE: the received events are automatically processed in the middleware!
 
@@ -1498,10 +1519,10 @@ impl Client {
             }
 
             let mut stream = self
-                .pool
+                .pool()
                 .stream_events(
                     targets,
-                    Some(self.config.gossip_config.fetch_timeout),
+                    Some(self.config().gossip_config.fetch_timeout),
                     ReqExitPolicy::ExitOnEOSE,
                 )
                 .await?;
@@ -1561,10 +1582,10 @@ impl Client {
 
         // NOTE: the received events are automatically processed in the middleware!
         let mut stream = self
-            .pool
+            .pool()
             .stream_events(
                 targets,
-                Some(self.config.gossip_config.fetch_timeout),
+                Some(self.config().gossip_config.fetch_timeout),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await?;
@@ -1635,15 +1656,15 @@ impl Client {
             .break_down_filter(
                 filter,
                 pattern,
-                &self.config.gossip_config.limits,
-                self.config.gossip_config.allowed,
+                &self.config().gossip_config.limits,
+                self.config().gossip_config.allowed,
             )
             .await?
         {
             BrokenDownFilters::Filters(filters) => filters,
             BrokenDownFilters::Orphan(filter) | BrokenDownFilters::Other(filter) => {
                 // Get read relays
-                let read_relays: HashSet<RelayUrl> = self.pool.read_relay_urls().await;
+                let read_relays: HashSet<RelayUrl> = self.pool().read_relay_urls().await;
 
                 let mut map = HashMap::with_capacity(read_relays.len());
                 for url in read_relays.into_iter() {

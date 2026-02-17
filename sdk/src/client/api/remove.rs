@@ -44,7 +44,7 @@ where
             let url: Cow<RelayUrl> = self.url.try_into_relay_url()?;
 
             // Remove the relay from the pool
-            Ok(self.client.pool.remove_relay(url, self.force).await?)
+            Ok(self.client.pool().remove_relay(url, self.force).await?)
         })
     }
 }
@@ -83,19 +83,19 @@ mod tests {
             .unwrap();
 
         assert_eq!(client.relays().await.len(), 2);
-        assert_eq!(client.pool.all_relays().await.len(), 2);
+        assert_eq!(client.pool().all_relays().await.len(), 2);
 
         // Remove the non-gossip relay
         assert!(client.remove_relay("ws://127.0.0.1:6666").await.is_ok());
         assert!(client.relay("ws://127.0.0.1:6666").await.unwrap().is_none());
         assert_eq!(client.relays().await.len(), 1);
-        assert_eq!(client.pool.all_relays().await.len(), 1);
+        assert_eq!(client.pool().all_relays().await.len(), 1);
 
         // Try to remove the gossip relay (will not be removed)
         assert!(client.remove_relay("ws://127.0.0.1:8888").await.is_ok());
         assert!(client.relay("ws://127.0.0.1:8888").await.is_ok()); // The relay exists in the client!
         assert!(client.relays().await.is_empty()); // This gets only the READ/WRITE relays, which are now 0
-        assert_eq!(client.pool.all_relays().await.len(), 1);
+        assert_eq!(client.pool().all_relays().await.len(), 1);
     }
 
     #[tokio::test]
@@ -111,7 +111,7 @@ mod tests {
             .unwrap();
 
         assert_eq!(client.relays().await.len(), 2);
-        assert_eq!(client.pool.all_relays().await.len(), 2);
+        assert_eq!(client.pool().all_relays().await.len(), 2);
 
         // Force remove the non-gossip relay
         assert!(client
@@ -121,7 +121,7 @@ mod tests {
             .is_ok());
         assert!(client.relay("ws://127.0.0.1:6666").await.unwrap().is_none());
         assert_eq!(client.relays().await.len(), 1);
-        assert_eq!(client.pool.all_relays().await.len(), 1);
+        assert_eq!(client.pool().all_relays().await.len(), 1);
 
         // Force remove the gossip relay
         assert!(client
@@ -131,6 +131,6 @@ mod tests {
             .is_ok());
         assert!(client.relay("ws://127.0.0.1:8888").await.unwrap().is_none());
         assert!(client.relays().await.is_empty());
-        assert!(client.pool.all_relays().await.is_empty());
+        assert!(client.pool().all_relays().await.is_empty());
     }
 }
