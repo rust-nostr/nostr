@@ -2397,6 +2397,7 @@ mod tests {
 }
 
 #[cfg(bench)]
+#[cfg(all(feature = "std", feature = "os-rng"))]
 mod benches {
     use test::{black_box, Bencher};
 
