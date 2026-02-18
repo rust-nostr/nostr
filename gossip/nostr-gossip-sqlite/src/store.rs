@@ -1,7 +1,8 @@
 //! Nostr gossip SQLite store.
 
 use std::cmp;
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
+use std::num::NonZeroUsize;
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
 use std::sync::Arc;
@@ -15,6 +16,7 @@ use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{
     BestRelaySelection, GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip,
+    OutdatedPublicKey,
 };
 use sqlx::migrate::Migrator;
 use sqlx::sqlite::{SqliteConnectOptions, SqliteJournalMode};
@@ -182,10 +184,10 @@ impl NostrGossipSqlite {
                             Ok(GossipPublicKeyStatus::Updated)
                         }
                     }
-                    None => Ok(GossipPublicKeyStatus::Outdated { created_at: None }),
+                    None => Ok(GossipPublicKeyStatus::Missing),
                 }
             }
-            None => Ok(GossipPublicKeyStatus::Outdated { created_at: None }),
+            None => Ok(GossipPublicKeyStatus::Missing),
         }
     }
 
@@ -220,6 +222,45 @@ impl NostrGossipSqlite {
         tx.commit().await?;
 
         Ok(())
+    }
+
+    async fn get_outdated_public_keys(
+        &self,
+        list: GossipListKind,
+        limit: NonZeroUsize,
+    ) -> Result<BTreeSet<OutdatedPublicKey>, Error> {
+        let now: i64 = Timestamp::now().as_secs() as i64;
+        let threshold: i64 = now.saturating_sub(TTL_OUTDATED.as_secs() as i64);
+
+        let rows: Vec<(Vec<u8>, Option<i64>)> = sqlx::query_as(
+            r#"
+            SELECT pk.public_key, l.last_checked_at
+            FROM lists l
+            INNER JOIN public_keys pk ON l.public_key_id = pk.id
+            WHERE l.event_kind = $1
+              AND COALESCE(l.last_checked_at, 0) > 0
+              AND l.last_checked_at < $2
+            ORDER BY l.last_checked_at ASC
+            LIMIT $3
+            "#,
+        )
+        .bind(list.to_event_kind().as_u16())
+        .bind(threshold)
+        .bind(limit.get() as i64)
+        .fetch_all(&self.pool)
+        .await?;
+
+        let mut public_keys: BTreeSet<OutdatedPublicKey> = BTreeSet::new();
+
+        for (pk, timestamp) in rows.into_iter() {
+            let last: i64 = timestamp.unwrap_or(0);
+
+            if let (Ok(pk), Ok(last)) = (PublicKey::from_slice(&pk), last.try_into()) {
+                public_keys.insert(OutdatedPublicKey::new(pk, last));
+            }
+        }
+
+        Ok(public_keys)
     }
 
     async fn _get_best_relays(
@@ -590,6 +631,18 @@ impl NostrGossip for NostrGossipSqlite {
     ) -> BoxedFuture<'a, Result<(), GossipError>> {
         Box::pin(async move {
             self._update_fetch_attempt(public_key, list)
+                .await
+                .map_err(GossipError::backend)
+        })
+    }
+
+    fn outdated_public_keys(
+        &self,
+        list: GossipListKind,
+        limit: NonZeroUsize,
+    ) -> BoxedFuture<Result<BTreeSet<OutdatedPublicKey>, GossipError>> {
+        Box::pin(async move {
+            self.get_outdated_public_keys(list, limit)
                 .await
                 .map_err(GossipError::backend)
         })

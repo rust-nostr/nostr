@@ -1,7 +1,7 @@
 //! Gossip in-memory storage.
 
 use std::cmp::Ordering;
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::num::NonZeroUsize;
 
 use indexmap::IndexMap;
@@ -14,6 +14,7 @@ use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{
     BestRelaySelection, GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip,
+    OutdatedPublicKey,
 };
 use tokio::sync::RwLock;
 
@@ -171,10 +172,10 @@ impl NostrGossipMemory {
                             GossipPublicKeyStatus::Updated
                         }
                     }
-                    (_, _, _) => GossipPublicKeyStatus::Outdated { created_at: None },
+                    (_, _, _) => GossipPublicKeyStatus::Missing,
                 }
             }
-            None => GossipPublicKeyStatus::Outdated { created_at: None },
+            None => GossipPublicKeyStatus::Missing,
         }
     }
 
@@ -189,6 +190,33 @@ impl NostrGossipMemory {
             GossipListKind::Nip17 => pk_data.last_nip17_update = Some(now),
             GossipListKind::Nip65 => pk_data.last_nip65_update = Some(now),
         };
+    }
+
+    async fn collect_outdated_public_keys(
+        &self,
+        list: GossipListKind,
+        limit: NonZeroUsize,
+    ) -> BTreeSet<OutdatedPublicKey> {
+        let public_keys = self.public_keys.read().await;
+        let now: Timestamp = Timestamp::now();
+
+        let mut outdated: BTreeSet<OutdatedPublicKey> = BTreeSet::new();
+
+        for (public_key, pk_data) in public_keys.iter() {
+            let last_checked_at: Option<Timestamp> = match list {
+                GossipListKind::Nip17 => pk_data.last_nip17_update,
+                GossipListKind::Nip65 => pk_data.last_nip65_update,
+            };
+
+            if let Some(last_checked_at) = last_checked_at {
+                if last_checked_at + TTL_OUTDATED < now {
+                    let pk = OutdatedPublicKey::new(*public_key, last_checked_at);
+                    outdated.insert(pk);
+                }
+            }
+        }
+
+        outdated.into_iter().take(limit.get()).collect()
     }
 
     async fn _get_best_relays(
@@ -385,6 +413,14 @@ impl NostrGossip for NostrGossipMemory {
             self._update_fetch_attempt(public_key, list).await;
             Ok(())
         })
+    }
+
+    fn outdated_public_keys(
+        &self,
+        list: GossipListKind,
+        limit: NonZeroUsize,
+    ) -> BoxedFuture<Result<BTreeSet<OutdatedPublicKey>, GossipError>> {
+        Box::pin(async move { Ok(self.collect_outdated_public_keys(list, limit).await) })
     }
 
     fn get_best_relays<'a>(

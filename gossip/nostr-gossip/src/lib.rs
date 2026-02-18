@@ -10,8 +10,10 @@
 #![warn(clippy::large_futures)]
 
 use std::any::Any;
-use std::collections::HashSet;
+use std::cmp::Ordering;
+use std::collections::{BTreeSet, HashSet};
 use std::fmt::Debug;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use nostr::prelude::*;
@@ -44,6 +46,8 @@ impl GossipListKind {
 /// Public key status
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum GossipPublicKeyStatus {
+    /// No relay list is currently stored, and no fetch attempt has been tracked yet.
+    Missing,
     /// The public key data is updated
     Updated,
     /// The public key data is outdated
@@ -51,6 +55,26 @@ pub enum GossipPublicKeyStatus {
         /// The timestamp of the relay list event that is currently stored
         created_at: Option<Timestamp>,
     },
+}
+
+impl GossipPublicKeyStatus {
+    /// Check if the public key is missing.
+    #[inline]
+    pub fn is_missing(&self) -> bool {
+        matches!(self, Self::Missing)
+    }
+
+    /// Check if the public key is updated.
+    #[inline]
+    pub fn is_updated(&self) -> bool {
+        matches!(self, Self::Updated)
+    }
+
+    /// Check if the public key is outdated.
+    #[inline]
+    pub fn is_outdated(&self) -> bool {
+        matches!(self, Self::Outdated { .. })
+    }
 }
 
 /// Allowed gossip relay types during selection
@@ -134,6 +158,42 @@ pub enum BestRelaySelection {
     },
 }
 
+/// Outdated public key
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub struct OutdatedPublicKey {
+    /// The public key that has been marked as outdated.
+    pub public_key: PublicKey,
+    /// The timestamp of the last check that has been made for this public key for a certain list kind.
+    pub timestamp: Timestamp,
+}
+
+impl PartialOrd for OutdatedPublicKey {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for OutdatedPublicKey {
+    fn cmp(&self, other: &Self) -> Ordering {
+        if self.timestamp == other.timestamp {
+            self.public_key.cmp(&other.public_key)
+        } else {
+            self.timestamp.cmp(&other.timestamp)
+        }
+    }
+}
+
+impl OutdatedPublicKey {
+    /// New outdated public key
+    #[inline]
+    pub fn new(public_key: PublicKey, timestamp: Timestamp) -> Self {
+        Self {
+            public_key,
+            timestamp,
+        }
+    }
+}
+
 /// Nostr gossip trait.
 pub trait NostrGossip: Any + Debug + Send + Sync {
     /// Process an [`Event`]
@@ -158,6 +218,13 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         public_key: &'a PublicKey,
         list: GossipListKind,
     ) -> BoxedFuture<'a, Result<(), GossipError>>;
+
+    /// Get up to `limit` outdated public keys for the specified list kind.
+    fn outdated_public_keys(
+        &self,
+        list: GossipListKind,
+        limit: NonZeroUsize,
+    ) -> BoxedFuture<Result<BTreeSet<OutdatedPublicKey>, GossipError>>;
 
     /// Get the best relays for a [`PublicKey`].
     fn get_best_relays<'a>(

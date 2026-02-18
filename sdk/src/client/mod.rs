@@ -14,7 +14,7 @@ use async_wsocket::ConnectionMode;
 use futures::StreamExt;
 use nostr::prelude::*;
 use nostr_database::prelude::*;
-use nostr_gossip::{GossipListKind, GossipPublicKeyStatus, NostrGossip};
+use nostr_gossip::prelude::*;
 use tokio::sync::oneshot;
 
 mod api;
@@ -1262,7 +1262,7 @@ impl Client {
             for gossip_kind in gossip_kinds {
                 let status = gossip.status(public_key, *gossip_kind).await?;
 
-                if let GossipPublicKeyStatus::Outdated { .. } = status {
+                if !status.is_updated() {
                     outdated_public_keys.insert(*public_key);
                 }
             }

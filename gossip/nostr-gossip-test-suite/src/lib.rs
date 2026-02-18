@@ -300,23 +300,33 @@ macro_rules! gossip_unit_tests {
                 PublicKey::from_hex("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
                     .unwrap();
 
-            // Initially should be outdated
+            // Initially both lists should be missing
             let status = store.status(&public_key, GossipListKind::Nip65).await.unwrap();
-            assert!(matches!(status, GossipPublicKeyStatus::Outdated { .. }));
+            assert!(status.is_missing());
+
+            let status = store.status(&public_key, GossipListKind::Nip17).await.unwrap();
+            assert!(status.is_missing());
 
             // Process a NIP-65 event
             let json = r#"{"id":"0a49bed4a1eb0973a68a0d43b7ca62781ffd4e052b91bbadef09e5cf756f6e68","pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","created_at":1759351841,"kind":10002,"tags":[["alt","Relay list to discover the user's content"],["r","wss://relay.damus.io/"],["r","wss://nostr.wine/"],["r","wss://nostr.oxtr.dev/"],["r","wss://relay.nostr.wirednet.jp/"]],"content":"","sig":"f5bc6c18b0013214588d018c9086358fb76a529aa10867d4d02a75feb239412ae1c94ac7c7917f6e6e2303d72f00dc4e9b03b168ef98f3c3c0dec9a457ce0304"}"#;
             let event = Event::from_json(json).unwrap();
             store.process(&event, None).await.unwrap();
 
+            // Processing a list event doesn't imply a fetch attempt was tracked yet
+            let status = store.status(&public_key, GossipListKind::Nip65).await.unwrap();
+            assert!(status.is_missing());
+
             // Update fetch attempt
             store
                 .update_fetch_attempt(&public_key, GossipListKind::Nip65)
                 .await.unwrap();
 
-            // Should now be updated
+            // NIP-65 should now be updated, NIP-17 should still be missing
             let status = store.status(&public_key, GossipListKind::Nip65).await.unwrap();
-            assert!(matches!(status, GossipPublicKeyStatus::Updated));
+            assert!(status.is_updated());
+
+            let status = store.status(&public_key, GossipListKind::Nip17).await.unwrap();
+            assert!(status.is_missing());
         }
 
         #[tokio::test]
