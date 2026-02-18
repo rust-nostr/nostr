@@ -3,10 +3,12 @@ use std::sync::Arc;
 use nostr::{Alphabet, Filter, Kind, SingleLetterTag};
 use nostr_gossip::NostrGossip;
 
+mod refresher;
 mod resolver;
 mod semaphore;
 mod updater;
 
+use self::refresher::*;
 pub(super) use self::resolver::*;
 pub(super) use self::semaphore::*;
 
@@ -44,11 +46,12 @@ pub(super) fn find_filter_pattern(filter: &Filter) -> GossipFilterPattern {
     GossipFilterPattern::Nip65
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(super) struct Gossip {
     store: Arc<dyn NostrGossip>,
     resolver: GossipRelayResolver,
     semaphore: GossipSemaphore,
+    refresher: GossipBackgroundRefresher,
 }
 
 impl Gossip {
@@ -58,6 +61,7 @@ impl Gossip {
             store: gossip.clone(),
             resolver: GossipRelayResolver::new(gossip),
             semaphore: GossipSemaphore::new(),
+            refresher: GossipBackgroundRefresher::new(),
         }
     }
 
@@ -74,5 +78,15 @@ impl Gossip {
     #[inline]
     pub(super) fn semaphore(&self) -> &GossipSemaphore {
         &self.semaphore
+    }
+
+    #[inline]
+    fn refresher(&self) -> &GossipBackgroundRefresher {
+        &self.refresher
+    }
+
+    #[cfg(test)]
+    pub(super) fn is_background_refresher_spawned(&self) -> bool {
+        self.refresher.is_background_refresher_spawned()
     }
 }
