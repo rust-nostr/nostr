@@ -16,7 +16,9 @@ pub(super) async fn build_targets(
     match client.gossip() {
         Some(gossip) => match target.into_inner() {
             // Gossip is configured and we need to break down filters before subscribing
-            InnerReqTarget::Auto(filters) => client.break_down_filters(gossip, filters).await,
+            InnerReqTarget::Auto(filters) => {
+                client.gossip_break_down_filters(gossip, filters).await
+            }
             // The request is already manual, skip gossip
             InnerReqTarget::Manual(target) => Ok(convert_filters_arg_vec_to_map(target)?),
         },

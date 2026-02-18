@@ -1,9 +1,9 @@
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 use std::future::IntoFuture;
 use std::iter;
 use std::time::Duration;
 
-use nostr::{Event, EventId, Kind, RelayUrl, RelayUrlArg};
+use nostr::{Event, EventId, Kind, PublicKey, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
 
 use super::output::Output;
@@ -243,7 +243,7 @@ async fn gossip_prepare_urls(
     let is_gift_wrap: bool = event.kind == Kind::GiftWrap;
 
     // Get involved public keys and check what are up to date in the gossip graph and which ones require an update.
-    if is_gift_wrap {
+    let (public_keys, gossip_kinds): (BTreeSet<PublicKey>, &[GossipListKind]) = if is_gift_wrap {
         let kind: GossipListKind = if is_nip17 {
             GossipListKind::Nip17
         } else {
@@ -251,26 +251,27 @@ async fn gossip_prepare_urls(
         };
 
         // Get only p tags since the author of a gift wrap is randomized
-        let public_keys = event.tags.public_keys().copied();
-        client
-            .check_and_update_gossip(gossip, public_keys, &[kind])
-            .await?;
+        let public_keys: BTreeSet<PublicKey> = event.tags.public_keys().copied().collect();
+
+        (public_keys, &[kind])
     } else if is_contact_list {
         // Contact list, update only author
-        client
-            .check_and_update_gossip(gossip, [event.pubkey], &[GossipListKind::Nip65])
-            .await?;
+        (BTreeSet::from([event.pubkey]), &[GossipListKind::Nip65])
     } else {
         // Get all public keys involved in the event: author + p tags
-        let public_keys = event
+        let public_keys: BTreeSet<PublicKey> = event
             .tags
             .public_keys()
             .copied()
-            .chain(iter::once(event.pubkey));
-        client
-            .check_and_update_gossip(gossip, public_keys, &[GossipListKind::Nip65])
-            .await?;
+            .chain(iter::once(event.pubkey))
+            .collect();
+        (public_keys, &[GossipListKind::Nip65])
     };
+
+    // Ensure public keys are up to date
+    client
+        .ensure_gossip_public_keys_fresh(gossip, public_keys, gossip_kinds)
+        .await?;
 
     // Check if NIP17 or NIP65
     if is_nip17 && is_gift_wrap {

@@ -153,8 +153,10 @@ where
                     // Gossip is available, and there are no specified relays: use gossip
                     (Some(gossip), None) => {
                         // Break down filter
-                        let filters: HashMap<RelayUrl, Filter> =
-                            self.client.break_down_filter(gossip, self.filter).await?;
+                        let filters: HashMap<RelayUrl, Filter> = self
+                            .client
+                            .gossip_break_down_filter(gossip, self.filter)
+                            .await?;
 
                         // Make targets
                         make_sync_targets(self.client, filters).await?

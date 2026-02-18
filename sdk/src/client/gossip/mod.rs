@@ -5,6 +5,7 @@ use nostr_gossip::NostrGossip;
 
 mod resolver;
 mod semaphore;
+mod updater;
 
 pub(super) use self::resolver::*;
 pub(super) use self::semaphore::*;
