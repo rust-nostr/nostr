@@ -6,7 +6,7 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
-use std::sync::Arc;
+use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -34,7 +34,7 @@ use crate::pool::{RelayPool, RelayPoolBuilder};
 use crate::relay::{Relay, RelayCapabilities, RelayLimits, RelayOptions, SyncOptions};
 use crate::stream::{BoxedStream, NotificationStream};
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 struct ClientConfig {
     #[cfg(not(target_arch = "wasm32"))]
     connection: Connection,
@@ -52,6 +52,19 @@ struct InnerClient {
     pool: RelayPool,
     gossip: Option<Gossip>,
     config: ClientConfig,
+}
+
+#[derive(Debug)]
+struct WeakClient(Weak<InnerClient>);
+
+impl WeakClient {
+    /// Upgrade to [`Client`].
+    ///
+    /// Returns `None` if the all the instances of the [`Client`] has been dropped.
+    #[inline]
+    fn upgrade(&self) -> Option<Client> {
+        Some(Client(self.0.upgrade()?))
+    }
 }
 
 /// Nostr client
@@ -127,7 +140,11 @@ impl Client {
         };
 
         // Construct the client
-        Self(Arc::new(inner))
+        let client = Self(Arc::new(inner));
+
+        client.spawn_gossip_background_refresher();
+
+        client
     }
 
     #[inline]
@@ -143,6 +160,11 @@ impl Client {
     #[inline]
     fn gossip(&self) -> Option<&Gossip> {
         self.0.gossip.as_ref()
+    }
+
+    #[inline]
+    fn weak_clone(&self) -> WeakClient {
+        WeakClient(Arc::downgrade(&self.0))
     }
 
     /// Get current nostr signer
@@ -1243,6 +1265,7 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
+    use nostr_gossip_memory::prelude::*;
     use nostr_relay_builder::MockRelay;
 
     use super::*;
@@ -1304,6 +1327,63 @@ mod tests {
 
         // When the client is dropped, all relays are shutdown
         assert_eq!(relay.status(), RelayStatus::Shutdown);
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_on_drop_with_weak_clone() {
+        let weak: WeakClient = {
+            let client: Client = Client::default();
+
+            assert!(!client.is_shutdown());
+
+            // Weak clone
+            let weak: WeakClient = client.weak_clone();
+
+            // The client is still alive, so the upgrade must success
+            assert!(weak.upgrade().is_some());
+
+            weak
+        };
+        // Client is dropped here
+
+        // The client is dropped, so the upgrade must fail
+        assert!(weak.upgrade().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_on_drop_with_gossip_background_refresher_enabled() {
+        let weak: WeakClient = {
+            let gossip = NostrGossipMemory::unbounded();
+            let client: Client = Client::builder().gossip(gossip).build();
+
+            tokio::time::sleep(Duration::from_secs(1)).await;
+
+            assert!(!client.is_shutdown());
+            assert!(client.gossip().unwrap().is_background_refresher_spawned());
+
+            tokio::time::sleep(Duration::from_secs(1)).await;
+
+            // Check number of atomic references for the client
+            // Must be 2 because the background refresher is using the client
+            assert_eq!(Arc::strong_count(&client.0), 2);
+
+            tokio::time::sleep(Duration::from_secs(4)).await;
+
+            // Now should be just one atomic reference, as the background refresher is sleeping
+            assert_eq!(Arc::strong_count(&client.0), 1);
+
+            // Weak clone
+            let weak: WeakClient = client.weak_clone();
+
+            // The client is still alive, so the upgrade must success
+            assert!(weak.upgrade().is_some());
+
+            weak
+        };
+        // Client is dropped here
+
+        // The client is dropped, so the upgrade must fail
+        assert!(weak.upgrade().is_none());
     }
 
     #[tokio::test]

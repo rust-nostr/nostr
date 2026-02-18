@@ -18,10 +18,10 @@ pub(in crate::client) enum BrokenDownFilters {
     Other(Filter),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub(in crate::client) struct GossipRelayResolver {
     gossip: Arc<dyn NostrGossip>,
-    sync_counter: Arc<AtomicU64>,
+    sync_counter: AtomicU64,
 }
 
 impl GossipRelayResolver {
@@ -29,7 +29,7 @@ impl GossipRelayResolver {
     pub(in crate::client) fn new(gossip: Arc<dyn NostrGossip>) -> Self {
         Self {
             gossip,
-            sync_counter: Arc::new(AtomicU64::new(0)),
+            sync_counter: AtomicU64::new(0),
         }
     }
 

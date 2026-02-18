@@ -44,7 +44,7 @@ impl Client {
     }
 
     /// Refresh gossip data for the specified keys and list kinds.
-    async fn sync_gossip_public_keys(
+    pub(super) async fn sync_gossip_public_keys(
         &self,
         gossip: &Gossip,
         public_keys: BTreeSet<PublicKey>,
@@ -361,10 +361,22 @@ impl Client {
         public_keys: BTreeSet<PublicKey>,
         gossip_kinds: &[GossipListKind],
     ) -> Result<(), Error> {
+        // If background refresh is enabled, track public keys
+        if self.config().gossip_config.background_refresh.is_some() {
+            for gossip_kind in gossip_kinds {
+                gossip
+                    .refresher()
+                    .track_public_keys(gossip_kind, public_keys.iter().copied())
+                    .await;
+            }
+        }
+
+        // Compute the set of outdated keys
         let to_update: BTreeSet<PublicKey> = self
             .compute_gossip_update_candidates(gossip.store(), public_keys, gossip_kinds)
             .await?;
 
+        // Sync
         self.sync_gossip_public_keys(gossip, to_update, gossip_kinds)
             .await
     }
