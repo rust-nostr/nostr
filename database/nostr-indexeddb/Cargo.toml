@@ -11,6 +11,12 @@ readme = "README.md"
 rust-version.workspace = true
 keywords = ["nostr", "database", "indexeddb"]
 
+[package.metadata.docs.rs]
+all-features = true
+default-target = "wasm32-unknown-unknown"
+targets = ["wasm32-unknown-unknown"]
+rustdoc-args = ["--cfg", "docsrs"]
+
 [dependencies]
 hex = { workspace = true, features = ["std"] }
 indexed_db_futures = "0.5"
