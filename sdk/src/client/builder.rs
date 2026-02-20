@@ -6,6 +6,7 @@
 
 #[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -24,7 +25,7 @@ use crate::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
 };
 
-const DEFAULT_NOTIFICATION_CHANNEL_SIZE: usize = 4096;
+const DEFAULT_NOTIFICATION_CHANNEL_SIZE: NonZeroUsize = NonZeroUsize::new(4096).unwrap();
 
 /// Max number of relays to use for gossip
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -142,11 +143,11 @@ pub struct ClientBuilder {
     #[cfg(not(target_arch = "wasm32"))]
     pub connection: Connection,
     /// Max relays allowed in the pool
-    pub max_relays: Option<usize>,
+    pub max_relays: Option<NonZeroUsize>,
     /// Automatic authentication to relays (NIP-42)
     pub automatic_authentication: bool,
     /// Notification channel size
-    pub notification_channel_size: usize,
+    pub notification_channel_size: NonZeroUsize,
     /// Connection timeout (default: 15 sec)
     ///
     /// This is the default timeout use when attempting to establish a connection with the relay
@@ -282,7 +283,7 @@ impl ClientBuilder {
     ///
     /// `None` means no limit.
     #[inline]
-    pub fn max_relays(mut self, num: Option<usize>) -> Self {
+    pub fn max_relays(mut self, num: Option<NonZeroUsize>) -> Self {
         self.max_relays = num;
         self
     }
@@ -342,7 +343,7 @@ impl ClientBuilder {
 
     /// Notification channel size (default: 4096)
     #[inline]
-    pub fn notification_channel_size(mut self, size: usize) -> Self {
+    pub fn notification_channel_size(mut self, size: NonZeroUsize) -> Self {
         self.notification_channel_size = size;
         self
     }

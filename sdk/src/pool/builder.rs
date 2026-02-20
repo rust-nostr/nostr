@@ -1,3 +1,4 @@
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use nostr::NostrSigner;
@@ -14,9 +15,9 @@ pub(crate) struct RelayPoolBuilder {
     pub(crate) monitor: Option<Monitor>,
     pub(crate) database: Arc<dyn NostrDatabase>,
     pub(crate) signer: Option<Arc<dyn NostrSigner>>,
-    pub(crate) max_relays: Option<usize>,
+    pub(crate) max_relays: Option<NonZeroUsize>,
     pub(crate) nip42_auto_authentication: bool,
-    pub(crate) notification_channel_size: usize,
+    pub(crate) notification_channel_size: NonZeroUsize,
 }
 
 impl RelayPoolBuilder {

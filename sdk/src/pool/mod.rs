@@ -3,6 +3,7 @@ use std::collections::{HashMap, HashSet};
 use std::future::{Future, IntoFuture};
 use std::iter::Zip;
 use std::mem;
+use std::num::NonZeroUsize;
 use std::pin::Pin;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -39,7 +40,7 @@ pub(crate) struct RelayPool {
     relays: RwLock<Relays>,
     notification_sender: broadcast::Sender<ClientNotification>,
     shutdown: AtomicBool,
-    max_relays: Option<usize>,
+    max_relays: Option<NonZeroUsize>,
 }
 
 // Shutdown the pool on the **FIRST** drop
@@ -59,7 +60,7 @@ impl Drop for RelayPool {
 
 impl RelayPool {
     fn from_builder(builder: RelayPoolBuilder) -> Self {
-        let (notification_sender, _) = broadcast::channel(builder.notification_channel_size);
+        let (notification_sender, _) = broadcast::channel(builder.notification_channel_size.get());
 
         Self {
             state: SharedState::new(
@@ -189,7 +190,7 @@ impl RelayPool {
         }
 
         // Check number fo relays and limit
-        if let Some(max) = self.max_relays {
+        if let Some(max) = self.max_relays.map(|m| m.get()) {
             if relays.len() >= max {
                 return Err(Error::TooManyRelays { limit: max });
             }
