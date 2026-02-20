@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -59,17 +60,30 @@ enum SubscriptionActivity {
 }
 
 /// Relay
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Relay {
     pub(crate) inner: InnerRelay,
     // Keep track of the atomic reference count to know when shutdown the relay.
-    atomic_counter: Arc<()>,
+    atomic_counter: Arc<AtomicUsize>,
+}
+
+impl Clone for Relay {
+    fn clone(&self) -> Self {
+        // Increase the reference count
+        self.atomic_counter.fetch_add(1, Ordering::SeqCst);
+
+        // Return a clone of the relay
+        Self {
+            inner: self.inner.clone(),
+            atomic_counter: self.atomic_counter.clone(),
+        }
+    }
 }
 
 impl Drop for Relay {
     fn drop(&mut self) {
-        // If there is only one reference left, shutdown the relay
-        if Arc::strong_count(&self.atomic_counter) == 1 {
+        // Shutdown exactly once when the last client handle is dropped.
+        if self.atomic_counter.fetch_sub(1, Ordering::SeqCst) == 1 {
             self.shutdown();
         }
     }
@@ -105,7 +119,7 @@ impl Relay {
     ) -> Self {
         Self {
             inner: InnerRelay::new(url, state, capabilities, opts),
-            atomic_counter: Arc::new(()),
+            atomic_counter: Arc::new(AtomicUsize::new(1)),
         }
     }
 
@@ -133,10 +147,7 @@ impl Relay {
             None,
         );
 
-        Self {
-            inner: InnerRelay::new(builder.url, state, builder.capabilities, builder.opts),
-            atomic_counter: Arc::new(()),
-        }
+        Self::new_shared(builder.url, state, builder.capabilities, builder.opts)
     }
 
     /// Get relay url
@@ -828,7 +839,7 @@ mod tests {
             {
                 let r2 = relay.clone();
                 tokio::spawn(async move {
-                    assert_eq!(Arc::strong_count(&r2.atomic_counter), 2);
+                    assert_eq!(r2.atomic_counter.load(Ordering::SeqCst), 2);
 
                     time::sleep(Duration::from_secs(1)).await;
 
@@ -838,7 +849,7 @@ mod tests {
 
             time::sleep(Duration::from_secs(3)).await;
 
-            assert_eq!(Arc::strong_count(&relay.atomic_counter), 1);
+            assert_eq!(relay.atomic_counter.load(Ordering::SeqCst), 1);
 
             inner
         }; // relay dropped here
