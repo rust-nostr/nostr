@@ -13,6 +13,8 @@ keywords = ["nostr", "nip07", "browser", "signer"]
 
 [package.metadata.docs.rs]
 all-features = true
+default-target = "wasm32-unknown-unknown"
+targets = ["wasm32-unknown-unknown"]
 rustdoc-args = ["--cfg", "docsrs"]
 
 [dependencies]
