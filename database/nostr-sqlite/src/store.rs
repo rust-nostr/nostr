@@ -15,6 +15,7 @@ use crate::model::{extract_tags, EventDb};
 use crate::pool::Pool;
 
 const EVENTS_QUERY_LIMIT: usize = 10_000;
+const NIP50_SEARCHABLE_TAGS_SQL: &str = "'title', 'description', 'subject', 'name'";
 
 #[derive(Clone, Copy)]
 enum SqlSelectClause {
@@ -749,13 +750,22 @@ fn add_filter_conditions(filter: &Filter, query: &mut FilterQuery) {
 
     // Search filter (if exists)
     if let Some(search) = &filter.search {
-        let like = format!("%{}%", search);
-        query.sql.push_str(" AND (e.content LIKE ?");
-        query.params.push(Value::Text(like.clone()));
-        query.sql.push_str(
-            " OR EXISTS (SELECT 1 FROM event_tags et_search WHERE et_search.event_id = e.id AND et_search.tag_value LIKE ?))",
-        );
-        query.params.push(Value::Text(like));
+        if search.is_empty() {
+            query.sql.push_str(" AND 0");
+        } else {
+            query
+                .sql
+                .push_str(" AND (INSTR(LOWER(e.content), LOWER(?)) > 0");
+            query.params.push(Value::Text(search.clone()));
+            query.sql.push_str(
+                " OR EXISTS (\n                    SELECT 1 FROM json_each(e.tags) AS jt\n                    WHERE json_type(jt.value) = 'array'\n                    AND json_array_length(jt.value) > 1\n                    AND json_extract(jt.value, '$[0]') IN (",
+            );
+            query.sql.push_str(NIP50_SEARCHABLE_TAGS_SQL);
+            query.sql.push_str(
+                ")\n                    AND INSTR(LOWER(COALESCE(json_extract(jt.value, '$[1]'), '')), LOWER(?)) > 0\n                ))",
+            );
+            query.params.push(Value::Text(search.clone()));
+        }
     }
 
     if !filter.generic_tags.is_empty() {
@@ -789,6 +799,7 @@ fn with_limit(filter: Filter, default_limit: usize) -> Filter {
 
 #[cfg(test)]
 mod tests {
+    use nostr::{EventBuilder, Keys, Tag};
     use nostr_database_test_suite::database_unit_tests;
 
     use super::*;
@@ -814,4 +825,42 @@ mod tests {
     }
 
     database_unit_tests!(TempDatabase, TempDatabase::new);
+
+    #[tokio::test]
+    async fn test_full_text_search_matches_selected_tags_only() {
+        let db = NostrSqlite::in_memory().await.unwrap();
+        let keys = Keys::generate();
+
+        let event = EventBuilder::text_note("content")
+            .tag(Tag::parse(["title", "alpha-token"]).unwrap())
+            .tag(Tag::parse(["description", "beta-token"]).unwrap())
+            .tag(Tag::parse(["subject", "gamma-token"]).unwrap())
+            .tag(Tag::parse(["name", "delta-token"]).unwrap())
+            .tag(Tag::identifier("epsilon-token"))
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        assert!(db.save_event(&event).await.unwrap().is_success());
+
+        let events = db.query(Filter::new().search("ALPHA-token")).await.unwrap();
+        assert_eq!(events.len(), 1);
+
+        let events = db.query(Filter::new().search("beta-token")).await.unwrap();
+        assert_eq!(events.len(), 1);
+
+        let events = db.query(Filter::new().search("gamma-token")).await.unwrap();
+        assert_eq!(events.len(), 1);
+
+        let events = db.query(Filter::new().search("delta-token")).await.unwrap();
+        assert_eq!(events.len(), 1);
+
+        let events = db
+            .query(Filter::new().search("epsilon-token"))
+            .await
+            .unwrap();
+        assert_eq!(events.len(), 0);
+
+        let events = db.query(Filter::new().search("")).await.unwrap();
+        assert_eq!(events.len(), 0);
+    }
 }
