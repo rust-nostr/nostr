@@ -54,6 +54,38 @@ impl Default for GossipRelayLimits {
     }
 }
 
+/// Background gossip refresh configuration.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GossipBackgroundRefresh {
+    /// Interval between refresh rounds.
+    pub interval: Duration,
+    /// Maximum number of public keys refreshed per round and list kind.
+    pub max_public_keys_per_round: NonZeroUsize,
+}
+
+impl Default for GossipBackgroundRefresh {
+    fn default() -> Self {
+        Self {
+            interval: Duration::from_secs(5 * 60),
+            max_public_keys_per_round: NonZeroUsize::new(512).unwrap(),
+        }
+    }
+}
+
+impl GossipBackgroundRefresh {
+    /// Set refresh interval. (default: 5 min)
+    pub fn interval(mut self, interval: Duration) -> Self {
+        self.interval = interval;
+        self
+    }
+
+    /// Set max public keys refreshed per round and list kind (default: 512)
+    pub fn max_public_keys_per_round(mut self, max: NonZeroUsize) -> Self {
+        self.max_public_keys_per_round = max;
+        self
+    }
+}
+
 /// Gossip config
 #[derive(Debug, Clone)]
 pub struct GossipConfig {
@@ -69,6 +101,8 @@ pub struct GossipConfig {
     pub fetch_timeout: Duration,
     /// REQ chunks when fetching gossip data
     pub fetch_chunks: usize,
+    /// Background refresh config
+    pub background_refresh: Option<GossipBackgroundRefresh>,
 }
 
 impl Default for GossipConfig {
@@ -80,6 +114,7 @@ impl Default for GossipConfig {
             sync_idle_timeout: Duration::from_secs(10),
             fetch_timeout: Duration::from_secs(10),
             fetch_chunks: 10,
+            background_refresh: Some(GossipBackgroundRefresh::default()),
         }
     }
 }
@@ -118,6 +153,23 @@ impl GossipConfig {
     /// REQ chunks when fetching gossip data
     pub fn fetch_chunks(mut self, chunks: usize) -> Self {
         self.fetch_chunks = chunks;
+        self
+    }
+
+    /// Configure background refresh
+    ///
+    /// The refresher runs periodically and updates a limited number of keys per round,
+    /// combining tracked keys with DB-seen outdated keys.
+    #[inline]
+    pub fn background_refresh(mut self, config: GossipBackgroundRefresh) -> Self {
+        self.background_refresh = Some(config);
+        self
+    }
+
+    /// Disable background refresh.
+    #[inline]
+    pub fn no_background_refresh(mut self) -> Self {
+        self.background_refresh = None;
         self
     }
 }
