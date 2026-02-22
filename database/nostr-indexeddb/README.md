@@ -1,5 +1,7 @@
 # Nostr IndexedDB
 
+> This library is deprecated in favor of [nostr-sqlite](../nostr-sqlite).
+
 This crate implements a storage backend on IndexedDB for web environments.
 
 ## Changelog
