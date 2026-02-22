@@ -264,8 +264,6 @@ impl SyncOptions {
     }
 
     /// Negentropy Sync direction (default: down)
-    ///
-    /// If `true`, perform the set reconciliation on each side.
     #[inline]
     pub fn direction(mut self, direction: SyncDirection) -> Self {
         self.direction = direction;
