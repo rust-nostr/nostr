@@ -49,6 +49,10 @@
 - Remove `timeout` from `WebSocketTransport`
 - Remove `tor` feature (https://github.com/rust-nostr/nostr/pull/1253)
 - Remove `pow-multi-thread`, `all-nips`, `nip03`,`nip04`, `nip06`, `nip44`, `nip47`, `nip49`, `nip57`, `nip59`, `nip96` and `nip98`features (https://github.com/rust-nostr/nostr/pull/1254)
+- Remove `TimeSupplier` (https://github.com/rust-nostr/nostr/pull/1266)
+- Remove `EventBuilder::build_with_ctx` (https://github.com/rust-nostr/nostr/pull/1266)
+- Remove `Event::is_expired_with_supplier` (https://github.com/rust-nostr/nostr/pull/1266)
+- Remove `Timestamp::now_with_supplier` and `Timestamp::tweaked_with_supplier_and_rng` (https://github.com/rust-nostr/nostr/pull/1266)
 
 ### Changed
 

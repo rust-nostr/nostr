@@ -36,10 +36,6 @@ use super::nip01::Coordinate;
 use crate::event::builder::Error as BuilderError;
 use crate::key::Error as KeyError;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use crate::types::time::Instant;
-#[cfg(feature = "rand")]
-use crate::types::time::TimeSupplier;
-#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::SECP256K1;
 use crate::{
     event, util, Event, EventId, JsonUtil, PublicKey, RelayUrl, SecretKey, Tag, TagStandard,
@@ -279,30 +275,22 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
 #[inline]
 #[cfg(all(feature = "std", feature = "os-rng"))]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
-    private_zap_request_with_ctx(
-        &SECP256K1,
-        &mut OsRng.unwrap_err(),
-        &Instant::now(),
-        data,
-        keys,
-    )
+    private_zap_request_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), data, keys)
 }
 
 /// Create **private** zap request
 #[cfg(feature = "rand")]
-pub fn private_zap_request_with_ctx<C, R, T>(
+pub fn private_zap_request_with_ctx<C, R>(
     secp: &Secp256k1<C>,
     rng: &mut R,
-    supplier: &T,
     data: ZapRequestData,
     keys: &Keys,
 ) -> Result<Event, Error>
 where
     C: Signing + Verification,
     R: RngCore + CryptoRng,
-    T: TimeSupplier,
 {
-    let created_at: Timestamp = Timestamp::now_with_supplier(supplier);
+    let created_at: Timestamp = Timestamp::now();
 
     // Create encryption key
     let secret_key: SecretKey =
@@ -315,7 +303,7 @@ where
     }
     let msg: String = EventBuilder::new(Kind::ZapPrivateMessage, &data.message)
         .tags(tags)
-        .sign_with_ctx(secp, rng, supplier, keys)?
+        .sign_with_ctx(secp, rng, keys)?
         .as_json();
     let msg: String = encrypt_private_zap_message(rng, &secret_key, &data.public_key, msg)?;
 
@@ -328,7 +316,7 @@ where
     Ok(EventBuilder::new(Kind::ZapRequest, "")
         .tags(tags)
         .custom_created_at(created_at)
-        .sign_with_ctx(secp, rng, supplier, &private_zap_keys)?)
+        .sign_with_ctx(secp, rng, &private_zap_keys)?)
 }
 
 /// Create NIP57 encryption key for **private** zap

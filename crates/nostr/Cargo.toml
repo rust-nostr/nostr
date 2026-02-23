@@ -32,6 +32,7 @@ std = [
     "serde/std",
     "serde_json/std",
     "unicode-normalization?/std",
+    "universal-time/std",
     "url/std",
 ]
 alloc = [
@@ -83,24 +84,8 @@ secp256k1 = { version = "0.29", default-features = false, features = ["serde"] }
 serde = { workspace = true, default-features = false, features = ["derive"] }
 serde_json.workspace = true
 unicode-normalization = { version = "0.1", default-features = false, optional = true }
+universal-time.workspace = true
 url = { version = "2.5", default-features = false, features = ["serde"] }
-
-# Explicit configuration for `wasm32-unknown-*` targets.
-#
-# NOTE:
-# The `wasm32-unknown-unknown` target can also be used outside a JS runtime,
-# so we should NOT automatically enable JS-specific features (i.e., wasm-bindgen)
-# or JS-dependent crates here.
-#
-# Instead, any JS-specific features must be enabled explicitly by the consuming
-# project (for example, a client intended to run in a browser), such as:
-#
-# getrandom = { version = "*", features = ["wasm_js"] }
-# instant = { version = "*", features = ["wasm-bindgen"] }
-#
-# Only minimal, runtime-agnostic dependencies should be added for this target.
-[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
-instant = "0.1"
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["rustls-tls"] }

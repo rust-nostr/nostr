@@ -15,6 +15,7 @@ use nostr::rand::{Rng, TryRngCore};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{broadcast, oneshot, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
+use universal_time::Instant;
 
 use super::capabilities::{AtomicRelayCapabilities, RelayCapabilities};
 use super::constants::{

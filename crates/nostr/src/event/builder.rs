@@ -297,23 +297,13 @@ impl EventBuilder {
     }
 
     /// Mine PoW using single thread (fallback method)
-    fn mine_pow_single_thread<T>(
-        mut self,
-        supplier: &T,
-        public_key: PublicKey,
-        difficulty: u8,
-    ) -> UnsignedEvent
-    where
-        T: TimeSupplier,
-    {
+    fn mine_pow_single_thread(mut self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
         let mut nonce: u128 = 0;
 
         loop {
             nonce += 1;
 
-            let created_at: Timestamp = self
-                .custom_created_at
-                .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
+            let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
 
             // Check if the nonce satisfies the difficulty requirement
             if let Some(id) = self.check_nonce(&public_key, &created_at, nonce, difficulty) {
@@ -336,15 +326,7 @@ impl EventBuilder {
     /// - thread spawning or coordination fails;
     /// - no valid solution is found by any thread (rare edge case)
     #[cfg(feature = "pow-multi-thread")]
-    fn mine_pow_multi_thread<T>(
-        self,
-        supplier: &T,
-        public_key: PublicKey,
-        difficulty: u8,
-    ) -> UnsignedEvent
-    where
-        T: TimeSupplier,
-    {
+    fn mine_pow_multi_thread(self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
         // Get the number of available CPU cores
         let num_threads = thread::available_parallelism()
             .map(|n| n.get())
@@ -352,7 +334,7 @@ impl EventBuilder {
 
         // Single thread fallback
         if num_threads == 1 {
-            return self.mine_pow_single_thread(supplier, public_key, difficulty);
+            return self.mine_pow_single_thread(public_key, difficulty);
         }
 
         let found: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
@@ -367,9 +349,7 @@ impl EventBuilder {
 
             // Create a timestamp
             // TODO: move this into the thread loop
-            let created_at: Timestamp = self
-                .custom_created_at
-                .unwrap_or_else(|| Timestamp::now_with_supplier(supplier));
+            let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
 
             let handle: JoinHandle<Option<UnsignedEvent>> = thread::spawn(move || {
                 let mut nonce: u128 = thread_id as u128;
@@ -425,17 +405,14 @@ impl EventBuilder {
         }
 
         // Single thread fallback
-        self.mine_pow_single_thread(supplier, public_key, difficulty)
+        self.mine_pow_single_thread(public_key, difficulty)
     }
 
     /// Build an unsigned event
     ///
     /// By default, this method removes any `p` tags that match the author's public key.
     /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
-    pub fn build_with_ctx<T>(mut self, supplier: &T, public_key: PublicKey) -> UnsignedEvent
-    where
-        T: TimeSupplier,
-    {
+    pub fn build(mut self, public_key: PublicKey) -> UnsignedEvent {
         // If self-tagging isn't allowed, discard all `p` tags that match the event author.
         if !self.allow_self_tagging {
             let public_key_hex: String = public_key.to_hex();
@@ -462,11 +439,11 @@ impl EventBuilder {
             Some(difficulty) if difficulty > 0 => {
                 #[cfg(not(feature = "pow-multi-thread"))]
                 {
-                    self.mine_pow_single_thread(supplier, public_key, difficulty)
+                    self.mine_pow_single_thread(public_key, difficulty)
                 }
                 #[cfg(feature = "pow-multi-thread")]
                 {
-                    self.mine_pow_multi_thread(supplier, public_key, difficulty)
+                    self.mine_pow_multi_thread(public_key, difficulty)
                 }
             }
             // No POW difficulty set OR difficulty == 0
@@ -474,9 +451,7 @@ impl EventBuilder {
                 let mut unsigned: UnsignedEvent = UnsignedEvent {
                     id: None,
                     pubkey: public_key,
-                    created_at: self
-                        .custom_created_at
-                        .unwrap_or_else(|| Timestamp::now_with_supplier(supplier)),
+                    created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
                     kind: self.kind,
                     tags: self.tags,
                     content: self.content,
@@ -485,16 +460,6 @@ impl EventBuilder {
                 unsigned
             }
         }
-    }
-
-    /// Build an unsigned event
-    ///
-    /// By default, this method removes any `p` tags that match the author's public key.
-    /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
-    #[inline]
-    #[cfg(feature = "std")]
-    pub fn build(self, pubkey: PublicKey) -> UnsignedEvent {
-        self.build_with_ctx(&Instant::now(), pubkey)
     }
 
     /// Build, sign and return [`Event`]
@@ -518,29 +483,25 @@ impl EventBuilder {
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), &Instant::now(), keys)
+        self.sign_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), keys)
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer
     ///
-    /// Check [`EventBuilder::build_with_ctx`] to learn more.
+    /// Check [`EventBuilder::build`] to learn more.
     #[cfg(feature = "rand")]
-    pub fn sign_with_ctx<C, R, T>(
+    pub fn sign_with_ctx<C, R>(
         self,
         secp: &Secp256k1<C>,
         rng: &mut R,
-        supplier: &T,
         keys: &Keys,
     ) -> Result<Event, Error>
     where
         C: Signing + Verification,
         R: RngCore + CryptoRng,
-        T: TimeSupplier,
     {
         let pubkey: PublicKey = keys.public_key();
-        Ok(self
-            .build_with_ctx(supplier, pubkey)
-            .sign_with_ctx(secp, rng, keys)?)
+        Ok(self.build(pubkey).sign_with_ctx(secp, rng, keys)?)
     }
 
     /// Profile metadata

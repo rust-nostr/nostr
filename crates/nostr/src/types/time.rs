@@ -17,12 +17,7 @@ use core::time::Duration;
 use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::{Rng, RngCore, TryRngCore};
-
-mod supplier;
-
-pub use self::supplier::TimeSupplier;
-#[cfg(feature = "std")]
-pub use self::supplier::{Instant, SystemTime, UNIX_EPOCH};
+use universal_time::{SystemTime, UNIX_EPOCH};
 
 // 2000-03-01 (mod 400 year, immediately after feb29)
 const LEAPOCH: i64 = 11017;
@@ -65,24 +60,12 @@ impl Timestamp {
     }
 
     /// Get UNIX timestamp
-    #[cfg(feature = "std")]
     pub fn now() -> Self {
         let ts: u64 = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .unwrap_or_default()
             .as_secs();
         Self::from_secs(ts)
-    }
-
-    /// Get UNIX timestamp from a specified [`TimeSupplier`]
-    pub fn now_with_supplier<T>(supplier: &T) -> Self
-    where
-        T: TimeSupplier,
-    {
-        let now = supplier.now();
-        let starting_point = supplier.starting_point();
-        let duration = supplier.elapsed_since(now, starting_point);
-        supplier.to_timestamp(duration)
     }
 
     /// Get tweaked UNIX timestamp
@@ -99,12 +82,11 @@ impl Timestamp {
     ///
     /// Remove a random number of seconds from now
     #[cfg(feature = "rand")]
-    pub fn tweaked_with_supplier_and_rng<T, R>(supplier: &T, rng: &mut R, range: Range<u64>) -> Self
+    pub fn tweaked_with_rng<R>(rng: &mut R, range: Range<u64>) -> Self
     where
-        T: TimeSupplier,
         R: RngCore,
     {
-        let mut now: Timestamp = Self::now_with_supplier(supplier);
+        let mut now: Timestamp = Self::now();
         now.tweak_with_rng(rng, range);
         now
     }

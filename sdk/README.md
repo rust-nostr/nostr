@@ -61,6 +61,20 @@ async fn main() -> Result<()> {
 
 More examples can be found in the [examples directory](./examples).
 
+## Universal Time Provider
+
+On `std` builds, `std::time` is used as the default time provider.
+
+When compiling for `no_std` or `wasm*-unknown-unknown` targets, you may encounter the following linker error:
+```text
+error: undefined reference to '__universal_time_provider'
+```
+
+This error indicates that no time provider has been configured for the current target. 
+In such environments, a time source is not available by default and must be supplied manually.
+
+To resolve this, add and initialize a provider using the [universal-time](https://crates.io/crates/universal-time) library.
+
 ## WASM
 
 This crate supports the `wasm32` targets.

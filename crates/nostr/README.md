@@ -81,6 +81,20 @@ The following crate feature flags are available:
 | `nip59`            |   No    | Enable NIP-59: Gift Wrap                                      |
 | `nip60`            |   No    | Enable NIP-60: Cashu Wallets                                  |
 
+## Universal Time Provider
+
+On `std` builds, `std::time` is used as the default time provider.
+
+When compiling for `no_std` or `wasm*-unknown-unknown` targets, you may encounter the following linker error:
+```text
+error: undefined reference to '__universal_time_provider'
+```
+
+This error indicates that no time provider has been configured for the current target.
+In such environments, a time source is not available by default and must be supplied manually.
+
+To resolve this, add and initialize a provider using the [universal-time](https://crates.io/crates/universal-time) library.
+
 ## WASM
 
 This crate supports the `wasm32-unknown-unknown` and `wasm32-wasip2` targets. 
@@ -126,22 +140,6 @@ AR="${LLVM_PATH}/bin/llvm-ar" CC="${LLVM_PATH}/bin/clang" cargo build --target w
 ```
 
 The other platforms should work out of the box.
-
-#### Compiling for a JavaScript environment
-
-If you intend to use this crate **inside a JS runtime** (i.e., browser or Node.js),
-make sure to enable the appropriate features in your own project’s `.cargo/config.toml` and `Cargo.toml` files:
-
-```toml
-# .cargo/config.toml
-[target.wasm32-unknown-unknown]
-rustflags = ['--cfg', 'getrandom_backend="wasm_js"']
-```
-
-```toml
-# Cargo.toml
-instant = { version = "*", features = ["wasm-bindgen"] }
-```
 
 ## Embedded
 

@@ -28,6 +28,7 @@ nostr-gossip.workspace = true
 tokio = { workspace = true, features = ["macros", "sync"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = { workspace = true, features = ["std"] }
+universal-time = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
 nostr = { workspace = true, features = ["all-nips"] }

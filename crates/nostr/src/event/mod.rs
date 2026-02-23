@@ -33,9 +33,6 @@ use crate::nips::nip01::CoordinateBorrow;
 use crate::nips::nip19::{self, Nip19Event, ToBech32};
 use crate::nips::nip21::ToNostrUri;
 #[cfg(feature = "std")]
-use crate::types::time::Instant;
-use crate::types::time::TimeSupplier;
-#[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::{JsonUtil, Metadata, PublicKey, Timestamp};
 
@@ -227,20 +224,7 @@ impl Event {
     #[inline]
     #[cfg(feature = "std")]
     pub fn is_expired(&self) -> bool {
-        let now: Instant = Instant::now();
-        self.is_expired_with_supplier(&now)
-    }
-
-    /// Returns `true` if the event has an expiration tag that is expired.
-    /// If an event has no expiration tag, then it will return `false`.
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-    #[inline]
-    pub fn is_expired_with_supplier<T>(&self, supplier: &T) -> bool
-    where
-        T: TimeSupplier,
-    {
-        let now: Timestamp = Timestamp::now_with_supplier(supplier);
+        let now: Timestamp = Timestamp::now();
         self.is_expired_at(&now)
     }
 
