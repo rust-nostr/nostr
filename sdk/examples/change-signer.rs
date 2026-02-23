@@ -38,14 +38,14 @@ impl NostrSigner for MySignerSwitcher {
     }
 
     fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
-        Box::pin(async move { Ok(self.get().await.get_public_key().await?) })
+        Box::pin(async move { self.get().await.get_public_key().await })
     }
 
     fn sign_event(
         &self,
         unsigned: UnsignedEvent,
     ) -> BoxedFuture<std::result::Result<Event, SignerError>> {
-        Box::pin(async move { Ok(self.get().await.sign_event(unsigned).await?) })
+        Box::pin(async move { self.get().await.sign_event(unsigned).await })
     }
 
     fn nip04_encrypt<'a>(
@@ -53,7 +53,7 @@ impl NostrSigner for MySignerSwitcher {
         public_key: &'a PublicKey,
         content: &'a str,
     ) -> BoxedFuture<'a, std::result::Result<String, SignerError>> {
-        Box::pin(async move { Ok(self.get().await.nip04_encrypt(public_key, content).await?) })
+        Box::pin(async move { self.get().await.nip04_encrypt(public_key, content).await })
     }
 
     fn nip04_decrypt<'a>(
@@ -62,11 +62,10 @@ impl NostrSigner for MySignerSwitcher {
         encrypted_content: &'a str,
     ) -> BoxedFuture<'a, std::result::Result<String, SignerError>> {
         Box::pin(async move {
-            Ok(self
-                .get()
+            self.get()
                 .await
                 .nip04_decrypt(public_key, encrypted_content)
-                .await?)
+                .await
         })
     }
 
@@ -75,7 +74,7 @@ impl NostrSigner for MySignerSwitcher {
         public_key: &'a PublicKey,
         content: &'a str,
     ) -> BoxedFuture<'a, std::result::Result<String, SignerError>> {
-        Box::pin(async move { Ok(self.get().await.nip44_encrypt(public_key, content).await?) })
+        Box::pin(async move { self.get().await.nip44_encrypt(public_key, content).await })
     }
 
     fn nip44_decrypt<'a>(
@@ -83,7 +82,7 @@ impl NostrSigner for MySignerSwitcher {
         public_key: &'a PublicKey,
         payload: &'a str,
     ) -> BoxedFuture<'a, std::result::Result<String, SignerError>> {
-        Box::pin(async move { Ok(self.get().await.nip44_decrypt(public_key, payload).await?) })
+        Box::pin(async move { self.get().await.nip44_decrypt(public_key, payload).await })
     }
 }
 
