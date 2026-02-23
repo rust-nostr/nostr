@@ -257,6 +257,7 @@ impl Client {
                 .pool()
                 .stream_events(
                     targets,
+                    None,
                     Some(self.config().gossip_config.fetch_timeout),
                     ReqExitPolicy::ExitOnEOSE,
                 )
@@ -315,6 +316,7 @@ impl Client {
             .pool()
             .stream_events(
                 targets,
+                None,
                 Some(self.config().gossip_config.fetch_timeout),
                 ReqExitPolicy::ExitOnEOSE,
             )

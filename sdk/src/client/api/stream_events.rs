@@ -3,7 +3,7 @@ use std::future::IntoFuture;
 use std::time::Duration;
 
 use nostr::types::url::RelayUrl;
-use nostr::{Event, Filter};
+use nostr::{Event, Filter, SubscriptionId};
 
 use super::req_target::ReqTarget;
 use super::util::build_targets;
@@ -24,6 +24,7 @@ pub struct StreamEvents<'client, 'url> {
     // --------------------------------------------------
     client: &'client Client,
     target: ReqTarget<'url>,
+    id: Option<SubscriptionId>,
     timeout: Option<Duration>,
     policy: ReqExitPolicy,
 }
@@ -33,9 +34,17 @@ impl<'client, 'url> StreamEvents<'client, 'url> {
         Self {
             client,
             target,
+            id: None,
             timeout: None,
             policy: ReqExitPolicy::ExitOnEOSE,
         }
+    }
+
+    /// Set a specific subscription ID
+    #[inline]
+    pub fn with_id(mut self, id: SubscriptionId) -> Self {
+        self.id = Some(id);
+        self
     }
 
     /// Set a timeout
@@ -72,7 +81,7 @@ where
             Ok(self
                 .client
                 .pool()
-                .stream_events(targets, self.timeout, self.policy)
+                .stream_events(targets, self.id, self.timeout, self.policy)
                 .await?)
         })
     }

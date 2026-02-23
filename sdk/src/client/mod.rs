@@ -775,6 +775,7 @@ impl Client {
     /// To customize this behavior, the returned [`StreamEvents`] can be
     /// configured before awaiting it:
     ///
+    /// - [`StreamEvents::with_id`]: use a specific subscription ID
     /// - [`StreamEvents::timeout`]: set a maximum duration for the stream
     /// - [`StreamEvents::policy`]: control when the stream terminates
     ///

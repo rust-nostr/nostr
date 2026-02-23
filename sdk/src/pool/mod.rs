@@ -729,6 +729,7 @@ impl RelayPool {
     pub(crate) async fn stream_events(
         &self,
         filters: HashMap<RelayUrl, Vec<Filter>>,
+        id: Option<SubscriptionId>,
         timeout: Option<Duration>,
         policy: ReqExitPolicy,
     ) -> Result<BoxedStream<(RelayUrl, Result<Event, relay::Error>)>, Error> {
@@ -747,6 +748,9 @@ impl RelayPool {
         let mut urls: Vec<RelayUrl> = Vec::with_capacity(filters.len());
         let mut futures = Vec::with_capacity(filters.len());
 
+        // Get or generate a subscription ID
+        let id: SubscriptionId = id.unwrap_or_else(SubscriptionId::generate);
+
         for (url, filter) in filters {
             // Try to get the relay
             let relay: &Relay = relays
@@ -760,6 +764,7 @@ impl RelayPool {
             futures.push(
                 relay
                     .stream_events(filter)
+                    .with_id(id.clone())
                     .maybe_timeout(timeout)
                     .policy(policy)
                     .into_future(),

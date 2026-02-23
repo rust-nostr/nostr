@@ -22,6 +22,7 @@ type EventStream = BoxedStream<Result<Event, Error>>;
 pub struct StreamEvents<'relay> {
     relay: &'relay Relay,
     filters: Vec<Filter>,
+    id: Option<SubscriptionId>,
     timeout: Option<Duration>,
     policy: ReqExitPolicy,
 }
@@ -31,9 +32,17 @@ impl<'relay> StreamEvents<'relay> {
         Self {
             relay,
             filters,
+            id: None,
             timeout: None,
             policy: ReqExitPolicy::ExitOnEOSE,
         }
+    }
+
+    /// Set a specific subscription ID
+    #[inline]
+    pub fn with_id(mut self, id: SubscriptionId) -> Self {
+        self.id = Some(id);
+        self
     }
 
     #[inline]
@@ -73,8 +82,10 @@ impl<'relay> IntoFuture for StreamEvents<'relay> {
                 .exit_policy(self.policy)
                 .timeout(self.timeout);
 
+            // Get or generate a subscription ID
+            let id: SubscriptionId = self.id.unwrap_or_else(SubscriptionId::generate);
+
             // Subscribe
-            let id: SubscriptionId = SubscriptionId::generate();
             subscribe_auto_closing(self.relay, id, self.filters, opts, Some(tx)).await?;
 
             Ok(Box::pin(SubscriptionActivityEventStream::new(rx)) as EventStream)
