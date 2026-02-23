@@ -6,11 +6,10 @@
 //! Event
 
 use alloc::borrow::Cow;
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, Secp256k1, Verification};
@@ -314,35 +313,6 @@ impl TryFrom<&Event> for Metadata {
 
     fn try_from(event: &Event) -> Result<Self, Self::Error> {
         Metadata::from_json(&event.content)
-    }
-}
-
-/// Supported event keys
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-enum EventKey {
-    Id,
-    PubKey,
-    CreatedAt,
-    Kind,
-    Tags,
-    Content,
-    Sig,
-}
-
-impl FromStr for EventKey {
-    type Err = Error;
-
-    fn from_str(key: &str) -> Result<Self, Self::Err> {
-        match key {
-            ID => Ok(Self::Id),
-            PUBKEY => Ok(Self::PubKey),
-            CREATED_AT => Ok(Self::CreatedAt),
-            KIND => Ok(Self::Kind),
-            TAGS => Ok(Self::Tags),
-            CONTENT => Ok(Self::Content),
-            SIG => Ok(Self::Sig),
-            k => Err(Error::UnknownKey(k.to_string())),
-        }
     }
 }
 
