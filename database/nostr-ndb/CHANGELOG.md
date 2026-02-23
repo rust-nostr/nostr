@@ -28,6 +28,7 @@
 ### Changed
 
 - Respect the filter limit (https://github.com/rust-nostr/nostr/pull/1200)
+- Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 
 ### Added
 

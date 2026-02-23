@@ -9,10 +9,9 @@ use alloc::string::String;
 use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
-
-// TODO: replace with LazyLock when MSRV will be >= 1.80.0
 #[cfg(feature = "std")]
-use once_cell::sync::Lazy;
+use std::sync::LazyLock;
+
 #[cfg(feature = "os-rng")]
 use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
@@ -67,7 +66,7 @@ pub fn generate_shared_key(
 
 /// Secp256k1 global context
 #[cfg(feature = "std")]
-pub static SECP256K1: Lazy<Secp256k1<All>> = Lazy::new(|| {
+pub static SECP256K1: LazyLock<Secp256k1<All>> = LazyLock::new(|| {
     #[cfg(feature = "os-rng")]
     let mut ctx: Secp256k1<All> = Secp256k1::new();
     #[cfg(not(feature = "os-rng"))]

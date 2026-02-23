@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Changed
+
+- Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
+
 ## v0.44.0 - 2025/11/06
 
 No notable changes in this release.

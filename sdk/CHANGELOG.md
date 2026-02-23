@@ -67,6 +67,7 @@
 - Redesign `Client::unsubscribe_all` and `Relay::unsubscribe_all` APIs (https://github.com/rust-nostr/nostr/pull/1239)
 - Redesign `Client::send_msg` and `Relay::send_msg` APIs (https://github.com/rust-nostr/nostr/pull/1240)
 - Redesign `Client::notifications` and `Relay::notifications` APIs (https://github.com/rust-nostr/nostr/pull/1245)
+- Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 
 ### Added
 

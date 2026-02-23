@@ -33,6 +33,7 @@
 
 - Increase TTL for lists to 24 hours
 - Replace `Mutex` with `RwLock` for better concurrency (https://github.com/rust-nostr/nostr/pull/1126)
+- Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 
 ### Added
 

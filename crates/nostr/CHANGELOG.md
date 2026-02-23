@@ -41,6 +41,8 @@
 - Prevent overflow in `Kind` addition
 - Refinements for `wasm32` targets (https://github.com/rust-nostr/nostr/pull/1164 and https://github.com/rust-nostr/nostr/pull/1167)
 - Make `Kind::from_u16` and `Kind::as_u16` const (https://github.com/rust-nostr/nostr/pull/1136)
+- Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
+- `RelayUrl::is_local_addr` now works on `no_std` builds (https://github.com/rust-nostr/nostr/pull/1267)
 
 ### Added
 
@@ -62,6 +64,7 @@
 - Remove unnecessary `#[cfg(feature = "std")]` from `UnsignedEvent::sign` method
 - Remove `url-fork` dependency (https://github.com/rust-nostr/nostr/pull/1179)
 - Remove nip47 `multi_*` methods following spec cleanup (https://github.com/nostr-protocol/nips/pull/2210)
+- Remove `once_cell` dependency (https://github.com/rust-nostr/nostr/pull/1267)
 
 ### Fixed
 

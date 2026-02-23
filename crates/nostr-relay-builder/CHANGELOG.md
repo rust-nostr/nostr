@@ -37,6 +37,7 @@
 
 - Rename all `RelayBuilder*` structs and enums to `LocalRelayBuilder*` (https://github.com/rust-nostr/nostr/pull/1145)
 - Move write policy checks between mode and ephemeral kind checks (https://github.com/rust-nostr/nostr/pull/1155)
+- Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 
 ### Added
 

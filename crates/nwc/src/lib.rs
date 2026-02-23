@@ -8,7 +8,6 @@
 #![warn(missing_docs)]
 #![warn(clippy::large_futures)]
 #![warn(rustdoc::bare_urls)]
-#![allow(unknown_lints)] // TODO: remove when MSRV >= 1.72.0, required for `clippy::arc_with_non_send_sync`
 #![allow(clippy::arc_with_non_send_sync)]
 
 use std::collections::HashMap;

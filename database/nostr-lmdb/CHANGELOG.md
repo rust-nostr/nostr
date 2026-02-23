@@ -33,6 +33,7 @@
 
 - Rename `NostrLMDB` to `NostrLmdb`
 - Spawn blocking task for read operations (https://github.com/rust-nostr/nostr/pull/1141)
+- Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 
 ### Added
 

@@ -34,6 +34,7 @@
 ### Changed
 
 - Extend `Backend` variants (https://github.com/rust-nostr/nostr/pull/1138)
+- Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 
 ### Added
 

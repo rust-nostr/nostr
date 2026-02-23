@@ -9,9 +9,8 @@ use alloc::string::String;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::net::IpAddr;
 use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::net::IpAddr; // TODO: use `core::net` when MSRV will be at 1.77.0
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub use url::*;
@@ -164,7 +163,6 @@ impl RelayUrl {
     ///
     /// IPv6 address ranges:
     /// * `::1`
-    #[cfg(feature = "std")]
     pub fn is_local_addr(&self) -> bool {
         if let Some(host) = self.url.host_str() {
             if let Ok(addr) = IpAddr::from_str(host) {
@@ -435,7 +433,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "std")]
     fn test_is_local() {
         // Local
         let url = RelayUrl::parse("ws://127.0.0.1:7777").unwrap();
