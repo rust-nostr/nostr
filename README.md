@@ -13,7 +13,6 @@ The project is split up into several crates:
     - [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
     - [**nostr-ndb**](./database/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
     - [**nostr-sqlite**](./database/nostr-sqlite): SQLite storage backend
-    - [**nostr-indexeddb**](./database/nostr-indexeddb): IndexedDB storage backend
 - [**nostr-gossip**](./gossip/nostr-gossip): Gossip traits
     - [**nostr-gossip-memory**](./gossip/nostr-gossip-memory): In-memory gossip database
     - [**nostr-gossip-sqlite**](./gossip/nostr-gossip-sqlite): SQLite storage for gossip

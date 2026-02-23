@@ -8,7 +8,6 @@ members = [
     # Nostr Database
     "database/nostr-database",
     "database/nostr-database-test-suite",
-    "database/nostr-indexeddb",
     "database/nostr-lmdb",
     "database/nostr-ndb",
     "database/nostr-sqlite",

@@ -50,7 +50,6 @@ jobs:
           - nostr-gossip-sqlite
           - nostr-gossip-test-suite
           - nostr-lmdb
-          - nostr-indexeddb --target wasm32-unknown-unknown
           - nostr-ndb
           - nostr-sqlite
           - nostr-keyring

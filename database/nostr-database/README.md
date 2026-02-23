@@ -8,10 +8,10 @@ This library contains the `NostrDatabase` and `NostrDatabaseExt` traits. You can
 
 ## Default backends
 
-* Memory (RAM, both native and web), available in this library
-* LMDB (native), available at [`nostr-lmdb`](https://crates.io/crates/nostr-lmdb)
-* [nostrdb](https://github.com/damus-io/nostrdb) (native), available at [`nostr-ndb`](https://crates.io/crates/nostr-ndb)
-* IndexedDB (web), available at [`nostr-indexeddb`](https://crates.io/crates/nostr-indexeddb)
+- Memory (RAM, both native and web), available in this library
+- LMDB (native), available at [`nostr-lmdb`](https://crates.io/crates/nostr-lmdb)
+- SQLite (both native and web), available at [`nostr-sqlite`](https://crates.io/crates/nostr-sqlite)
+- [nostrdb](https://github.com/damus-io/nostrdb) (native), available at [`nostr-ndb`](https://crates.io/crates/nostr-ndb)
 
 ## Crate Feature Flags
 
