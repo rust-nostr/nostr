@@ -459,17 +459,17 @@ impl BrowserSignerProxy {
 }
 
 impl NostrSigner for BrowserSignerProxy {
-    fn backend(&self) -> SignerBackend {
+    fn backend(&self) -> SignerBackend<'_> {
         SignerBackend::BrowserExtension
     }
 
     #[inline]
-    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         Box::pin(async move { self._get_public_key().await.map_err(SignerError::backend) })
     }
 
     #[inline]
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
         Box::pin(async move {
             self._sign_event(unsigned)
                 .await

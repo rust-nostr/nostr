@@ -516,7 +516,7 @@ impl MemoryStore {
         })
     }
 
-    fn internal_query(&self, filter: Filter) -> InternalQueryResult {
+    fn internal_query(&self, filter: Filter) -> InternalQueryResult<'_> {
         if filter.is_empty() {
             return InternalQueryResult::All;
         }

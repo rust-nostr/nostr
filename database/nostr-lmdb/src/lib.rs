@@ -187,18 +187,18 @@ impl NostrDatabase for NostrLmdb {
         })
     }
 
-    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
         Box::pin(async move { self.db.count(filter).await.map_err(DatabaseError::backend) })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
         Box::pin(async move { self.db.query(filter).await.map_err(DatabaseError::backend) })
     }
 
     fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
         Box::pin(async move {
             self.db
                 .negentropy_items(filter)
@@ -207,12 +207,12 @@ impl NostrDatabase for NostrLmdb {
         })
     }
 
-    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn delete(&self, filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move { self.db.delete(filter).await.map_err(DatabaseError::backend) })
     }
 
     #[inline]
-    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move { self.db.wipe().await.map_err(DatabaseError::backend) })
     }
 }

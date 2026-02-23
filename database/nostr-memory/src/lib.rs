@@ -112,14 +112,14 @@ impl NostrDatabase for MemoryDatabase {
         })
     }
 
-    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
         Box::pin(async move {
             let store = self.store.read().await;
             Ok(store.count(filter))
         })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
         Box::pin(async move {
             let store = self.store.read().await;
             let mut events = Events::new(&filter);
@@ -131,14 +131,14 @@ impl NostrDatabase for MemoryDatabase {
     fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
         Box::pin(async move {
             let store = self.store.read().await;
             Ok(store.negentropy_items(filter))
         })
     }
 
-    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn delete(&self, filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move {
             let mut store = self.store.write().await;
             store.delete(filter);
@@ -146,7 +146,7 @@ impl NostrDatabase for MemoryDatabase {
         })
     }
 
-    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move {
             let mut store = self.store.write().await;
             store.clear();

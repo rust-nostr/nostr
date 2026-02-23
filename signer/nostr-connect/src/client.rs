@@ -73,7 +73,7 @@ impl NostrConnect {
     /// struct MyAuthUrlHandler;
     ///
     /// impl AuthUrlHandler for MyAuthUrlHandler {
-    ///     fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<Result<()>> {
+    ///     fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<'_, Result<()>> {
     ///         Box::pin(async move {
     ///         webbrowser::open(auth_url.as_str())?;
     ///             Ok(())
@@ -139,7 +139,7 @@ impl NostrConnect {
         Ok(remote_signer_public_key)
     }
 
-    async fn subscribe(&self) -> Result<BoxStream<ClientNotification>, Error> {
+    async fn subscribe(&self) -> Result<BoxStream<'_, ClientNotification>, Error> {
         let public_key: PublicKey = self.client_keys.public_key();
 
         let filter = Filter::new()
@@ -407,7 +407,7 @@ async fn get_remote_signer_public_key(
 /// Nostr Connect auth_url handler
 pub trait AuthUrlHandler: fmt::Debug + Send + Sync {
     /// Handle `auth_url` message
-    fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<Result<()>>;
+    fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<'_, Result<()>>;
 }
 
 #[doc(hidden)]
@@ -425,11 +425,11 @@ where
 }
 
 impl NostrSigner for NostrConnect {
-    fn backend(&self) -> SignerBackend {
+    fn backend(&self) -> SignerBackend<'_> {
         SignerBackend::NostrConnect
     }
 
-    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         Box::pin(async move {
             self._get_public_key()
                 .await
@@ -438,7 +438,7 @@ impl NostrSigner for NostrConnect {
         })
     }
 
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
         Box::pin(async move {
             self._sign_event(unsigned)
                 .await

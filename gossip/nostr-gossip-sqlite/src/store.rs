@@ -620,7 +620,7 @@ impl NostrGossip for NostrGossipSqlite {
         &self,
         list: GossipListKind,
         limit: NonZeroUsize,
-    ) -> BoxedFuture<Result<BTreeSet<OutdatedPublicKey>, GossipError>> {
+    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, GossipError>> {
         Box::pin(async move {
             self.get_outdated_public_keys(list, limit)
                 .await

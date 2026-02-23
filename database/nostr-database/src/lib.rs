@@ -209,16 +209,16 @@ pub trait NostrDatabase: Any + Debug + Send + Sync {
     /// Count the number of events found with [`Filter`].
     ///
     /// Use `Filter::new()` or `Filter::default()` to count all events.
-    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>>;
+    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>>;
 
     /// Query stored events.
-    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>>;
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>>;
 
     /// Get `negentropy` items
     fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
         Box::pin(async move {
             let events: Events = self.query(filter).await?;
             Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
@@ -226,8 +226,8 @@ pub trait NostrDatabase: Any + Debug + Send + Sync {
     }
 
     /// Delete all events that match the [Filter]
-    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>>;
+    fn delete(&self, filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>>;
 
     /// Wipe all data
-    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>>;
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>>;
 }

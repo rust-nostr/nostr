@@ -221,16 +221,16 @@ impl<'e> From<&'e Event> for CommentTarget<'_> {
 }
 
 /// Extract NIP22 root target
-pub fn extract_root(event: &Event) -> Option<CommentTarget> {
+pub fn extract_root(event: &Event) -> Option<CommentTarget<'_>> {
     extract_data(event, true)
 }
 
 /// Extract NIP22 parent target
-pub fn extract_parent(event: &Event) -> Option<CommentTarget> {
+pub fn extract_parent(event: &Event) -> Option<CommentTarget<'_>> {
     extract_data(event, false)
 }
 
-fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget> {
+fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget<'_>> {
     if event.kind != Kind::Comment {
         return None;
     }

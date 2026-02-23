@@ -33,18 +33,18 @@ impl MySignerSwitcher {
 }
 
 impl NostrSigner for MySignerSwitcher {
-    fn backend(&self) -> SignerBackend {
+    fn backend(&self) -> SignerBackend<'_> {
         SignerBackend::Custom(Cow::Borrowed("custom"))
     }
 
-    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         Box::pin(async move { self.get().await.get_public_key().await })
     }
 
     fn sign_event(
         &self,
         unsigned: UnsignedEvent,
-    ) -> BoxedFuture<std::result::Result<Event, SignerError>> {
+    ) -> BoxedFuture<'_, std::result::Result<Event, SignerError>> {
         Box::pin(async move { self.get().await.sign_event(unsigned).await })
     }
 

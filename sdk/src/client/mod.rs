@@ -259,7 +259,7 @@ impl Client {
     /// - [`GetRelays::with_capabilities`]: return relays matching specific
     ///   [`RelayCapabilities`]
     #[inline]
-    pub fn relays(&self) -> GetRelays {
+    pub fn relays(&self) -> GetRelays<'_> {
         GetRelays::new(self)
     }
 
@@ -515,7 +515,7 @@ impl Client {
     ///
     /// - [`Connect::and_wait`]: wait for relays connections at most for the specified `timeout`
     #[inline]
-    pub fn connect(&self) -> Connect {
+    pub fn connect(&self) -> Connect<'_> {
         Connect::new(self)
     }
 
@@ -562,7 +562,7 @@ impl Client {
     ///
     /// - [`TryConnect::timeout`]: set a maximum timeout
     #[inline]
-    pub fn try_connect(&self) -> TryConnect {
+    pub fn try_connect(&self) -> TryConnect<'_> {
         TryConnect::new(self)
     }
 
@@ -775,7 +775,7 @@ impl Client {
 
     /// Unsubscribe from all REQs
     #[inline]
-    pub fn unsubscribe_all(&self) -> UnsubscribeAll {
+    pub fn unsubscribe_all(&self) -> UnsubscribeAll<'_> {
         UnsubscribeAll::new(self)
     }
 

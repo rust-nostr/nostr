@@ -224,7 +224,7 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         &self,
         list: GossipListKind,
         limit: NonZeroUsize,
-    ) -> BoxedFuture<Result<BTreeSet<OutdatedPublicKey>, GossipError>>;
+    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, GossipError>>;
 
     /// Get the best relays for a [`PublicKey`].
     fn get_best_relays<'a>(

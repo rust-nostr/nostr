@@ -10,7 +10,7 @@ use nostr_connect::prelude::*;
 struct MyAuthUrlHandler;
 
 impl AuthUrlHandler for MyAuthUrlHandler {
-    fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<Result<()>> {
+    fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<'_, Result<()>> {
         Box::pin(async move {
             println!("Opening auth url: {auth_url}");
             webbrowser::open(auth_url.as_str())?;

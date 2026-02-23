@@ -257,11 +257,11 @@ impl NostrSigner for BrowserSigner {
         SignerBackend::BrowserExtension
     }
 
-    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         Box::pin(async move { self._get_public_key().await.map_err(SignerError::backend) })
     }
 
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
         Box::pin(async move {
             self._sign_event(unsigned)
                 .await

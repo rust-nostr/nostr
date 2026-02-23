@@ -331,7 +331,7 @@ impl Relay {
     /// By default, in case of disconnection (after a first successful connection),
     /// the connection task will automatically attempt to reconnect.
     /// This behavior can be disabled by changing [`RelayOptions::reconnect`] option.
-    pub fn try_connect(&self) -> TryConnect {
+    pub fn try_connect(&self) -> TryConnect<'_> {
         TryConnect::new(self)
     }
 
@@ -369,7 +369,7 @@ impl Relay {
 
     /// Subscribe to filters
     #[inline]
-    pub fn subscribe<F>(&self, filters: F) -> Subscribe
+    pub fn subscribe<F>(&self, filters: F) -> Subscribe<'_>
     where
         F: Into<Vec<Filter>>,
     {
@@ -386,13 +386,13 @@ impl Relay {
 
     /// Unsubscribe from all subscriptions
     #[inline]
-    pub fn unsubscribe_all(&self) -> UnsubscribeAll {
+    pub fn unsubscribe_all(&self) -> UnsubscribeAll<'_> {
         UnsubscribeAll::new(self)
     }
 
     /// Stream events from relay
     #[inline]
-    pub fn stream_events<F>(&self, filters: F) -> StreamEvents
+    pub fn stream_events<F>(&self, filters: F) -> StreamEvents<'_>
     where
         F: Into<Vec<Filter>>,
     {
@@ -401,7 +401,7 @@ impl Relay {
 
     /// Fetch events
     #[inline]
-    pub fn fetch_events<F>(&self, filters: F) -> FetchEvents
+    pub fn fetch_events<F>(&self, filters: F) -> FetchEvents<'_>
     where
         F: Into<Vec<Filter>>,
     {
@@ -448,7 +448,7 @@ impl Relay {
 
     /// Sync events with relays (negentropy reconciliation)
     #[inline]
-    pub fn sync(&self, filter: Filter) -> SyncEvents {
+    pub fn sync(&self, filter: Filter) -> SyncEvents<'_> {
         SyncEvents::new(self, filter)
     }
 }

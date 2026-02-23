@@ -135,7 +135,7 @@ impl NostrDatabase for NdbDatabase {
         })
     }
 
-    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
             let res: Vec<QueryResult> = ndb_query(&self.db, &txn, &filter)?;
@@ -143,7 +143,7 @@ impl NostrDatabase for NdbDatabase {
         })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
             let mut events: Events = Events::new(&filter);
@@ -160,7 +160,7 @@ impl NostrDatabase for NdbDatabase {
     fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
         Box::pin(async move {
             let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
             let res: Vec<QueryResult> = ndb_query(&self.db, &txn, &filter)?;
@@ -171,12 +171,12 @@ impl NostrDatabase for NdbDatabase {
         })
     }
 
-    fn delete(&self, _filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn delete(&self, _filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 
     #[inline]
-    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 }

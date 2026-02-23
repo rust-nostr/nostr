@@ -419,7 +419,7 @@ impl NostrGossip for NostrGossipMemory {
         &self,
         list: GossipListKind,
         limit: NonZeroUsize,
-    ) -> BoxedFuture<Result<BTreeSet<OutdatedPublicKey>, GossipError>> {
+    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, GossipError>> {
         Box::pin(async move { Ok(self.collect_outdated_public_keys(list, limit).await) })
     }
 

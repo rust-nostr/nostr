@@ -16,7 +16,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     fn metadata(
         &self,
         public_key: PublicKey,
-    ) -> BoxedFuture<Result<Option<Metadata>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Option<Metadata>, DatabaseError>> {
         Box::pin(async move {
             let filter = Filter::new()
                 .author(public_key)
@@ -36,7 +36,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     fn contacts_public_keys(
         &self,
         public_key: PublicKey,
-    ) -> BoxedFuture<Result<HashSet<PublicKey>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<HashSet<PublicKey>, DatabaseError>> {
         Box::pin(async move {
             let filter = Filter::new()
                 .author(public_key)
@@ -54,7 +54,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     fn contacts(
         &self,
         public_key: PublicKey,
-    ) -> BoxedFuture<Result<BTreeSet<Profile>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<BTreeSet<Profile>, DatabaseError>> {
         Box::pin(async move {
             let filter = Filter::new()
                 .author(public_key)
@@ -91,7 +91,10 @@ pub trait NostrDatabaseExt: NostrDatabase {
     /// Get relays list for [PublicKey]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    fn relay_list(&self, public_key: PublicKey) -> BoxedFuture<Result<RelaysMap, DatabaseError>> {
+    fn relay_list(
+        &self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'_, Result<RelaysMap, DatabaseError>> {
         Box::pin(async move {
             // Query
             let filter: Filter = Filter::default()

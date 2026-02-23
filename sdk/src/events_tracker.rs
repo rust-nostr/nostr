@@ -70,26 +70,26 @@ impl NostrDatabase for MemoryEventsTracker {
         Box::pin(async move { Ok(None) })
     }
 
-    fn count(&self, _filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+    fn count(&self, _filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
         Box::pin(async move { Ok(0) })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
         Box::pin(async move { Ok(Events::new(&filter)) })
     }
 
     fn negentropy_items(
         &self,
         _filter: Filter,
-    ) -> BoxedFuture<Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
         Box::pin(async move { Ok(Vec::new()) })
     }
 
-    fn delete(&self, _filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn delete(&self, _filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move { Err(DatabaseError::NotSupported) })
     }
 
-    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move {
             let mut seen_event_ids = self.tracker.write().await;
             seen_event_ids.clear();

@@ -259,7 +259,7 @@ impl Event {
     /// Get the coordinate of this event
     ///
     /// Return a coordinate only if the event kind is `replaceable` or `addressable`.
-    pub fn coordinate(&self) -> Option<CoordinateBorrow> {
+    pub fn coordinate(&self) -> Option<CoordinateBorrow<'_>> {
         if self.kind.is_replaceable() || self.kind.is_addressable() {
             return Some(CoordinateBorrow {
                 kind: &self.kind,

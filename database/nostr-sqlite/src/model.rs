@@ -56,7 +56,7 @@ pub(crate) struct EventTagDb<'a> {
     pub tag_value: &'a str,
 }
 
-pub(crate) fn extract_tags(event: &Event) -> impl Iterator<Item = EventTagDb> {
+pub(crate) fn extract_tags(event: &Event) -> impl Iterator<Item = EventTagDb<'_>> {
     event.tags.iter().filter_map(|tag| {
         if let (Some(kind), Some(content)) = (tag.single_letter_tag(), tag.content()) {
             Some(EventTagDb {

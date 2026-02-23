@@ -278,15 +278,15 @@ impl FromStr for Keys {
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 impl NostrSigner for Keys {
-    fn backend(&self) -> SignerBackend {
+    fn backend(&self) -> SignerBackend<'_> {
         SignerBackend::Keys
     }
 
-    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         Box::pin(async { Ok(self.public_key) })
     }
 
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
         Box::pin(async { unsigned.sign_with_keys(self).map_err(SignerError::backend) })
     }
 

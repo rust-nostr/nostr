@@ -554,7 +554,7 @@ pub mod event_fbs {
     /// catch every error, or be maximally performant. For the
     /// previous, unchecked, behavior use
     /// `root_as_event_unchecked`.
-    pub fn root_as_event(buf: &[u8]) -> Result<Event, flatbuffers::InvalidFlatbuffer> {
+    pub fn root_as_event(buf: &[u8]) -> Result<Event<'_>, flatbuffers::InvalidFlatbuffer> {
         flatbuffers::root::<Event>(buf)
     }
     #[inline]
@@ -566,7 +566,7 @@ pub mod event_fbs {
     /// `size_prefixed_root_as_event_unchecked`.
     pub fn size_prefixed_root_as_event(
         buf: &[u8],
-    ) -> Result<Event, flatbuffers::InvalidFlatbuffer> {
+    ) -> Result<Event<'_>, flatbuffers::InvalidFlatbuffer> {
         flatbuffers::size_prefixed_root::<Event>(buf)
     }
     #[inline]
@@ -599,14 +599,14 @@ pub mod event_fbs {
     /// Assumes, without verification, that a buffer of bytes contains a Event and returns it.
     /// # Safety
     /// Callers must trust the given bytes do indeed contain a valid `Event`.
-    pub unsafe fn root_as_event_unchecked(buf: &[u8]) -> Event {
+    pub unsafe fn root_as_event_unchecked(buf: &[u8]) -> Event<'_> {
         flatbuffers::root_unchecked::<Event>(buf)
     }
     #[inline]
     /// Assumes, without verification, that a buffer of bytes contains a size prefixed Event and returns it.
     /// # Safety
     /// Callers must trust the given bytes do indeed contain a valid size prefixed `Event`.
-    pub unsafe fn size_prefixed_root_as_event_unchecked(buf: &[u8]) -> Event {
+    pub unsafe fn size_prefixed_root_as_event_unchecked(buf: &[u8]) -> Event<'_> {
         flatbuffers::size_prefixed_root_unchecked::<Event>(buf)
     }
     #[inline]

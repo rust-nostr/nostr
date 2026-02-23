@@ -608,7 +608,7 @@ impl TagStandard {
     }
 
     /// Get tag kind
-    pub fn kind(&self) -> TagKind {
+    pub fn kind(&self) -> TagKind<'_> {
         match self {
             Self::Event { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::E,

@@ -517,7 +517,7 @@ impl NostrDatabase for NostrSqlite {
         })
     }
 
-    fn count(&self, filter: Filter) -> BoxedFuture<Result<usize, DatabaseError>> {
+    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
         Box::pin(async move {
             let filter = with_limit(filter, EVENTS_QUERY_LIMIT);
             self.pool
@@ -533,7 +533,7 @@ impl NostrDatabase for NostrSqlite {
         })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
         Box::pin(async move {
             let filter = with_limit(filter, EVENTS_QUERY_LIMIT);
             self.pool
@@ -558,7 +558,7 @@ impl NostrDatabase for NostrSqlite {
 
     // TODO: impl negentropy_items deserializing only ids and timestamps
 
-    fn delete(&self, filter: Filter) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn delete(&self, filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move {
             self.pool
                 .interact(move |conn| {
@@ -571,7 +571,7 @@ impl NostrDatabase for NostrSqlite {
         })
     }
 
-    fn wipe(&self) -> BoxedFuture<Result<(), DatabaseError>> {
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>> {
         Box::pin(async move {
             self.pool
                 .interact(move |conn| {

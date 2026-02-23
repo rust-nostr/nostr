@@ -100,13 +100,13 @@ pub enum SignerBackend<'a> {
 /// Nostr signer abstraction
 pub trait NostrSigner: Any + Debug + Send + Sync {
     /// Signer backend
-    fn backend(&self) -> SignerBackend;
+    fn backend(&self) -> SignerBackend<'_>;
 
     /// Get signer public key
-    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>>;
+    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>>;
 
     /// Sign an unsigned event
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>>;
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>>;
 
     /// NIP04 encrypt (deprecate and unsecure)
     fn nip04_encrypt<'a>(
@@ -139,17 +139,17 @@ pub trait NostrSigner: Any + Debug + Send + Sync {
 
 impl NostrSigner for Arc<dyn NostrSigner> {
     #[inline]
-    fn backend(&self) -> SignerBackend {
+    fn backend(&self) -> SignerBackend<'_> {
         self.as_ref().backend()
     }
 
     #[inline]
-    fn get_public_key(&self) -> BoxedFuture<Result<PublicKey, SignerError>> {
+    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         self.as_ref().get_public_key()
     }
 
     #[inline]
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<Result<Event, SignerError>> {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
         self.as_ref().sign_event(unsigned)
     }
 

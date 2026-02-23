@@ -134,7 +134,7 @@ impl Tag {
 
     /// Get tag kind
     #[inline]
-    pub fn kind(&self) -> TagKind {
+    pub fn kind(&self) -> TagKind<'_> {
         // SAFETY: `buf` must not be empty, checked during parsing.
         let key: &str = &self.buf[0];
         TagKind::from(key)
