@@ -5,6 +5,7 @@
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
+use std::num::NonZeroUsize;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
@@ -13,6 +14,7 @@ use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
 use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
+use nostr_memory::prelude::*;
 use nostr_sdk::client::SyncSummary;
 use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
@@ -62,9 +64,7 @@ impl AtomicDestroyer for InnerLocalRelay {
 }
 
 impl InnerLocalRelay {
-    pub fn new(builder: LocalRelayBuilder) -> Self {
-        // TODO: check if configured memory database with events option disabled
-
+    pub fn new(builder: LocalRelayBuilder) -> Result<Self, Error> {
         // Get IP
         let ip: IpAddr = builder.addr.unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
 
@@ -79,11 +79,19 @@ impl InnerLocalRelay {
 
         let max_connections: usize = builder.max_connections.unwrap_or(Semaphore::MAX_PERMITS);
 
+        let database: Arc<dyn NostrDatabase> = match builder.database {
+            Some(database) => database,
+            None => {
+                let max: NonZeroUsize = NonZeroUsize::new(75_000).unwrap();
+                Arc::new(MemoryDatabase::bounded(max).map_err(DatabaseError::backend)?)
+            }
+        };
+
         // Compose relay
-        Self {
+        Ok(Self {
             ip,
             addr,
-            database: builder.database,
+            database,
             shutdown: Arc::new(Notify::new()),
             new_event,
             mode: builder.mode,
@@ -99,7 +107,7 @@ impl InnerLocalRelay {
             nip42: builder.nip42,
             test: builder.test,
             running: Arc::new(AtomicBool::new(false)),
-        }
+        })
     }
 
     async fn addr(&self) -> &SocketAddr {

@@ -8,6 +8,7 @@
 #![doc = include_str!("../README.md")]
 
 pub mod client;
+mod events_tracker;
 mod future;
 pub mod monitor;
 pub mod policy;

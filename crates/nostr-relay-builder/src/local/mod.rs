@@ -27,19 +27,12 @@ pub struct LocalRelay {
     inner: AtomicDestructor<InnerLocalRelay>,
 }
 
-impl Default for LocalRelay {
-    #[inline]
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl LocalRelay {
     /// Create a new local relay with the default configuration.
     ///
     /// Use [`LocalRelay::builder`] for customizing it!
     #[inline]
-    pub fn new() -> Self {
+    pub fn new() -> Result<Self, Error> {
         Self::builder().build()
     }
 
@@ -50,10 +43,10 @@ impl LocalRelay {
     }
 
     #[inline]
-    pub(super) fn from_builder(builder: LocalRelayBuilder) -> Self {
-        Self {
-            inner: AtomicDestructor::new(InnerLocalRelay::new(builder)),
-        }
+    pub(super) fn from_builder(builder: LocalRelayBuilder) -> Result<Self, Error> {
+        Ok(Self {
+            inner: AtomicDestructor::new(InnerLocalRelay::new(builder)?),
+        })
     }
 
     /// Run the local relay

@@ -1,24 +1,15 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
-//! Nostr Event Store Helper
-//!
-//! Used for the in-memory database.
-
+use core::iter;
+use core::num::NonZeroUsize;
+use core::ops::Deref;
+use std::cmp::Ordering;
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::iter;
-use std::num::NonZeroUsize;
-use std::ops::Deref;
 use std::sync::Arc;
 
 use btreecap::{BTreeCapSet, Capacity, Insert, OverCapacityPolicy};
 use nostr::filter::MatchEventOptions;
-use nostr::nips::nip01::{Coordinate, CoordinateBorrow};
+use nostr::nips::nip01::Coordinate;
 use nostr::{Alphabet, Event, EventId, Filter, Kind, PublicKey, SingleLetterTag, Timestamp};
-use tokio::sync::{OwnedRwLockReadGuard, RwLock};
-
-use crate::{Events, RejectedReason, SaveEventStatus};
+use nostr_database::prelude::*;
 
 type DatabaseEvent = Arc<Event>;
 
@@ -135,7 +126,7 @@ impl From<Filter> for QueryPattern {
 
 /// Database Event Result
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct DatabaseEventResult {
+pub(crate) struct DatabaseEventResult {
     /// Status
     pub status: SaveEventStatus,
     /// List of events that should be removed from database
@@ -147,9 +138,8 @@ enum InternalQueryResult<'a> {
     Set(BTreeSet<&'a DatabaseEvent>),
 }
 
-/// Database helper
 #[derive(Debug, Clone, Default)]
-struct InternalDatabaseHelper {
+pub(crate) struct MemoryStore {
     /// Sorted events
     events: BTreeCapSet<DatabaseEvent>,
     /// Events by ID
@@ -161,38 +151,19 @@ struct InternalDatabaseHelper {
     deleted_coordinates: HashMap<Coordinate, Timestamp>,
 }
 
-impl InternalDatabaseHelper {
+impl MemoryStore {
+    #[inline]
+    pub fn unbounded() -> Self {
+        Self::default()
+    }
+
     pub fn bounded(size: NonZeroUsize) -> Self {
-        let mut helper: InternalDatabaseHelper = InternalDatabaseHelper::default();
+        let mut helper: MemoryStore = MemoryStore::default();
         helper.events.change_capacity(Capacity::Bounded {
             max: size,
             policy: OverCapacityPolicy::Last,
         });
         helper
-    }
-
-    // Bulk load
-    //
-    // NOT CHANGE `events` ARG! Processing events in ASC it's much more performant
-    pub fn bulk_load(&mut self, events: BTreeSet<Event>) -> HashSet<EventId> {
-        let now: Timestamp = Timestamp::now();
-        events
-            .into_iter()
-            .rev() // Lookup ID: EVENT_ORD_IMPL
-            .filter(|e| !e.kind.is_ephemeral())
-            .map(|event| self.internal_index_event(&event, &now))
-            .flat_map(|res| res.to_discard)
-            .collect()
-    }
-
-    /// Bulk import
-    pub fn bulk_import(&mut self, events: BTreeSet<Event>) -> impl Iterator<Item = Event> + '_ {
-        let now: Timestamp = Timestamp::now();
-        events
-            .into_iter()
-            .rev() // Lookup ID: EVENT_ORD_IMPL
-            .filter(|e| !e.is_expired() && !e.kind.is_ephemeral())
-            .filter(move |event| self.internal_index_event(event, &now).status.is_success())
     }
 
     fn internal_index_event(&mut self, event: &Event, now: &Timestamp) -> DatabaseEventResult {
@@ -235,7 +206,7 @@ impl InternalDatabaseHelper {
         if kind.is_replaceable() {
             let params: QueryByKindAndAuthorParams = QueryByKindAndAuthorParams::new(kind, author);
             for ev in self.internal_query_by_kind_and_author(params) {
-                if ev.created_at > created_at || ev.id == event.id {
+                if has_event_been_replaced(ev, event) || ev.id == event.id {
                     status = SaveEventStatus::Rejected(RejectedReason::Replaced);
                 } else {
                     to_discard.insert(ev.id);
@@ -248,13 +219,13 @@ impl InternalDatabaseHelper {
                         Coordinate::new(kind, author).identifier(identifier);
 
                     // Check if coordinate was deleted
-                    if self.has_coordinate_been_deleted(&coordinate, now) {
+                    if self.has_coordinate_been_deleted(&coordinate, &event.created_at) {
                         status = SaveEventStatus::Rejected(RejectedReason::Deleted);
                     } else {
                         let params: QueryByParamReplaceable =
                             QueryByParamReplaceable::new(kind, author, identifier.to_string());
                         if let Some(ev) = self.internal_query_param_replaceable(params) {
-                            if ev.created_at > created_at || ev.id == event.id {
+                            if has_event_been_replaced(ev, event) || ev.id == event.id {
                                 status = SaveEventStatus::Rejected(RejectedReason::Replaced);
                             } else {
                                 to_discard.insert(ev.id);
@@ -637,16 +608,14 @@ impl InternalDatabaseHelper {
         }
     }
 
-    pub fn delete(&mut self, filter: Filter) -> Option<HashSet<EventId>> {
+    pub fn delete(&mut self, filter: Filter) {
         match self.internal_query(filter) {
             InternalQueryResult::All => {
                 self.clear();
-                None
             }
             InternalQueryResult::Set(set) => {
                 let ids: HashSet<EventId> = set.into_iter().map(|ev| ev.id).collect();
                 self.discard_events(&ids);
-                Some(ids)
             }
         }
     }
@@ -663,361 +632,15 @@ impl InternalDatabaseHelper {
     }
 }
 
-/// Database helper transaction
-pub struct QueryTransaction {
-    guard: OwnedRwLockReadGuard<InternalDatabaseHelper>,
-}
-
-/// Database Indexes
-#[derive(Debug, Clone, Default)]
-pub struct DatabaseHelper {
-    inner: Arc<RwLock<InternalDatabaseHelper>>,
-}
-
-impl DatabaseHelper {
-    /// Unbounded database helper
-    #[inline]
-    pub fn unbounded() -> Self {
-        Self::default()
-    }
-
-    /// Bounded database helper
-    #[inline]
-    pub fn bounded(max: NonZeroUsize) -> Self {
-        Self {
-            inner: Arc::new(RwLock::new(InternalDatabaseHelper::bounded(max))),
+/// Check if the new event should be rejected because an existing one has precedence.
+#[inline]
+fn has_event_been_replaced(stored: &Event, incoming: &Event) -> bool {
+    match stored.created_at.cmp(&incoming.created_at) {
+        Ordering::Greater => true,
+        Ordering::Equal => {
+            // NIP-01: when timestamps are equal, keep the event with the lowest ID.
+            stored.id < incoming.id
         }
-    }
-
-    /// Query transaction
-    #[inline]
-    pub async fn qtxn(&self) -> QueryTransaction {
-        QueryTransaction {
-            guard: self.inner.clone().read_owned().await,
-        }
-    }
-
-    /// Bulk index
-    pub async fn bulk_load(&self, events: BTreeSet<Event>) -> HashSet<EventId> {
-        let mut inner = self.inner.write().await;
-        inner.bulk_load(events)
-    }
-
-    /// Bulk import
-    ///
-    /// Take a set of [Event], index them and return **only** the ones that must be stored into the database
-    pub async fn bulk_import(&self, events: BTreeSet<Event>) -> BTreeSet<Event> {
-        let mut inner = self.inner.write().await;
-        inner.bulk_import(events).collect()
-    }
-
-    /// Index [`Event`]
-    ///
-    /// **This method assumes that [`Event`] was already verified**
-    pub async fn index_event(&self, event: &Event) -> DatabaseEventResult {
-        let mut inner = self.inner.write().await;
-        inner.index_event(event)
-    }
-
-    /// Get [Event] by ID
-    pub async fn event_by_id(&self, id: &EventId) -> Option<Event> {
-        let inner = self.inner.read().await;
-        inner.event_by_id(id).cloned()
-    }
-
-    /// Check if event exists
-    pub async fn has_event(&self, id: &EventId) -> bool {
-        let inner = self.inner.read().await;
-        inner.has_event(id)
-    }
-
-    /// Query
-    pub async fn query(&self, filter: Filter) -> Events {
-        let inner = self.inner.read().await;
-        let mut events = Events::new(&filter);
-        events.extend(inner.query(filter).cloned());
-        events
-    }
-
-    /// Query
-    pub fn fast_query<'a>(
-        &self,
-        txn: &'a QueryTransaction,
-        filter: Filter,
-    ) -> Box<dyn Iterator<Item = &'a Event> + 'a> {
-        txn.guard.query(filter)
-    }
-
-    /// Count events
-    pub async fn count(&self, filter: Filter) -> usize {
-        let inner = self.inner.read().await;
-        inner.count(filter)
-    }
-
-    /// Get negentropy items
-    pub async fn negentropy_items(&self, filter: Filter) -> Vec<(EventId, Timestamp)> {
-        let inner = self.inner.read().await;
-        inner.negentropy_items(filter)
-    }
-
-    /// Check if an event with [`EventId`] has been deleted
-    pub async fn has_event_id_been_deleted(&self, event_id: &EventId) -> bool {
-        let inner = self.inner.read().await;
-        inner.has_event_id_been_deleted(event_id)
-    }
-
-    /// Check if event with [`Coordinate`] has been deleted before [`Timestamp`]
-    pub async fn has_coordinate_been_deleted<'a>(
-        &self,
-        coordinate: &'a CoordinateBorrow<'a>,
-        timestamp: &Timestamp,
-    ) -> bool {
-        let inner = self.inner.read().await;
-        inner.has_coordinate_been_deleted(&coordinate.into_owned(), timestamp)
-    }
-
-    /// Delete all events that match [Filter]
-    ///
-    /// If return `None`, means that all events must be deleted from DB
-    pub async fn delete(&self, filter: Filter) -> Option<HashSet<EventId>> {
-        let mut inner = self.inner.write().await;
-        inner.delete(filter)
-    }
-
-    /// Clear helper
-    pub async fn clear(&self) {
-        let mut inner = self.inner.write().await;
-        inner.clear();
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use nostr::{FromBech32, JsonUtil, Keys, SecretKey};
-
-    use super::*;
-
-    const SECRET_KEY_A: &str = "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99"; // aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4
-    const SECRET_KEY_B: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85"; // 79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3
-
-    const EVENTS: [&str; 14] = [
-        r#"{"id":"b7b1fb52ad8461a03e949820ae29a9ea07e35bcd79c95c4b59b0254944f62805","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644581,"kind":1,"tags":[],"content":"Text note","sig":"ed73a8a4e7c26cd797a7b875c634d9ecb6958c57733305fed23b978109d0411d21b3e182cb67c8ad750884e30ca383b509382ae6187b36e76ee76e6a142c4284"}"#,
-        r#"{"id":"7296747d91c53f1d71778ef3e12d18b66d494a41f688ef244d518abf37c959b6","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644586,"kind":32121,"tags":[["d","id-1"]],"content":"Empty 1","sig":"8848989a8e808f7315e950f871b231c1dff7752048f8957d4a541881d2005506c30e85c7dd74dab022b3e01329c88e69c9d5d55d961759272a738d150b7dbefc"}"#,
-        r#"{"id":"ec6ea04ba483871062d79f78927df7979f67545b53f552e47626cb1105590442","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644591,"kind":32122,"tags":[["d","id-1"]],"content":"Empty 2","sig":"89946113a97484850fe35fefdb9120df847b305de1216dae566616fe453565e8707a4da7e68843b560fa22a932f81fc8db2b5a2acb4dcfd3caba9a91320aac92"}"#,
-        r#"{"id":"63b8b829aa31a2de870c3a713541658fcc0187be93af2032ec2ca039befd3f70","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644596,"kind":32122,"tags":[["d","id-2"]],"content":"","sig":"607b1a67bef57e48d17df4e145718d10b9df51831d1272c149f2ab5ad4993ae723f10a81be2403ae21b2793c8ed4c129e8b031e8b240c6c90c9e6d32f62d26ff"}"#,
-        r#"{"id":"6fe9119c7db13ae13e8ecfcdd2e5bf98e2940ba56a2ce0c3e8fba3d88cd8e69d","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1704644601,"kind":32122,"tags":[["d","id-3"]],"content":"","sig":"d07146547a726fc9b4ec8d67bbbe690347d43dadfe5d9890a428626d38c617c52e6945f2b7144c4e0c51d1e2b0be020614a5cadc9c0256b2e28069b70d9fc26e"}"#,
-        r#"{"id":"a82f6ebfc709f4e7c7971e6bf738e30a3bc112cfdb21336054711e6779fd49ef","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1704644606,"kind":32122,"tags":[["d","id-1"]],"content":"","sig":"96d3349b42ed637712b4d07f037457ab6e9180d58857df77eb5fa27ff1fd68445c72122ec53870831ada8a4d9a0b484435f80d3ff21a862238da7a723a0d073c"}"#,
-        r#"{"id":"8ab0cb1beceeb68f080ec11a3920b8cc491ecc7ec5250405e88691d733185832","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644611,"kind":32122,"tags":[["d","id-1"]],"content":"Test","sig":"49153b482d7110e2538eb48005f1149622247479b1c0057d902df931d5cea105869deeae908e4e3b903e3140632dc780b3f10344805eab77bb54fb79c4e4359d"}"#,
-        r#"{"id":"63dc49a8f3278a2de8dc0138939de56d392b8eb7a18c627e4d78789e2b0b09f2","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1704644616,"kind":5,"tags":[["a","32122:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:"]],"content":"","sig":"977e54e5d57d1fbb83615d3a870037d9eb5182a679ca8357523bbf032580689cf481f76c88c7027034cfaf567ba9d9fe25fc8cd334139a0117ad5cf9fe325eef"}"#,
-        r#"{"id":"6975ace0f3d66967f330d4758fbbf45517d41130e2639b54ca5142f37757c9eb","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704644621,"kind":5,"tags":[["a","32122:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:id-2"]],"content":"","sig":"9bb09e4759899d86e447c3fa1be83905fe2eda74a5068a909965ac14fcdabaed64edaeb732154dab734ca41f2fc4d63687870e6f8e56e3d9e180e4a2dd6fb2d2"}"#,
-        r#"{"id":"33f5b4e6a38e107638c20f4536db35191d4b8651ba5a2cefec983b9ec2d65084","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704645586,"kind":0,"tags":[],"content":"{\"name\":\"Key A\"}","sig":"285d090f45a6adcae717b33771149f7840a8c27fb29025d63f1ab8d95614034a54e9f4f29cee9527c4c93321a7ebff287387b7a19ba8e6f764512a40e7120429"}"#,
-        r#"{"id":"90a761aec9b5b60b399a76826141f529db17466deac85696a17e4a243aa271f9","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704645606,"kind":0,"tags":[],"content":"{\"name\":\"key-a\",\"display_name\":\"Key A\",\"lud16\":\"keya@ln.address\"}","sig":"ec8f49d4c722b7ccae102d49befff08e62db775e5da43ef51b25c47dfdd6a09dc7519310a3a63cbdb6ec6b3250e6f19518eb47be604edeb598d16cdc071d3dbc"}"#,
-        r#"{"id":"a295422c636d3532875b75739e8dae3cdb4dd2679c6e4994c9a39c7ebf8bc620","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1704646569,"kind":5,"tags":[["e","90a761aec9b5b60b399a76826141f529db17466deac85696a17e4a243aa271f9"]],"content":"","sig":"d4dc8368a4ad27eef63cacf667345aadd9617001537497108234fc1686d546c949cbb58e007a4d4b632c65ea135af4fbd7a089cc60ab89b6901f5c3fc6a47b29"}"#,
-        r#"{"id":"999e3e270100d7e1eaa98fcfab4a98274872c1f2dfdab024f32e42a5a12d5b5e","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1704646606,"kind":5,"tags":[["e","90a761aec9b5b60b399a76826141f529db17466deac85696a17e4a243aa271f9"]],"content":"","sig":"4f3a33fd52784cea7ca8428fd35d94d65049712e9aa11a70b1a16a1fcd761c7b7e27afac325728b1c00dfa11e33e78b2efd0430a7e4b28f4ede5b579b3f32614"}"#,
-        r#"{"id":"99a022e6d61c4e39c147d08a2be943b664e8030c0049325555ac1766429c2832","pubkey":"79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3","created_at":1705241093,"kind":30333,"tags":[["d","multi-id"],["p","aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4"]],"content":"Multi-tags","sig":"0abfb2b696a7ed7c9e8e3bf7743686190f3f1b3d4045b72833ab6187c254f7ed278d289d52dfac3de28be861c1471421d9b1bfb5877413cbc81c84f63207a826"}"#,
-    ];
-
-    const REPLACEABLE_EVENT_1: &str = r#"{"id":"f06d755821e56fe9e25373d6bd142979ebdca0063bb0f10a95a95baf41bb5419","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1707478309,"kind":0,"tags":[],"content":"{\"name\":\"Test 1\"}","sig":"a095d9cf4f26794e6421445c0d1c4ada8273ad79a9809aaa20c566fc8d679b57f09889121050853c47be9222106abad0215705a80723f002fd47616ff6ba7bb9"}"#;
-    const REPLACEABLE_EVENT_2: &str = r#"{"id":"e0899bedc802a836c331282eddf712600fea8e00123b541e25a81aa6a4669b4a","pubkey":"aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4","created_at":1707478348,"kind":0,"tags":[],"content":"{\"name\":\"Test 2\"}","sig":"ca1192ac72530010a895b4d76943bf373696a6969911c486c835995122cd59a46988026e8c0ad8322bc3f5942ecd633fc903e93c0460c9a186243ab1f1597a9c"}"#;
-
-    #[tokio::test]
-    async fn test_database_indexes() {
-        // Keys
-        let keys_a = Keys::new(SecretKey::from_bech32(SECRET_KEY_A).unwrap());
-        let keys_b = Keys::new(SecretKey::from_bech32(SECRET_KEY_B).unwrap());
-
-        let indexes = DatabaseHelper::unbounded();
-
-        // Build indexes
-        let mut events: BTreeSet<Event> = BTreeSet::new();
-        for event in EVENTS.into_iter() {
-            let event = Event::from_json(event).unwrap();
-            events.insert(event);
-        }
-        indexes.bulk_load(events).await;
-
-        // Test expected output
-        let expected_output = vec![
-            Event::from_json(EVENTS[13]).unwrap(),
-            Event::from_json(EVENTS[12]).unwrap(),
-            // Event 11 is invalid deletion
-            // Event 10 deleted by event 12
-            // Event 9 replaced by event 10
-            Event::from_json(EVENTS[8]).unwrap(),
-            // Event 7 is invalid deletion
-            Event::from_json(EVENTS[6]).unwrap(),
-            Event::from_json(EVENTS[5]).unwrap(),
-            Event::from_json(EVENTS[4]).unwrap(),
-            // Event 3 deleted by Event 8
-            // Event 2 replaced by Event 6
-            Event::from_json(EVENTS[1]).unwrap(),
-            Event::from_json(EVENTS[0]).unwrap(),
-        ];
-        assert_eq!(indexes.query(Filter::new()).await.to_vec(), expected_output);
-        assert_eq!(indexes.count(Filter::new()).await, 8);
-
-        // Test get previously deleted replaceable event (check if was deleted by indexes)
-        assert!(indexes
-            .query(
-                Filter::new()
-                    .kind(Kind::Metadata)
-                    .author(keys_a.public_key())
-            )
-            .await
-            .is_empty());
-
-        // Test get previously deleted param. replaceable event (check if was deleted by indexes)
-        assert!(indexes
-            .query(
-                Filter::new()
-                    .kind(Kind::Custom(32122))
-                    .author(keys_a.public_key())
-                    .identifier("id-2")
-            )
-            .await
-            .is_empty());
-
-        // Test get param replaceable events WITHOUT using indexes (identifier not passed)
-        assert_eq!(
-            indexes
-                .query(
-                    Filter::new()
-                        .kind(Kind::Custom(32122))
-                        .author(keys_b.public_key())
-                )
-                .await
-                .to_vec(),
-            vec![
-                Event::from_json(EVENTS[5]).unwrap(),
-                Event::from_json(EVENTS[4]).unwrap(),
-            ]
-        );
-
-        // Test get param replaceable events using indexes
-        assert_eq!(
-            indexes
-                .query(
-                    Filter::new()
-                        .kind(Kind::Custom(32122))
-                        .author(keys_b.public_key())
-                        .identifier("id-3")
-                )
-                .await
-                .to_vec(),
-            vec![Event::from_json(EVENTS[4]).unwrap()]
-        );
-
-        assert_eq!(
-            indexes
-                .query(Filter::new().author(keys_a.public_key()))
-                .await
-                .to_vec(),
-            vec![
-                Event::from_json(EVENTS[12]).unwrap(),
-                Event::from_json(EVENTS[8]).unwrap(),
-                Event::from_json(EVENTS[6]).unwrap(),
-                Event::from_json(EVENTS[1]).unwrap(),
-                Event::from_json(EVENTS[0]).unwrap(),
-            ]
-        );
-
-        assert_eq!(
-            indexes
-                .query(
-                    Filter::new()
-                        .author(keys_a.public_key())
-                        .kinds([Kind::TextNote, Kind::Custom(32121)])
-                )
-                .await
-                .to_vec(),
-            vec![
-                Event::from_json(EVENTS[1]).unwrap(),
-                Event::from_json(EVENTS[0]).unwrap(),
-            ]
-        );
-
-        assert_eq!(
-            indexes
-                .query(
-                    Filter::new()
-                        .authors([keys_a.public_key(), keys_b.public_key()])
-                        .kinds([Kind::TextNote, Kind::Custom(32121)])
-                )
-                .await
-                .to_vec(),
-            vec![
-                Event::from_json(EVENTS[1]).unwrap(),
-                Event::from_json(EVENTS[0]).unwrap(),
-            ]
-        );
-
-        // Test get param replaceable events using identifier
-        assert_eq!(
-            indexes
-                .query(Filter::new().identifier("id-1"))
-                .await
-                .to_vec(),
-            vec![
-                Event::from_json(EVENTS[6]).unwrap(),
-                Event::from_json(EVENTS[5]).unwrap(),
-                Event::from_json(EVENTS[1]).unwrap(),
-            ]
-        );
-
-        // Test get param replaceable events with multiple tags using identifier
-        assert_eq!(
-            indexes
-                .query(Filter::new().identifier("multi-id"))
-                .await
-                .to_vec(),
-            vec![Event::from_json(EVENTS[13]).unwrap()]
-        );
-        // As above but by using kind and pubkey
-        assert_eq!(
-            indexes
-                .query(
-                    Filter::new()
-                        .pubkey(keys_a.public_key())
-                        .kind(Kind::Custom(30333))
-                        .limit(1)
-                )
-                .await
-                .to_vec(),
-            vec![Event::from_json(EVENTS[13]).unwrap()]
-        );
-
-        // Test add new replaceable event (metadata)
-        let first_ev_metadata = Event::from_json(REPLACEABLE_EVENT_1).unwrap();
-        let res = indexes.index_event(&first_ev_metadata).await;
-        assert!(res.status.is_success());
-        assert!(res.to_discard.is_empty());
-        assert_eq!(
-            indexes
-                .query(
-                    Filter::new()
-                        .kind(Kind::Metadata)
-                        .author(keys_a.public_key())
-                )
-                .await
-                .to_vec(),
-            vec![first_ev_metadata.clone()]
-        );
-
-        // Test add replace metadata
-        let ev = Event::from_json(REPLACEABLE_EVENT_2).unwrap();
-        let res = indexes.index_event(&ev).await;
-        assert!(res.status.is_success());
-        assert!(res.to_discard.contains(&first_ev_metadata.id));
-        assert_eq!(
-            indexes
-                .query(
-                    Filter::new()
-                        .kind(Kind::Metadata)
-                        .author(keys_a.public_key())
-                )
-                .await
-                .to_vec(),
-            vec![ev]
-        );
+        Ordering::Less => false,
     }
 }

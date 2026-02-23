@@ -34,6 +34,7 @@ nostr = { workspace = true, features = ["all-nips"] }
 nostr-connect.workspace = true
 nostr-lmdb.workspace = true
 nostr-ndb.workspace = true
+nostr-memory.workspace = true
 nostr-gossip-memory.workspace = true
 nostr-relay-builder.workspace = true
 tokio = { workspace = true, features = ["macros", "rt"] }

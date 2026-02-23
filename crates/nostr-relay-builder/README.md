@@ -26,7 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             max_reqs: 128,
             notes_per_minute: 30,
         })
-        .build();
+        .build()?;
 
     // Start the relay.
     relay.run().await?;

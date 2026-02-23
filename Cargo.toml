@@ -9,6 +9,7 @@ members = [
     "database/nostr-database",
     "database/nostr-database-test-suite",
     "database/nostr-lmdb",
+    "database/nostr-memory",
     "database/nostr-ndb",
     "database/nostr-sqlite",
 
@@ -42,6 +43,7 @@ async-utility = "0.3"
 async-wsocket = {  git = "https://github.com/shadowylab/async-wsocket", rev = "0fed6c9c6aec7393ee0e9cf3933d76914ab427d3" }
 atomic-destructor = { version = "0.3", default-features = false }
 base64 = { version = "0.22", default-features = false }
+btreecap = "0.1"
 clap = "=4.4.18"
 hex = { version = "0.4", default-features = false }
 lru = { version = "0.16", default-features = false }
@@ -50,6 +52,7 @@ nostr = { version = "0.44", path = "./crates/nostr", default-features = false }
 nostr-connect = { version = "0.44", path = "./signer/nostr-connect", default-features = false }
 nostr-database = { version = "0.44", path = "./database/nostr-database", default-features = false }
 nostr-database-test-suite = { path = "./database/nostr-database-test-suite" }
+nostr-memory = { version = "0.44", path = "./database/nostr-memory", default-features = false }
 nostr-gossip = { version = "0.44", path = "./gossip/nostr-gossip", default-features = false }
 nostr-gossip-memory = { version = "0.44", path = "./gossip/nostr-gossip-memory", default-features = false }
 nostr-gossip-sqlite = { version = "0.44", path = "./gossip/nostr-gossip-sqlite", default-features = false }

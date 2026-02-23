@@ -9,7 +9,8 @@ The project is split up into several crates:
     - [**nostr-browser-signer**](./signer/nostr-browser-signer): Nostr Browser signer implementation (NIP-07)
     - [**nostr-browser-signer-proxy**](./signer/nostr-browser-signer-proxy): Proxy for using the Nostr Browser signer (NIP-07) in native applications
     - [**nostr-connect**](./signer/nostr-connect): Nostr Connect (NIP-46) 
-- [**nostr-database**](./database/nostr-database): Events database abstraction and in-memory implementation
+- [**nostr-database**](./database/nostr-database): Events database traits
+    - [**nostr-memory**](./database/nostr-memory): In-memory events database
     - [**nostr-lmdb**](./database/nostr-lmdb): LMDB storage backend
     - [**nostr-ndb**](./database/nostr-ndb): [nostrdb](https://github.com/damus-io/nostrdb) storage backend
     - [**nostr-sqlite**](./database/nostr-sqlite): SQLite storage backend

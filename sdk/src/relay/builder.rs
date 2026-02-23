@@ -4,10 +4,11 @@ use std::sync::Arc;
 
 use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr::RelayUrl;
-use nostr_database::{IntoNostrDatabase, MemoryDatabase, NostrDatabase};
+use nostr_database::{IntoNostrDatabase, NostrDatabase};
 
 use super::options::RelayOptions;
 use super::{Relay, RelayCapabilities};
+use crate::events_tracker::MemoryEventsTracker;
 use crate::policy::AdmitPolicy;
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
 
@@ -38,7 +39,7 @@ impl RelayBuilder {
             url,
             websocket_transport: Arc::new(DefaultWebsocketTransport),
             signer: None,
-            database: Arc::new(MemoryDatabase::default()),
+            database: Arc::new(MemoryEventsTracker::default()),
             admit_policy: None,
             capabilities: RelayCapabilities::default(),
             opts: RelayOptions::default(),

@@ -66,7 +66,7 @@ async fn main() -> Result<()> {
     let relay = LocalRelay::builder()
         .write_policy(accept_profile_data)
         .query_policy(low_author_limit)
-        .build();
+        .build()?;
 
     relay.run().await?;
 

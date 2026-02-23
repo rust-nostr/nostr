@@ -11,5 +11,4 @@
 pub use nostr::prelude::*;
 
 pub use crate::ext::*;
-pub use crate::memory::{self, *};
 pub use crate::*;

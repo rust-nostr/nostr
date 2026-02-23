@@ -616,8 +616,10 @@ impl<'relay> IntoFuture for SyncEvents<'relay> {
 #[cfg(test)]
 mod tests {
     use std::collections::{HashMap, HashSet};
+    use std::sync::Arc;
     use std::time::Duration;
 
+    use nostr_memory::prelude::*;
     use nostr_relay_builder::prelude::*;
 
     use super::*;
@@ -630,10 +632,7 @@ mod tests {
         let url = mock.url().await;
 
         // Database
-        let database = MemoryDatabase::with_opts(MemoryDatabaseOptions {
-            events: true,
-            max_events: None,
-        });
+        let database = Arc::new(MemoryDatabase::unbounded().unwrap());
 
         // Build events to store in the local database
         let local_events = vec![

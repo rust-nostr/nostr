@@ -1,8 +1,8 @@
 [package]
-name = "nostr-database"
+name = "nostr-memory"
 version = "0.44.0"
 edition = "2021"
-description = "Events database trait for nostr apps."
+description = "Nostr in-memory events database implementation"
 authors.workspace = true
 homepage.workspace = true
 repository.workspace = true
@@ -15,14 +15,11 @@ keywords = ["nostr", "database"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
-[features]
-default = []
-flatbuf = ["dep:flatbuffers"]
-
 [dependencies]
 btreecap.workspace = true
-flatbuffers = { version = "25.12", optional = true }
 nostr = { workspace = true, features = ["std"] }
+nostr-database.workspace = true
+tokio = { workspace = true, features = ["sync"] }
 
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }
+[dev-dependencies]
+nostr-database-test-suite.workspace = true

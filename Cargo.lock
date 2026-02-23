@@ -1570,9 +1570,7 @@ version = "0.44.0"
 dependencies = [
  "btreecap",
  "flatbuffers 25.12.19",
- "lru",
  "nostr",
- "tokio",
 ]
 
 [[package]]
@@ -1661,6 +1659,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nostr-memory"
+version = "0.44.0"
+dependencies = [
+ "btreecap",
+ "nostr",
+ "nostr-database",
+ "nostr-database-test-suite",
+ "tokio",
+]
+
+[[package]]
 name = "nostr-ndb"
 version = "0.44.0"
 dependencies = [
@@ -1698,6 +1707,7 @@ dependencies = [
  "nostr",
  "nostr-database",
  "nostr-lmdb",
+ "nostr-memory",
  "nostr-sdk",
  "tokio",
  "tracing",
@@ -1720,6 +1730,7 @@ dependencies = [
  "nostr-gossip",
  "nostr-gossip-memory",
  "nostr-lmdb",
+ "nostr-memory",
  "nostr-ndb",
  "nostr-relay-builder",
  "tokio",

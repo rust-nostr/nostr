@@ -23,6 +23,7 @@ hex = { workspace = true, features = ["std"] }
 negentropy = { workspace = true, features = ["std"] }
 nostr = { workspace = true, default-features = false, features = ["std", "rand"] }
 nostr-database.workspace = true
+nostr-memory.workspace = true
 nostr-sdk.workspace = true
 tokio = { workspace = true, features = ["macros", "net", "sync"] }
 tracing.workspace = true

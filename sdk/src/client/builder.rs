@@ -13,11 +13,11 @@ use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use async_wsocket::ConnectionMode;
 use nostr::signer::{IntoNostrSigner, NostrSigner};
-use nostr_database::memory::MemoryDatabase;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
 use nostr_gossip::{GossipAllowedRelays, IntoNostrGossip, NostrGossip};
 
 use crate::client::Client;
+use crate::events_tracker::MemoryEventsTracker;
 use crate::monitor::Monitor;
 use crate::policy::AdmitPolicy;
 use crate::prelude::RelayLimits;
@@ -170,7 +170,7 @@ impl Default for ClientBuilder {
             signer: None,
             websocket_transport: Arc::new(DefaultWebsocketTransport),
             admit_policy: None,
-            database: Arc::new(MemoryDatabase::default()),
+            database: Arc::new(MemoryEventsTracker::default()),
             gossip: None,
             gossip_config: GossipConfig::default(),
             monitor: None,

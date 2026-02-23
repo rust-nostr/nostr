@@ -45,6 +45,7 @@ jobs:
           - nostr-http-file-storage
           - nostr-database
           - nostr-database-test-suite
+          - nostr-memory
           - nostr-gossip
           - nostr-gossip-memory
           - nostr-gossip-sqlite

@@ -26,8 +26,6 @@ mod error;
 pub mod ext;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuffers;
-mod helper;
-pub mod memory;
 pub mod prelude;
 pub mod profile;
 
@@ -35,8 +33,6 @@ pub use self::collections::events::Events;
 pub use self::error::DatabaseError;
 #[cfg(feature = "flatbuf")]
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
-pub use self::helper::{DatabaseEventResult, DatabaseHelper};
-pub use self::memory::{MemoryDatabase, MemoryDatabaseOptions};
 pub use self::profile::Profile;
 
 /// NIP65 relays map

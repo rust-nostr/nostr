@@ -7,12 +7,12 @@
 use std::borrow::Cow;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::Duration;
 
 use nostr_database::prelude::*;
 
+use crate::error::Error;
 use crate::local::LocalRelay;
 
 /// Rate limit
@@ -208,7 +208,7 @@ pub struct LocalRelayBuilder {
     /// Port
     pub(crate) port: Option<u16>,
     /// Database
-    pub(crate) database: Arc<dyn NostrDatabase>,
+    pub(crate) database: Option<Arc<dyn NostrDatabase>>,
     /// Mode
     pub(crate) mode: LocalRelayBuilderMode,
     /// Rate limit
@@ -241,10 +241,7 @@ impl Default for LocalRelayBuilder {
         Self {
             addr: None,
             port: None,
-            database: Arc::new(MemoryDatabase::with_opts(MemoryDatabaseOptions {
-                events: true,
-                max_events: Some(NonZeroUsize::new(75_000).unwrap()),
-            })),
+            database: None,
             mode: LocalRelayBuilderMode::default(),
             rate_limit: RateLimit::default(),
             nip42: None,
@@ -282,7 +279,7 @@ impl LocalRelayBuilder {
     where
         D: IntoNostrDatabase,
     {
-        self.database = database.into_nostr_database();
+        self.database = Some(database.into_nostr_database());
         self
     }
 
@@ -384,7 +381,7 @@ impl LocalRelayBuilder {
 
     /// Build local relay
     #[inline]
-    pub fn build(self) -> LocalRelay {
+    pub fn build(self) -> Result<LocalRelay, Error> {
         LocalRelay::from_builder(self)
     }
 }
