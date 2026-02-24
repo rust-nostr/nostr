@@ -17,6 +17,7 @@ use nostr_database::prelude::*;
 pub mod prelude;
 mod store;
 
+use self::store::lmdb::LmdbOptions;
 use self::store::Store;
 
 // 64-bit
@@ -97,7 +98,12 @@ impl NostrLmdbBuilder {
         let map_size: usize = self.map_size.unwrap_or(MAP_SIZE);
         let max_readers: u32 = self.max_readers.unwrap_or(126);
         let additional_dbs: u32 = self.additional_dbs.unwrap_or(0);
-        let db: Store = Store::open(self.path, map_size, max_readers, additional_dbs)
+        let lmdb_options = LmdbOptions::default()
+            .map_size(map_size)
+            .max_readers(max_readers)
+            .additional_dbs(additional_dbs);
+
+        let db: Store = Store::open(self.path, lmdb_options)
             .await
             .map_err(DatabaseError::backend)?;
         Ok(NostrLmdb { db })

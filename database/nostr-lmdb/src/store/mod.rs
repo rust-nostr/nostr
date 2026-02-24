@@ -14,11 +14,11 @@ use nostr_database::prelude::*;
 mod error;
 mod filter;
 mod ingester;
-mod lmdb;
+pub(crate) mod lmdb;
 
 use self::error::Error;
 use self::ingester::{Ingester, IngesterItem};
-use self::lmdb::Lmdb;
+use self::lmdb::{Lmdb, LmdbOptions};
 
 #[derive(Debug)]
 pub(super) struct Store {
@@ -27,12 +27,7 @@ pub(super) struct Store {
 }
 
 impl Store {
-    pub(super) async fn open<P>(
-        path: P,
-        map_size: usize,
-        max_readers: u32,
-        additional_dbs: u32,
-    ) -> Result<Store, Error>
+    pub(super) async fn open<P>(path: P, lmdb_options: LmdbOptions) -> Result<Store, Error>
     where
         P: AsRef<Path>,
     {
@@ -43,7 +38,7 @@ impl Store {
             // Create the directory if it doesn't exist
             fs::create_dir_all(&path)?;
 
-            let db: Lmdb = Lmdb::new(path, map_size, max_readers, additional_dbs)?;
+            let db: Lmdb = Lmdb::new(path, lmdb_options)?;
 
             Ok::<Lmdb, Error>(db)
         })
