@@ -78,6 +78,10 @@ pub(crate) struct LmdbOptions {
     max_readers: u32,
     /// Number of additional databases to allocate beyond the 9 internal ones
     additional_dbs: u32,
+    /// Whether to process request to vanish (NIP-62) events
+    process_nip62: bool,
+    /// Whether to process event deletion request (NIP-09) events
+    process_nip09: bool,
 }
 
 impl LmdbOptions {
@@ -95,10 +99,22 @@ impl LmdbOptions {
         self.map_size = map_size;
         self
     }
+
+    pub fn process_nip62(mut self, process_nip62: bool) -> Self {
+        self.process_nip62 = process_nip62;
+        self
+    }
+
+    pub fn process_nip09(mut self, process_nip09: bool) -> Self {
+        self.process_nip09 = process_nip09;
+        self
+    }
 }
 
 #[derive(Debug, Clone)]
 pub(crate) struct Lmdb {
+    /// Database options
+    options: LmdbOptions,
     /// LMDB env
     env: Env,
     /// Events
@@ -210,6 +226,7 @@ impl Lmdb {
         txn.commit()?;
 
         let lmdb = Self {
+            options,
             env,
             events,
             ci_index,
@@ -508,7 +525,7 @@ impl Lmdb {
         }
 
         // Handle deletion events
-        if event.kind == Kind::EventDeletion {
+        if self.options.process_nip09 && event.kind == Kind::EventDeletion {
             let invalid: bool = self.handle_deletion_event(txn, event)?;
             if invalid {
                 return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
@@ -516,7 +533,7 @@ impl Lmdb {
         }
 
         // Handle request to vanish
-        if event.kind == Kind::RequestToVanish {
+        if self.options.process_nip62 && event.kind == Kind::RequestToVanish {
             // For now, handling `ALL_RELAYS` only
             if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
                 self.handle_request_to_vanish(txn, &event.pubkey)?;

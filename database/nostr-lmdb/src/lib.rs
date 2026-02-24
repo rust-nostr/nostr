@@ -51,6 +51,14 @@ pub struct NostrLmdbBuilder {
     ///
     /// Defaults to 0 if not set
     pub additional_dbs: Option<u32>,
+    /// Whether to process request to vanish (NIP-62) events
+    ///
+    /// Defaults to `true`
+    pub process_nip62: bool,
+    /// Whether to process event deletion request (NIP-09) events
+    ///
+    /// Defaults to `true`
+    pub process_nip09: bool,
 }
 
 impl NostrLmdbBuilder {
@@ -64,6 +72,8 @@ impl NostrLmdbBuilder {
             map_size: None,
             max_readers: None,
             additional_dbs: None,
+            process_nip62: true,
+            process_nip09: true,
         }
     }
 
@@ -93,6 +103,22 @@ impl NostrLmdbBuilder {
         self
     }
 
+    /// Whether to process request to vanish (NIP-62) events
+    ///
+    /// Defaults to `true`
+    pub fn process_nip62(mut self, process_nip62: bool) -> Self {
+        self.process_nip62 = process_nip62;
+        self
+    }
+
+    /// Whether to process event deletion request (NIP-09) events
+    ///
+    /// Defaults to `true`
+    pub fn process_nip09(mut self, process_nip09: bool) -> Self {
+        self.process_nip09 = process_nip09;
+        self
+    }
+
     /// Build
     pub async fn build(self) -> Result<NostrLmdb, DatabaseError> {
         let map_size: usize = self.map_size.unwrap_or(MAP_SIZE);
@@ -101,7 +127,9 @@ impl NostrLmdbBuilder {
         let lmdb_options = LmdbOptions::default()
             .map_size(map_size)
             .max_readers(max_readers)
-            .additional_dbs(additional_dbs);
+            .additional_dbs(additional_dbs)
+            .process_nip62(self.process_nip62)
+            .process_nip09(self.process_nip09);
 
         let db: Store = Store::open(self.path, lmdb_options)
             .await
