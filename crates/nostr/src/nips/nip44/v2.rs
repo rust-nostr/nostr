@@ -9,8 +9,8 @@
 use alloc::string::{FromUtf8Error, String};
 use alloc::vec;
 use alloc::vec::Vec;
+use core::fmt;
 use core::ops::{Deref, Range};
-use core::{fmt, iter};
 
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use chacha20::ChaCha20;
@@ -273,7 +273,7 @@ fn pad(unpadded: &[u8]) -> Result<Vec<u8>, ErrorV2> {
     let mut padded: Vec<u8> = Vec::with_capacity(2 + len + take);
     padded.extend_from_slice(&(len as u16).to_be_bytes());
     padded.extend_from_slice(unpadded);
-    padded.extend(iter::repeat(0).take(take));
+    padded.extend(core::iter::repeat_n(0, take));
     Ok(padded)
 }
 

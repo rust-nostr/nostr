@@ -3,7 +3,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use core::{cmp, iter};
+use core::cmp;
 
 use nostr::event::borrow::EventBorrow;
 use nostr::nips::nip01::CoordinateBorrow;
@@ -106,7 +106,7 @@ fn extend_key_with_tag_value(key: &mut Vec<u8>, len: usize, tag_value: &str) {
     let tag_value: &[u8] = tag_value.as_bytes();
     if len <= TAG_VALUE_PAD_LEN {
         key.extend(tag_value);
-        key.extend(iter::repeat(0).take(TAG_VALUE_PAD_LEN - len));
+        key.extend(core::iter::repeat_n(0, TAG_VALUE_PAD_LEN - len));
     } else {
         key.extend(&tag_value[..TAG_VALUE_PAD_LEN]);
     }
