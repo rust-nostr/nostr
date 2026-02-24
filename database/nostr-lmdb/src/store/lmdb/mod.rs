@@ -69,8 +69,52 @@ impl QueryFilterPattern {
     }
 }
 
+/// LMDB options
+#[derive(Debug, Clone, Default)]
+pub(crate) struct LmdbOptions {
+    /// Map size
+    map_size: usize,
+    /// Maximum number of reader threads
+    max_readers: u32,
+    /// Number of additional databases to allocate beyond the 9 internal ones
+    additional_dbs: u32,
+    /// Whether to process request to vanish (NIP-62) events
+    process_nip62: bool,
+    /// Whether to process event deletion request (NIP-09) events
+    process_nip09: bool,
+}
+
+impl LmdbOptions {
+    pub fn max_readers(mut self, max_readers: u32) -> Self {
+        self.max_readers = max_readers;
+        self
+    }
+
+    pub fn additional_dbs(mut self, additional_dbs: u32) -> Self {
+        self.additional_dbs = additional_dbs;
+        self
+    }
+
+    pub fn map_size(mut self, map_size: usize) -> Self {
+        self.map_size = map_size;
+        self
+    }
+
+    pub fn process_nip62(mut self, process_nip62: bool) -> Self {
+        self.process_nip62 = process_nip62;
+        self
+    }
+
+    pub fn process_nip09(mut self, process_nip09: bool) -> Self {
+        self.process_nip09 = process_nip09;
+        self
+    }
+}
+
 #[derive(Debug, Clone)]
 pub(crate) struct Lmdb {
+    /// Database options
+    options: LmdbOptions,
     /// LMDB env
     env: Env,
     /// Events
@@ -100,12 +144,7 @@ pub(crate) struct Lmdb {
 }
 
 impl Lmdb {
-    pub(super) fn new<P>(
-        path: P,
-        map_size: usize,
-        max_readers: u32,
-        additional_dbs: u32,
-    ) -> Result<Self, Error>
+    pub(super) fn new<P>(path: P, options: LmdbOptions) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -113,9 +152,9 @@ impl Lmdb {
         let env: Env = unsafe {
             EnvOpenOptions::new()
                 .flags(EnvFlags::NO_TLS)
-                .max_dbs(12 + additional_dbs)
-                .max_readers(max_readers)
-                .map_size(map_size)
+                .max_dbs(12 + options.additional_dbs)
+                .max_readers(options.max_readers)
+                .map_size(options.map_size)
                 .open(path)?
         };
 
@@ -187,6 +226,7 @@ impl Lmdb {
         txn.commit()?;
 
         let lmdb = Self {
+            options,
             env,
             events,
             ci_index,
@@ -485,7 +525,7 @@ impl Lmdb {
         }
 
         // Handle deletion events
-        if event.kind == Kind::EventDeletion {
+        if self.options.process_nip09 && event.kind == Kind::EventDeletion {
             let invalid: bool = self.handle_deletion_event(txn, event)?;
             if invalid {
                 return Ok(SaveEventStatus::Rejected(RejectedReason::InvalidDelete));
@@ -493,7 +533,7 @@ impl Lmdb {
         }
 
         // Handle request to vanish
-        if event.kind == Kind::RequestToVanish {
+        if self.options.process_nip62 && event.kind == Kind::RequestToVanish {
             // For now, handling `ALL_RELAYS` only
             if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
                 self.handle_request_to_vanish(txn, &event.pubkey)?;
@@ -1413,10 +1453,14 @@ mod tests {
         // Create a temporary directory for the test database
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path();
+        let lmdb_options = LmdbOptions::default()
+            .map_size(1024 * 1024 * 100)
+            .max_readers(126)
+            .additional_dbs(9);
 
         // Step 1: Create a v1 database (without kc_index and version)
         {
-            let lmdb = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0).unwrap();
+            let lmdb = Lmdb::new(db_path, lmdb_options.clone()).unwrap();
             let mut txn = lmdb.write_txn().unwrap();
             let mut fbb = FlatBufferBuilder::new();
 
@@ -1440,7 +1484,7 @@ mod tests {
 
         // Step 2: Reopen the database - this should trigger migration
         {
-            let lmdb = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0).unwrap();
+            let lmdb = Lmdb::new(db_path, lmdb_options).unwrap();
             let txn = lmdb.read_txn().unwrap();
 
             // Verify version was updated
@@ -1471,8 +1515,11 @@ mod tests {
         // Create a new database from scratch
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path();
+        let lmdb_options = LmdbOptions::default()
+            .map_size(1024 * 1024 * 100)
+            .max_readers(126);
 
-        let lmdb = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0).unwrap();
+        let lmdb = Lmdb::new(db_path, lmdb_options).unwrap();
         let txn = lmdb.read_txn().unwrap();
 
         // Verify version is set to current
@@ -1485,10 +1532,13 @@ mod tests {
         // Create a temporary directory for the test database
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path();
+        let lmdb_options = LmdbOptions::default()
+            .map_size(1024 * 1024 * 100)
+            .max_readers(126);
 
         // Create a database with a future version
         {
-            let lmdb = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0).unwrap();
+            let lmdb = Lmdb::new(db_path, lmdb_options.clone()).unwrap();
             let mut txn = lmdb.write_txn().unwrap();
 
             // Set version to something higher than current
@@ -1499,7 +1549,7 @@ mod tests {
         }
 
         // Try to reopen - should fail
-        let result = Lmdb::new(db_path, 1024 * 1024 * 100, 126, 0);
+        let result = Lmdb::new(db_path, lmdb_options);
         assert!(matches!(
             result.unwrap_err(),
             Error::Migration(MigrationError::NewerVersion { .. })
