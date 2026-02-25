@@ -18,10 +18,13 @@ pub(crate) enum DatabaseConnType {
 }
 
 /// Builder for [`NostrSqlite`] database.
-#[derive(Default)]
 pub struct NostrSqliteBuilder {
     /// Database connection type. In-memory by default
     pub(crate) db_type: DatabaseConnType,
+    /// Whether to process request to vanish (NIP-62) events
+    pub(crate) process_nip62: bool,
+    /// Whether to process event deletion request (NIP-09) events
+    pub(crate) process_nip09: bool,
 }
 
 impl NostrSqliteBuilder {
@@ -63,9 +66,41 @@ impl NostrSqliteBuilder {
         self
     }
 
+    /// Whether to process request to vanish (NIP-62) events
+    ///
+    /// Defaults to `true`
+    #[inline]
+    pub fn process_nip62(mut self, process_nip62: bool) -> Self {
+        self.process_nip62 = process_nip62;
+        self
+    }
+
+    /// Whether to process event deletion request (NIP-09) events
+    ///
+    /// Defaults to `true`
+    #[inline]
+    pub fn process_nip09(mut self, process_nip09: bool) -> Self {
+        self.process_nip09 = process_nip09;
+        self
+    }
+
     /// Build [`NostrSqlite`] database
     #[inline]
     pub async fn build(self) -> Result<NostrSqlite, Error> {
         NostrSqlite::from_builder(self).await
+    }
+}
+
+impl Default for NostrSqliteBuilder {
+    /// Creates a new builder with default settings.
+    ///
+    /// This builder uses an in-memory database connection and enables
+    /// processing for NIP-62 and NIP-09 features by default.
+    fn default() -> Self {
+        Self {
+            db_type: Default::default(),
+            process_nip62: true,
+            process_nip09: true,
+        }
     }
 }
