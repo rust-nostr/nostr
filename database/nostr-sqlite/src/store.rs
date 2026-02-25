@@ -9,6 +9,7 @@ use nostr_database::prelude::*;
 use rusqlite::types::Value;
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension, Transaction};
 
+use crate::builder::{DatabaseConnType, NostrSqliteBuilder};
 use crate::error::Error;
 use crate::migration;
 use crate::model::{extract_tags, EventDb};
@@ -25,6 +26,8 @@ enum SqlSelectClause {
 }
 
 /// Nostr SQLite database
+///
+/// Use [`NostrSqlite::builder`] to build it
 #[derive(Debug, Clone)]
 pub struct NostrSqlite {
     pool: Pool,
@@ -53,14 +56,14 @@ impl NostrSqlite {
     }
 
     /// Creates an in-memory database
-    pub async fn in_memory() -> Result<Self, Error> {
+    async fn in_memory() -> Result<Self, Error> {
         let pool: Pool = Pool::open_in_memory()?;
         Self::new(pool).await
     }
 
     /// Connect to a SQL database
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn open<P>(path: P) -> Result<Self, Error>
+    async fn open<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -72,12 +75,27 @@ impl NostrSqlite {
     }
 
     /// Connect to a SQL database
-    pub async fn open_with_vfs<P>(path: P, vfs: &str) -> Result<Self, Error>
+    async fn open_with_vfs<P>(path: P, vfs: &str) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
         let pool: Pool = Pool::open_with_vfs(path, vfs).await?;
         Self::new(pool).await
+    }
+
+    pub(crate) async fn from_builder(builder: NostrSqliteBuilder) -> Result<Self, Error> {
+        match builder.db_type {
+            DatabaseConnType::InMemory => Self::in_memory().await,
+            #[cfg(not(target_arch = "wasm32"))]
+            DatabaseConnType::File(path) => Self::open(path).await,
+            DatabaseConnType::WithVFS { path, vfs } => Self::open_with_vfs(path, &vfs).await,
+        }
+    }
+
+    /// The database builder
+    #[inline]
+    pub fn builder() -> NostrSqliteBuilder {
+        NostrSqliteBuilder::default()
     }
 
     /// Returns true if successfully inserted
