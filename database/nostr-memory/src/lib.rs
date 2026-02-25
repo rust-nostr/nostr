@@ -20,7 +20,7 @@ mod store;
 
 use self::builder::MemoryDatabaseBuilder;
 use self::error::Error;
-use self::store::{DatabaseEventResult, MemoryStore};
+use self::store::{DatabaseEventResult, MemoryOptions, MemoryStore};
 
 /// Memory Database (RAM)
 #[derive(Debug)]
@@ -48,14 +48,14 @@ impl MemoryDatabase {
     }
 
     // TODO: at the moment we are not using the Result, but will be needed in the future and we want to avoid breaking changes.
+    #[inline]
     fn from_builder(builder: MemoryDatabaseBuilder) -> Result<Self, Error> {
-        let store: MemoryStore = match builder.max_events {
-            Some(max) => MemoryStore::bounded(max),
-            None => MemoryStore::unbounded(),
-        };
+        let options = MemoryOptions::default()
+            .max_events(builder.max_events)
+            .process_nip09(builder.process_nip09);
 
         Ok(Self {
-            store: RwLock::new(store),
+            store: RwLock::new(MemoryStore::new(options)),
         })
     }
 }

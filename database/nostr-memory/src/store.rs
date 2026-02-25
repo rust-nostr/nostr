@@ -59,6 +59,29 @@ impl QueryByParamReplaceable {
     }
 }
 
+/// Options for the memory database
+#[derive(Debug, Clone, Default)]
+pub(crate) struct MemoryOptions {
+    /// Whether to process event deletion request (NIP-09) events.
+    process_nip09: bool,
+    /// Max number of events to store in memory. If None, there is no limit.
+    max_events: Option<NonZeroUsize>,
+}
+
+impl MemoryOptions {
+    #[inline]
+    pub fn max_events(mut self, max_events: Option<NonZeroUsize>) -> Self {
+        self.max_events = max_events;
+        self
+    }
+
+    #[inline]
+    pub fn process_nip09(mut self, process_nip09: bool) -> Self {
+        self.process_nip09 = process_nip09;
+        self
+    }
+}
+
 enum QueryPattern {
     Author(QueryByAuthorParams),
     KindAuthor(QueryByKindAndAuthorParams),
@@ -140,6 +163,8 @@ enum InternalQueryResult<'a> {
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct MemoryStore {
+    /// Database options
+    options: MemoryOptions,
     /// Sorted events
     events: BTreeCapSet<DatabaseEvent>,
     /// Events by ID
@@ -152,18 +177,18 @@ pub(crate) struct MemoryStore {
 }
 
 impl MemoryStore {
-    #[inline]
-    pub fn unbounded() -> Self {
-        Self::default()
-    }
+    pub fn new(mut options: MemoryOptions) -> Self {
+        let mut store = Self::default();
 
-    pub fn bounded(size: NonZeroUsize) -> Self {
-        let mut helper: MemoryStore = MemoryStore::default();
-        helper.events.change_capacity(Capacity::Bounded {
-            max: size,
-            policy: OverCapacityPolicy::Last,
-        });
-        helper
+        if let Some(size) = options.max_events.take() {
+            store.events.change_capacity(Capacity::Bounded {
+                max: size,
+                policy: OverCapacityPolicy::Last,
+            });
+        }
+
+        store.options = options;
+        store
     }
 
     fn internal_index_event(&mut self, event: &Event, now: &Timestamp) -> DatabaseEventResult {
@@ -235,7 +260,7 @@ impl MemoryStore {
                 }
                 None => status = SaveEventStatus::Rejected(RejectedReason::Other),
             }
-        } else if kind == Kind::EventDeletion {
+        } else if self.options.process_nip09 && kind == Kind::EventDeletion {
             // Check `e` tags
             for id in event.tags.event_ids() {
                 if let Some(ev) = self.ids.get(id) {
@@ -625,7 +650,10 @@ impl MemoryStore {
         let capacity: Capacity = self.events.capacity();
 
         // Reset helper to default
-        *self = Self::default();
+        *self = Self {
+            options: self.options.clone(),
+            ..Default::default()
+        };
 
         // Change capacity
         self.events.change_capacity(capacity);

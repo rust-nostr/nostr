@@ -6,10 +6,14 @@ use crate::error::Error;
 use crate::MemoryDatabase;
 
 /// Memory Database Builder
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct MemoryDatabaseBuilder {
     /// Max number of events to store in memory. If None, there is no limit.
-    pub max_events: Option<NonZeroUsize>,
+    pub(crate) max_events: Option<NonZeroUsize>,
+    /// Whether to process event deletion request (NIP-09) events.
+    ///
+    /// Defaults to `true`
+    pub(crate) process_nip09: bool,
 }
 
 impl MemoryDatabaseBuilder {
@@ -22,9 +26,27 @@ impl MemoryDatabaseBuilder {
         self
     }
 
+    /// Whether to process event deletion request (NIP-09) events.
+    ///
+    /// Defaults to `true`
+    #[inline]
+    pub fn process_nip09(mut self, process_nip09: bool) -> Self {
+        self.process_nip09 = process_nip09;
+        self
+    }
+
     /// Build the in-memory database.
     #[inline]
     pub fn build(self) -> Result<MemoryDatabase, Error> {
         MemoryDatabase::from_builder(self)
+    }
+}
+
+impl Default for MemoryDatabaseBuilder {
+    fn default() -> Self {
+        Self {
+            max_events: None,
+            process_nip09: true,
+        }
     }
 }
