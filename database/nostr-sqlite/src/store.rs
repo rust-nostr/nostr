@@ -9,6 +9,7 @@ use nostr_database::prelude::*;
 use rusqlite::types::Value;
 use rusqlite::{params, params_from_iter, Connection, OptionalExtension, Transaction};
 
+use crate::builder::{DatabaseConnType, NostrSqliteBuilder};
 use crate::error::Error;
 use crate::migration;
 use crate::model::{extract_tags, EventDb};
@@ -24,7 +25,31 @@ enum SqlSelectClause {
     Delete,
 }
 
+#[derive(Debug, Clone, Default)]
+pub(crate) struct NostrSqliteOptions {
+    /// Whether to process request to vanish (NIP-62) events
+    process_nip62: bool,
+    /// Whether to process event deletion request (NIP-09) events
+    process_nip09: bool,
+}
+
+impl NostrSqliteOptions {
+    #[inline]
+    fn process_nip09(mut self, process_nip09: bool) -> Self {
+        self.process_nip09 = process_nip09;
+        self
+    }
+
+    #[inline]
+    fn process_nip62(mut self, process_nip62: bool) -> Self {
+        self.process_nip62 = process_nip62;
+        self
+    }
+}
+
 /// Nostr SQLite database
+///
+/// Use [`NostrSqlite::builder`] to build it
 #[derive(Debug, Clone)]
 pub struct NostrSqlite {
     pool: Pool,
@@ -53,31 +78,56 @@ impl NostrSqlite {
     }
 
     /// Creates an in-memory database
-    pub async fn in_memory() -> Result<Self, Error> {
-        let pool: Pool = Pool::open_in_memory()?;
+    async fn in_memory(options: NostrSqliteOptions) -> Result<Self, Error> {
+        let pool: Pool = Pool::open_in_memory(options)?;
         Self::new(pool).await
     }
 
     /// Connect to a SQL database
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn open<P>(path: P) -> Result<Self, Error>
+    async fn open<P>(path: P, options: NostrSqliteOptions) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
         let path: PathBuf = path.as_ref().to_path_buf();
 
-        let pool: Pool = Pool::open_with_path(path).await?;
+        let pool: Pool = Pool::open_with_path(path, options).await?;
 
         Self::new(pool).await
     }
 
     /// Connect to a SQL database
-    pub async fn open_with_vfs<P>(path: P, vfs: &str) -> Result<Self, Error>
+    async fn open_with_vfs<P>(
+        path: P,
+        vfs: &str,
+        options: NostrSqliteOptions,
+    ) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
-        let pool: Pool = Pool::open_with_vfs(path, vfs).await?;
+        let pool: Pool = Pool::open_with_vfs(path, vfs, options).await?;
         Self::new(pool).await
+    }
+
+    pub(crate) async fn from_builder(builder: NostrSqliteBuilder) -> Result<Self, Error> {
+        let options = NostrSqliteOptions::default()
+            .process_nip09(builder.process_nip09)
+            .process_nip62(builder.process_nip62);
+
+        match builder.db_type {
+            DatabaseConnType::InMemory => Self::in_memory(options).await,
+            #[cfg(not(target_arch = "wasm32"))]
+            DatabaseConnType::File(path) => Self::open(path, options).await,
+            DatabaseConnType::WithVFS { path, vfs } => {
+                Self::open_with_vfs(path, &vfs, options).await
+            }
+        }
+    }
+
+    /// The database builder
+    #[inline]
+    pub fn builder() -> NostrSqliteBuilder {
+        NostrSqliteBuilder::default()
     }
 
     /// Returns true if successfully inserted
@@ -136,7 +186,11 @@ impl NostrSqlite {
         Ok(false)
     }
 
-    fn save_event_sync(conn: &mut Connection, event: &Event) -> Result<SaveEventStatus, Error> {
+    fn save_event_sync(
+        conn: &mut Connection,
+        event: &Event,
+        options: &NostrSqliteOptions,
+    ) -> Result<SaveEventStatus, Error> {
         if event.kind.is_ephemeral() {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Ephemeral));
         }
@@ -226,7 +280,7 @@ impl NostrSqlite {
         }
 
         // Handle deletion events
-        if event.kind == Kind::EventDeletion {
+        if options.process_nip09 && event.kind == Kind::EventDeletion {
             let invalid: bool = Self::handle_deletion_event(&tx, event)?;
 
             if invalid {
@@ -235,7 +289,7 @@ impl NostrSqlite {
             }
         }
 
-        if event.kind == Kind::RequestToVanish {
+        if options.process_nip62 && event.kind == Kind::RequestToVanish {
             // For now, handling `ALL_RELAYS` only
             if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
                 Self::handle_request_to_vanish(&tx, &event.pubkey)?;
@@ -475,7 +529,7 @@ impl NostrDatabase for NostrSqlite {
         Box::pin(async move {
             let event = event.clone();
             self.pool
-                .interact(move |conn| Self::save_event_sync(conn, &event))
+                .interact_options(move |conn, options| Self::save_event_sync(conn, &event, options))
                 .await
                 .map_err(DatabaseError::backend)
         })
@@ -819,7 +873,7 @@ mod tests {
     impl TempDatabase {
         async fn new() -> Self {
             Self {
-                db: NostrSqlite::in_memory().await.unwrap(),
+                db: NostrSqliteBuilder::default().build().await.unwrap(),
             }
         }
     }
@@ -828,7 +882,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_full_text_search_matches_selected_tags_only() {
-        let db = NostrSqlite::in_memory().await.unwrap();
+        let db = NostrSqliteBuilder::default().build().await.unwrap();
         let keys = Keys::generate();
 
         let event = EventBuilder::text_note("content")
