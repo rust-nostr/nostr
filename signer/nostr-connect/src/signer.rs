@@ -68,17 +68,22 @@ impl NostrConnectRemoteSigner {
     }
 
     /// Construct remote signer from client URI (`nostrconnect://..`)
+    ///
+    /// The `secret` embedded in the URI is used automatically. Per NIP-46, the signer must
+    /// echo this secret back in the `connect` response so the client can validate it.
     pub fn from_uri(
         uri: NostrConnectUri,
         keys: NostrConnectKeys,
-        secret: Option<String>,
         opts: Option<RelayOptions>,
     ) -> Result<Self, Error> {
         match uri {
             NostrConnectUri::Client {
-                public_key, relays, ..
+                public_key,
+                relays,
+                secret,
+                ..
             } => {
-                let mut signer = Self::new(keys, relays, secret, opts)?;
+                let mut signer = Self::new(keys, relays, Some(secret), opts)?;
                 signer.nostr_connect_client_public_key = Some(public_key);
                 Ok(signer)
             }

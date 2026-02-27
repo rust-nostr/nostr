@@ -354,8 +354,14 @@ impl NostrConnectRequest {
 /// Response
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ResponseResult {
-    /// Connect ACK
+    /// Connect ACK (returned by signers using the `bunker://` flow or older implementations)
     Ack,
+    /// Connect secret echo (returned by signers using the `nostrconnect://` client-initiated flow)
+    ///
+    /// Per NIP-46, when a `nostrconnect://` URI includes a `secret`, the remote signer must
+    /// return that exact secret value as the `result` of the `connect` response.
+    /// The client MUST validate this value to prevent connection spoofing.
+    ConnectSecret(String),
     /// Get public key
     GetPublicKey(PublicKey),
     /// Sign event
@@ -454,6 +460,7 @@ impl fmt::Display for ResponseResult {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Ack => write!(f, "ack"),
+            Self::ConnectSecret(secret) => write!(f, "{secret}"),
             Self::GetPublicKey(public_key) => write!(f, "{public_key}"),
             Self::SignEvent(event) => write!(f, "{}", event.as_json()),
             Self::Nip04Encrypt { ciphertext } | Self::Nip44Encrypt { ciphertext } => {
@@ -490,11 +497,9 @@ impl ResponseResult {
                 if response == "ack" {
                     Ok(Self::Ack)
                 } else {
-                    Err(Error::UnexpectedResponse {
-                        method,
-                        expected: String::from("ack"),
-                        received: response,
-                    })
+                    // Per NIP-46, for nostrconnect:// (client-initiated) connections the signer
+                    // returns the secret value from the URI as the connect response result.
+                    Ok(Self::ConnectSecret(response))
                 }
             }
             NostrConnectMethod::GetPublicKey => {
@@ -846,21 +851,53 @@ pub enum NostrConnectUri {
         relays: Vec<RelayUrl>,
         /// Metadata
         metadata: NostrConnectMetadata,
+        /// Secret value that the remote signer must return in the `connect` response.
+        ///
+        /// Per NIP-46, `secret` is required in `nostrconnect://` URIs to prevent connection spoofing.
+        /// The client MUST validate that the signer returns this exact value.
+        secret: String,
     },
 }
 
 impl NostrConnectUri {
-    /// Construct a new `nostrconnect://` URI
-    #[inline]
+    /// Construct a new `nostrconnect://` URI with a randomly generated secret
+    ///
+    /// Per NIP-46, the `secret` is required in `nostrconnect://` URIs to prevent connection
+    /// spoofing. The remote signer must return this secret in the `connect` response.
+    #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn client<I, S>(public_key: PublicKey, relays: I, app_name: S) -> Self
     where
         I: IntoIterator<Item = RelayUrl>,
         S: Into<String>,
     {
+        let mut secret_bytes: [u8; 16] = [0u8; 16];
+        OsRng
+            .try_fill_bytes(&mut secret_bytes)
+            .expect("OsRng failed");
+        let secret: String = hex::encode(secret_bytes);
+        Self::client_with_secret(public_key, relays, app_name, secret)
+    }
+
+    /// Construct a new `nostrconnect://` URI with a provided secret
+    ///
+    /// Per NIP-46, the `secret` is required in `nostrconnect://` URIs to prevent connection
+    /// spoofing. The remote signer must return this secret in the `connect` response.
+    pub fn client_with_secret<I, S, T>(
+        public_key: PublicKey,
+        relays: I,
+        app_name: S,
+        secret: T,
+    ) -> Self
+    where
+        I: IntoIterator<Item = RelayUrl>,
+        S: Into<String>,
+        T: Into<String>,
+    {
         Self::Client {
             public_key,
             relays: relays.into_iter().collect(),
             metadata: NostrConnectMetadata::new(app_name),
+            secret: secret.into(),
         }
     }
 
@@ -908,6 +945,7 @@ impl NostrConnectUri {
 
                     let mut relays: Vec<RelayUrl> = Vec::new();
                     let mut metadata: Option<NostrConnectMetadata> = None;
+                    let mut secret: Option<String> = None;
 
                     for (key, value) in uri.query_pairs() {
                         match key {
@@ -919,15 +957,19 @@ impl NostrConnectUri {
                                 let value = value.to_string();
                                 metadata = Some(serde_json::from_str(&value)?);
                             }
+                            Cow::Borrowed("secret") => {
+                                secret = Some(value.to_string());
+                            }
                             _ => (),
                         }
                     }
 
-                    if let Some(metadata) = metadata {
+                    if let (Some(metadata), Some(secret)) = (metadata, secret) {
                         return Ok(Self::Client {
                             public_key,
                             relays,
                             metadata,
+                            secret,
                         });
                     }
                 }
@@ -968,11 +1010,15 @@ impl NostrConnectUri {
     }
 
     /// Get secret
+    ///
+    /// For `bunker://` URIs this is an optional one-time connection secret.
+    /// For `nostrconnect://` URIs this is the required anti-spoofing secret that the
+    /// remote signer must echo back in the `connect` response.
     #[inline]
     pub fn secret(&self) -> Option<&str> {
         match self {
             Self::Bunker { secret, .. } => secret.as_deref(),
-            Self::Client { .. } => None,
+            Self::Client { secret, .. } => Some(secret.as_str()),
         }
     }
 }
@@ -1033,6 +1079,7 @@ impl fmt::Display for NostrConnectUri {
                 public_key,
                 relays,
                 metadata,
+                secret,
             } => {
                 let mut relays_str: String = String::new();
 
@@ -1045,7 +1092,7 @@ impl fmt::Display for NostrConnectUri {
 
                 write!(
                     f,
-                    "{NOSTR_CONNECT_URI_SCHEME}://{}?metadata={}{relays_str}",
+                    "{NOSTR_CONNECT_URI_SCHEME}://{}?metadata={}{relays_str}&secret={secret}",
                     public_key,
                     metadata.as_json()
                 )
@@ -1080,7 +1127,7 @@ mod test {
 
     #[test]
     fn test_parse_client_uri() {
-        let uri = r#"nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata={"name":"Example"}&relay=wss://relay.damus.io"#;
+        let uri = r#"nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata={"name":"Example"}&relay=wss://relay.damus.io&secret=mysecret"#;
         let uri = NostrConnectUri::parse(uri).unwrap();
 
         let pubkey =
@@ -1088,7 +1135,17 @@ mod test {
                 .unwrap();
         let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
-        assert_eq!(uri, NostrConnectUri::client(pubkey, [relay_url], app_name));
+        assert_eq!(
+            uri,
+            NostrConnectUri::client_with_secret(pubkey, [relay_url], app_name, "mysecret")
+        );
+    }
+
+    #[test]
+    fn test_parse_client_uri_without_secret_fails() {
+        // nostrconnect:// URIs without a secret should fail to parse (secret is required per NIP-46)
+        let uri = r#"nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata={"name":"Example"}&relay=wss://relay.damus.io"#;
+        assert!(NostrConnectUri::parse(uri).is_err());
     }
 
     #[test]
@@ -1112,7 +1169,7 @@ mod test {
 
     #[test]
     fn test_client_uri_serialization() {
-        let uri = r#"nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata={"name":"Example"}&relay=wss://relay.damus.io"#;
+        let uri = r#"nostrconnect://b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4?metadata={"name":"Example"}&relay=wss://relay.damus.io&secret=abcd1234"#;
 
         let pubkey =
             PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
@@ -1120,7 +1177,8 @@ mod test {
         let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let app_name = "Example";
         assert_eq!(
-            NostrConnectUri::client(pubkey, [relay_url], app_name).to_string(),
+            NostrConnectUri::client_with_secret(pubkey, [relay_url], app_name, "abcd1234")
+                .to_string(),
             uri
         );
     }

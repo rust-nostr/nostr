@@ -124,10 +124,15 @@ impl NostrConnect {
         let notifications = self.subscribe().await?;
 
         // Get remote signer public key
-        let remote_signer_public_key: PublicKey = match self.uri.remote_signer_public_key() {
-            Some(public_key) => *public_key,
-            None => {
-                get_remote_signer_public_key(&self.client_keys, notifications, self.timeout).await?
+        let remote_signer_public_key: PublicKey = match &self.uri {
+            NostrConnectUri::Bunker {
+                remote_signer_public_key,
+                ..
+            } => *remote_signer_public_key,
+            NostrConnectUri::Client { secret, .. } => {
+                // For nostrconnect:// (client-initiated), the secret is required by NIP-46.
+                get_remote_signer_public_key(&self.client_keys, secret, notifications, self.timeout)
+                    .await?
             }
         };
 
@@ -367,6 +372,7 @@ impl NostrConnect {
 
 async fn get_remote_signer_public_key(
     client_keys: &Keys,
+    expected_secret: &str,
     mut notifications: BoxStream<'_, ClientNotification>,
     timeout: Duration,
 ) -> Result<PublicKey, Error> {
@@ -375,24 +381,49 @@ async fn get_remote_signer_public_key(
             if let ClientNotification::Event { event, .. } = notification {
                 if event.kind == Kind::NostrConnect {
                     // Decrypt content
-                    let msg: String = nip44::decrypt(
+                    let msg: String = match nip44::decrypt(
                         client_keys.secret_key(),
                         &event.pubkey,
                         event.content.as_str(),
-                    )?;
+                    ) {
+                        Ok(m) => m,
+                        Err(_) => continue,
+                    };
 
                     tracing::debug!("Received Nostr Connect message: '{msg}'");
 
                     // Parse message
-                    let msg: NostrConnectMessage = NostrConnectMessage::from_json(msg)?;
+                    let msg: NostrConnectMessage = match NostrConnectMessage::from_json(msg) {
+                        Ok(m) => m,
+                        Err(_) => continue,
+                    };
 
-                    // Check if it's a `connect` response
+                    // Check if it's a `connect` response.
+                    //
+                    // Per NIP-46, for nostrconnect:// (client-initiated) connections the signer
+                    // sends a `connect` response whose `result` is the secret value from the URI
+                    // (not "ack"). The client MUST validate the returned secret to prevent
+                    // connection spoofing.
                     if let Ok(NostrConnectResponse {
-                        result: Some(ResponseResult::Ack),
+                        result: Some(result),
                         error: None,
                     }) = msg.to_response(NostrConnectMethod::Connect)
                     {
-                        return Ok(event.pubkey);
+                        let is_valid = match &result {
+                            // Some signers (e.g. those following older interpretations) return "ack"
+                            ResponseResult::Ack => true,
+                            // Per current NIP-46 spec the signer returns the secret value
+                            ResponseResult::ConnectSecret(s) => s == expected_secret,
+                            _ => false,
+                        };
+
+                        if is_valid {
+                            return Ok(event.pubkey);
+                        } else {
+                            tracing::warn!(
+                                "Received connect response with unexpected result; ignoring"
+                            );
+                        }
                     }
                 }
             }
