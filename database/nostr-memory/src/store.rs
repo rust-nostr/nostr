@@ -228,13 +228,13 @@ impl MemoryStore {
             for id in event.tags.event_ids() {
                 if let Some(ev) = self.ids.get(id) {
                     if ev.pubkey != author {
-                        to_discard.insert(event.id);
                         status = SaveEventStatus::Rejected(RejectedReason::InvalidDelete);
                         break;
                     }
 
                     if ev.created_at <= created_at {
                         to_discard.insert(ev.id);
+                        self.deleted_ids.insert(ev.id);
                     }
                 }
             }
@@ -242,7 +242,6 @@ impl MemoryStore {
             // Check `a` tags
             for coordinate in event.tags.coordinates() {
                 if coordinate.public_key != author {
-                    to_discard.insert(event.id);
                     status = SaveEventStatus::Rejected(RejectedReason::InvalidDelete);
                     break;
                 }
@@ -345,7 +344,6 @@ impl MemoryStore {
                     set.remove(&ev);
                 }
             }
-            self.deleted_ids.insert(*id);
         }
     }
 
