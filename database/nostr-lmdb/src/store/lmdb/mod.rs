@@ -70,24 +70,12 @@ impl QueryFilterPattern {
 }
 
 /// LMDB options
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy)]
 pub(crate) struct LmdbOptions {
     /// Whether to process request to vanish (NIP-62) events
-    process_nip62: bool,
+    pub(crate) process_nip62: bool,
     /// Whether to process event deletion request (NIP-09) events
-    process_nip09: bool,
-}
-
-impl LmdbOptions {
-    pub fn process_nip62(mut self, process_nip62: bool) -> Self {
-        self.process_nip62 = process_nip62;
-        self
-    }
-
-    pub fn process_nip09(mut self, process_nip09: bool) -> Self {
-        self.process_nip09 = process_nip09;
-        self
-    }
+    pub(crate) process_nip09: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -201,9 +189,11 @@ impl Lmdb {
         // Commit changes
         txn.commit()?;
 
-        let options = LmdbOptions::default()
-            .process_nip09(builder.process_nip09)
-            .process_nip62(builder.process_nip62);
+        let options = LmdbOptions {
+            process_nip62: builder.process_nip62,
+            process_nip09: builder.process_nip09,
+        };
+
         let lmdb = Self {
             options,
             env,
