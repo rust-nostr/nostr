@@ -178,6 +178,17 @@ impl MemoryStore {
             return SaveEventStatus::Rejected(RejectedReason::Deleted);
         }
 
+        // Reject event if ADDR was deleted after it's created_at date
+        // (non-parameterized or parameterized)
+        if let Some(coordinate) = event.coordinate() {
+            let coordinate: Coordinate = coordinate.into_owned();
+            if let Some(time) = self.deleted_coordinates.get(&coordinate) {
+                if &event.created_at <= time {
+                    return SaveEventStatus::Rejected(RejectedReason::Deleted);
+                }
+            }
+        }
+
         if event.is_expired_at(now) {
             return SaveEventStatus::Rejected(RejectedReason::Expired);
         }
