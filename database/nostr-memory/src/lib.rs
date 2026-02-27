@@ -18,7 +18,7 @@ pub mod prelude;
 mod store;
 
 use self::builder::MemoryDatabaseBuilder;
-use self::store::{DatabaseEventResult, MemoryOptions, MemoryStore};
+use self::store::{MemoryOptions, MemoryStore};
 
 /// Memory Database (RAM)
 #[derive(Debug)]
@@ -77,8 +77,7 @@ impl NostrDatabase for MemoryDatabase {
     ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
         Box::pin(async move {
             let mut store = self.store.write().await;
-            let DatabaseEventResult { status, .. } = store.index_event(event);
-            Ok(status)
+            Ok(store.index_event(event))
         })
     }
 

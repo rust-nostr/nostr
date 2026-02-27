@@ -130,15 +130,6 @@ impl From<Filter> for QueryPattern {
     }
 }
 
-/// Database Event Result
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub(crate) struct DatabaseEventResult {
-    /// Status
-    pub status: SaveEventStatus,
-    /// List of events that should be removed from database
-    pub to_discard: HashSet<EventId>,
-}
-
 enum InternalQueryResult<'a> {
     All,
     Set(BTreeSet<&'a DatabaseEvent>),
@@ -176,32 +167,19 @@ impl MemoryStore {
         store
     }
 
-    fn internal_index_event(&mut self, event: &Event, now: &Timestamp) -> DatabaseEventResult {
+    fn internal_index_event(&mut self, event: &Event, now: &Timestamp) -> SaveEventStatus {
         // Check if was already added
         if self.ids.contains_key(&event.id) {
-            return DatabaseEventResult {
-                status: SaveEventStatus::Rejected(RejectedReason::Duplicate),
-                to_discard: HashSet::new(),
-            };
+            return SaveEventStatus::Rejected(RejectedReason::Duplicate);
         }
 
         // Check if was deleted or is expired
         if self.deleted_ids.contains(&event.id) {
-            let mut to_discard: HashSet<EventId> = HashSet::with_capacity(1);
-            to_discard.insert(event.id);
-            return DatabaseEventResult {
-                status: SaveEventStatus::Rejected(RejectedReason::Deleted),
-                to_discard,
-            };
+            return SaveEventStatus::Rejected(RejectedReason::Deleted);
         }
 
         if event.is_expired_at(now) {
-            let mut to_discard: HashSet<EventId> = HashSet::with_capacity(1);
-            to_discard.insert(event.id);
-            return DatabaseEventResult {
-                status: SaveEventStatus::Rejected(RejectedReason::Expired),
-                to_discard,
-            };
+            return SaveEventStatus::Rejected(RejectedReason::Expired);
         }
 
         let mut to_discard: HashSet<EventId> = HashSet::new();
@@ -302,7 +280,7 @@ impl MemoryStore {
         }
 
         // Remove events
-        self.discard_events(&to_discard);
+        self.discard_events(to_discard);
 
         // Insert event
         if status.is_success() {
@@ -334,20 +312,17 @@ impl MemoryStore {
                         .or_default()
                         .insert(e);
                 }
-            } else {
-                to_discard.insert(e.id);
             }
 
             if let Some(event) = pop {
-                to_discard.insert(event.id);
                 self.discard_event(event);
             }
         }
 
-        DatabaseEventResult { status, to_discard }
+        status
     }
 
-    fn discard_events(&mut self, ids: &HashSet<EventId>) {
+    fn discard_events(&mut self, ids: HashSet<EventId>) {
         for id in ids.iter() {
             if let Some(ev) = self.ids.remove(id) {
                 self.events.remove(&ev);
@@ -396,13 +371,10 @@ impl MemoryStore {
     /// Import [Event]
     ///
     /// **This method assume that [`Event`] was already verified**
-    pub fn index_event(&mut self, event: &Event) -> DatabaseEventResult {
+    pub fn index_event(&mut self, event: &Event) -> SaveEventStatus {
         // Check if it's ephemeral
         if event.kind.is_ephemeral() {
-            return DatabaseEventResult {
-                status: SaveEventStatus::Rejected(RejectedReason::Ephemeral),
-                to_discard: HashSet::new(),
-            };
+            return SaveEventStatus::Rejected(RejectedReason::Ephemeral);
         }
         let now = Timestamp::now();
         self.internal_index_event(event, &now)
@@ -625,7 +597,7 @@ impl MemoryStore {
             }
             InternalQueryResult::Set(set) => {
                 let ids: HashSet<EventId> = set.into_iter().map(|ev| ev.id).collect();
-                self.discard_events(&ids);
+                self.discard_events(ids);
             }
         }
     }
