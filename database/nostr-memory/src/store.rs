@@ -63,6 +63,7 @@ impl QueryByParamReplaceable {
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct MemoryOptions {
     pub(crate) process_nip09: bool,
+    pub(crate) process_nip62: bool,
 }
 
 enum QueryPattern {
@@ -148,6 +149,7 @@ pub(crate) struct MemoryStore {
     param_replaceable_index: HashMap<(Kind, PublicKey, String), DatabaseEvent>,
     deleted_ids: HashSet<EventId>,
     deleted_coordinates: HashMap<Coordinate, Timestamp>,
+    vanished_public_keys: HashSet<PublicKey>,
 }
 
 impl MemoryStore {
@@ -167,6 +169,11 @@ impl MemoryStore {
         store
     }
 
+    #[inline]
+    fn is_pubkey_vanished(&self, pubkey: &PublicKey) -> bool {
+        self.vanished_public_keys.contains(pubkey)
+    }
+
     fn internal_index_event(&mut self, event: &Event, now: &Timestamp) -> SaveEventStatus {
         // Check if was already added
         if self.ids.contains_key(&event.id) {
@@ -176,6 +183,10 @@ impl MemoryStore {
         // Check if was deleted or is expired
         if self.deleted_ids.contains(&event.id) {
             return SaveEventStatus::Rejected(RejectedReason::Deleted);
+        }
+
+        if self.is_pubkey_vanished(&event.pubkey) {
+            return SaveEventStatus::Rejected(RejectedReason::Vanished);
         }
 
         // Reject event if ADDR was deleted after it's created_at date
@@ -287,6 +298,11 @@ impl MemoryStore {
                     to_discard.extend(self.internal_query_by_kind_and_author(params).map(|e| e.id));
                 }
             }
+        } else if self.options.process_nip62 && event.kind == Kind::RequestToVanish {
+            // For now, handling `ALL_RELAYS` only
+            if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
+                self.handle_request_to_vanish(&event.pubkey);
+            }
         }
 
         // Remove events
@@ -330,6 +346,18 @@ impl MemoryStore {
         }
 
         status
+    }
+
+    fn handle_request_to_vanish(&mut self, pubkey: &PublicKey) {
+        // Mark public key as vanished
+        self.vanished_public_keys.insert(*pubkey);
+
+        // Delete all authored events
+        self.delete(Filter::new().author(*pubkey));
+
+        // Delete gift wraps that mention the pubkey
+        // (kind = GiftWrap || 1059, tag "p" with the hex of the pubkey)
+        self.delete(Filter::new().kind(Kind::GiftWrap).pubkey(*pubkey));
     }
 
     fn discard_events(&mut self, ids: HashSet<EventId>) {

@@ -49,6 +49,7 @@ impl MemoryDatabase {
     fn from_builder(builder: MemoryDatabaseBuilder) -> Self {
         let options = MemoryOptions {
             process_nip09: builder.process_nip09,
+            process_nip62: builder.process_nip62,
         };
 
         Self {
@@ -67,7 +68,7 @@ impl NostrDatabase for MemoryDatabase {
             persistent: false,
             event_expiration: false,
             full_text_search: true,
-            request_to_vanish: false,
+            request_to_vanish: true,
         }
     }
 

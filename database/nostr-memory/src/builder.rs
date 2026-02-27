@@ -13,6 +13,8 @@ pub struct MemoryDatabaseBuilder {
     ///
     /// Defaults to `true`
     pub(crate) process_nip09: bool,
+    /// Whether to process request to vanish (NIP-62) events
+    pub(crate) process_nip62: bool,
 }
 
 impl Default for MemoryDatabaseBuilder {
@@ -20,6 +22,7 @@ impl Default for MemoryDatabaseBuilder {
         Self {
             max_events: None,
             process_nip09: true,
+            process_nip62: true,
         }
     }
 }
@@ -40,6 +43,15 @@ impl MemoryDatabaseBuilder {
     #[inline]
     pub fn process_nip09(mut self, process_nip09: bool) -> Self {
         self.process_nip09 = process_nip09;
+        self
+    }
+
+    /// Whether to process request to vanish (NIP-62) events
+    ///
+    /// Defaults to `true`
+    #[inline]
+    pub fn process_nip62(mut self, process_nip62: bool) -> Self {
+        self.process_nip62 = process_nip62;
         self
     }
 
