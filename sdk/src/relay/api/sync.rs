@@ -632,7 +632,7 @@ mod tests {
         let url = mock.url().await;
 
         // Database
-        let database = Arc::new(MemoryDatabase::unbounded().unwrap());
+        let database = Arc::new(MemoryDatabase::unbounded());
 
         // Build events to store in the local database
         let local_events = vec![

@@ -14,12 +14,10 @@ use nostr_database::prelude::*;
 use tokio::sync::RwLock;
 
 pub mod builder;
-pub mod error;
 pub mod prelude;
 mod store;
 
 use self::builder::MemoryDatabaseBuilder;
-use self::error::Error;
 use self::store::{DatabaseEventResult, MemoryOptions, MemoryStore};
 
 /// Memory Database (RAM)
@@ -31,13 +29,13 @@ pub struct MemoryDatabase {
 impl MemoryDatabase {
     /// Unbounded database helper
     #[inline]
-    pub fn unbounded() -> Result<Self, Error> {
+    pub fn unbounded() -> Self {
         Self::builder().build()
     }
 
     /// Bounded database helper
     #[inline]
-    pub fn bounded(max: NonZeroUsize) -> Result<Self, Error> {
+    pub fn bounded(max: NonZeroUsize) -> Self {
         Self::builder().max_events(max).build()
     }
 
@@ -47,16 +45,15 @@ impl MemoryDatabase {
         MemoryDatabaseBuilder::default()
     }
 
-    // TODO: at the moment we are not using the Result, but will be needed in the future and we want to avoid breaking changes.
     #[inline]
-    fn from_builder(builder: MemoryDatabaseBuilder) -> Result<Self, Error> {
-        let options = MemoryOptions::default()
-            .max_events(builder.max_events)
-            .process_nip09(builder.process_nip09);
+    fn from_builder(builder: MemoryDatabaseBuilder) -> Self {
+        let options = MemoryOptions {
+            process_nip09: builder.process_nip09,
+        };
 
-        Ok(Self {
-            store: RwLock::new(MemoryStore::new(options)),
-        })
+        Self {
+            store: RwLock::new(MemoryStore::new(builder.max_events, options)),
+        }
     }
 }
 
@@ -177,7 +174,7 @@ mod tests {
     impl TestDatabase {
         async fn new() -> Self {
             Self {
-                inner: MemoryDatabase::unbounded().unwrap(),
+                inner: MemoryDatabase::unbounded(),
             }
         }
     }

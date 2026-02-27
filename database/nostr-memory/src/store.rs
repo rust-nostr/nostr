@@ -60,26 +60,9 @@ impl QueryByParamReplaceable {
 }
 
 /// Options for the memory database
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct MemoryOptions {
-    /// Whether to process event deletion request (NIP-09) events.
-    process_nip09: bool,
-    /// Max number of events to store in memory. If None, there is no limit.
-    max_events: Option<NonZeroUsize>,
-}
-
-impl MemoryOptions {
-    #[inline]
-    pub fn max_events(mut self, max_events: Option<NonZeroUsize>) -> Self {
-        self.max_events = max_events;
-        self
-    }
-
-    #[inline]
-    pub fn process_nip09(mut self, process_nip09: bool) -> Self {
-        self.process_nip09 = process_nip09;
-        self
-    }
+    pub(crate) process_nip09: bool,
 }
 
 enum QueryPattern {
@@ -177,17 +160,19 @@ pub(crate) struct MemoryStore {
 }
 
 impl MemoryStore {
-    pub fn new(mut options: MemoryOptions) -> Self {
-        let mut store = Self::default();
+    pub(crate) fn new(max_events: Option<NonZeroUsize>, options: MemoryOptions) -> Self {
+        let mut store: Self = Self {
+            options,
+            ..Default::default()
+        };
 
-        if let Some(size) = options.max_events.take() {
+        if let Some(size) = max_events {
             store.events.change_capacity(Capacity::Bounded {
                 max: size,
                 policy: OverCapacityPolicy::Last,
             });
         }
 
-        store.options = options;
         store
     }
 
@@ -651,7 +636,7 @@ impl MemoryStore {
 
         // Reset helper to default
         *self = Self {
-            options: self.options.clone(),
+            options: self.options,
             ..Default::default()
         };
 

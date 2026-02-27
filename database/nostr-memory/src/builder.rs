@@ -2,7 +2,6 @@
 
 use core::num::NonZeroUsize;
 
-use crate::error::Error;
 use crate::MemoryDatabase;
 
 /// Memory Database Builder
@@ -14,6 +13,15 @@ pub struct MemoryDatabaseBuilder {
     ///
     /// Defaults to `true`
     pub(crate) process_nip09: bool,
+}
+
+impl Default for MemoryDatabaseBuilder {
+    fn default() -> Self {
+        Self {
+            max_events: None,
+            process_nip09: true,
+        }
+    }
 }
 
 impl MemoryDatabaseBuilder {
@@ -37,16 +45,7 @@ impl MemoryDatabaseBuilder {
 
     /// Build the in-memory database.
     #[inline]
-    pub fn build(self) -> Result<MemoryDatabase, Error> {
+    pub fn build(self) -> MemoryDatabase {
         MemoryDatabase::from_builder(self)
-    }
-}
-
-impl Default for MemoryDatabaseBuilder {
-    fn default() -> Self {
-        Self {
-            max_events: None,
-            process_nip09: true,
-        }
     }
 }

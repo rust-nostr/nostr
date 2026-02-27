@@ -79,13 +79,10 @@ impl InnerLocalRelay {
 
         let max_connections: usize = builder.max_connections.unwrap_or(Semaphore::MAX_PERMITS);
 
-        let database: Arc<dyn NostrDatabase> = match builder.database {
-            Some(database) => database,
-            None => {
-                let max: NonZeroUsize = NonZeroUsize::new(75_000).unwrap();
-                Arc::new(MemoryDatabase::bounded(max).map_err(DatabaseError::backend)?)
-            }
-        };
+        let database: Arc<dyn NostrDatabase> = builder.database.unwrap_or_else(|| {
+            let max: NonZeroUsize = NonZeroUsize::new(75_000).unwrap();
+            Arc::new(MemoryDatabase::bounded(max))
+        });
 
         // Compose relay
         Ok(Self {
