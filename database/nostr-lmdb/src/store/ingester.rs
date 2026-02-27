@@ -374,17 +374,17 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-    use crate::store::lmdb::LmdbOptions;
     use crate::store::Store;
+    use crate::NostrLmdbBuilder;
 
     async fn setup_test_store() -> (Arc<Store>, TempDir) {
         let temp_dir = TempDir::new().expect("Failed to create temp directory");
-        let lmdb_options = LmdbOptions::default()
+        let builder = NostrLmdbBuilder::new(temp_dir.path())
             .map_size(1024 * 1024 * 10)
             .max_readers(10)
             .additional_dbs(50);
 
-        let store = Store::open(temp_dir.path(), lmdb_options)
+        let store = Store::from_builder(builder)
             .await
             .expect("Failed to open test store");
         (Arc::new(store), temp_dir)

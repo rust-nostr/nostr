@@ -7,7 +7,6 @@ use std::cmp::Ordering;
 use std::collections::BTreeSet;
 use std::iter;
 use std::ops::Bound;
-use std::path::Path;
 
 use heed::byteorder::NativeEndian;
 use heed::types::{Bytes, Unit, U64};
@@ -21,6 +20,7 @@ mod index;
 use self::index::EventIndexKeys;
 use super::error::{Error, MigrationError};
 use super::filter::DatabaseFilter;
+use crate::NostrLmdbBuilder;
 
 const EVENT_ID_ALL_ZEROS: [u8; 32] = [0; 32];
 const EVENT_ID_ALL_255: [u8; 32] = [255; 32];
@@ -72,12 +72,6 @@ impl QueryFilterPattern {
 /// LMDB options
 #[derive(Debug, Clone, Default)]
 pub(crate) struct LmdbOptions {
-    /// Map size
-    map_size: usize,
-    /// Maximum number of reader threads
-    max_readers: u32,
-    /// Number of additional databases to allocate beyond the 9 internal ones
-    additional_dbs: u32,
     /// Whether to process request to vanish (NIP-62) events
     process_nip62: bool,
     /// Whether to process event deletion request (NIP-09) events
@@ -85,21 +79,6 @@ pub(crate) struct LmdbOptions {
 }
 
 impl LmdbOptions {
-    pub fn max_readers(mut self, max_readers: u32) -> Self {
-        self.max_readers = max_readers;
-        self
-    }
-
-    pub fn additional_dbs(mut self, additional_dbs: u32) -> Self {
-        self.additional_dbs = additional_dbs;
-        self
-    }
-
-    pub fn map_size(mut self, map_size: usize) -> Self {
-        self.map_size = map_size;
-        self
-    }
-
     pub fn process_nip62(mut self, process_nip62: bool) -> Self {
         self.process_nip62 = process_nip62;
         self
@@ -144,18 +123,15 @@ pub(crate) struct Lmdb {
 }
 
 impl Lmdb {
-    pub(super) fn new<P>(path: P, options: LmdbOptions) -> Result<Self, Error>
-    where
-        P: AsRef<Path>,
-    {
+    pub(super) fn from_builder(builder: NostrLmdbBuilder) -> Result<Self, Error> {
         // Construct LMDB env
         let env: Env = unsafe {
             EnvOpenOptions::new()
                 .flags(EnvFlags::NO_TLS)
-                .max_dbs(12 + options.additional_dbs)
-                .max_readers(options.max_readers)
-                .map_size(options.map_size)
-                .open(path)?
+                .max_dbs(12 + builder.additional_dbs)
+                .max_readers(builder.max_readers)
+                .map_size(builder.map_size)
+                .open(builder.path)?
         };
 
         // Acquire write transaction
@@ -225,6 +201,9 @@ impl Lmdb {
         // Commit changes
         txn.commit()?;
 
+        let options = LmdbOptions::default()
+            .process_nip09(builder.process_nip09)
+            .process_nip62(builder.process_nip62);
         let lmdb = Self {
             options,
             env,
@@ -1452,15 +1431,14 @@ mod tests {
     fn test_migration_v1_to_v2() {
         // Create a temporary directory for the test database
         let temp_dir = TempDir::new().unwrap();
-        let db_path = temp_dir.path();
-        let lmdb_options = LmdbOptions::default()
+        let lmdb_builder = NostrLmdbBuilder::new(temp_dir.path())
             .map_size(1024 * 1024 * 100)
             .max_readers(126)
             .additional_dbs(9);
 
         // Step 1: Create a v1 database (without kc_index and version)
         {
-            let lmdb = Lmdb::new(db_path, lmdb_options.clone()).unwrap();
+            let lmdb = Lmdb::from_builder(lmdb_builder.clone()).unwrap();
             let mut txn = lmdb.write_txn().unwrap();
             let mut fbb = FlatBufferBuilder::new();
 
@@ -1484,7 +1462,7 @@ mod tests {
 
         // Step 2: Reopen the database - this should trigger migration
         {
-            let lmdb = Lmdb::new(db_path, lmdb_options).unwrap();
+            let lmdb = Lmdb::from_builder(lmdb_builder).unwrap();
             let txn = lmdb.read_txn().unwrap();
 
             // Verify version was updated
@@ -1514,12 +1492,11 @@ mod tests {
     fn test_migration_new_database() {
         // Create a new database from scratch
         let temp_dir = TempDir::new().unwrap();
-        let db_path = temp_dir.path();
-        let lmdb_options = LmdbOptions::default()
+        let lmdb_builder = NostrLmdbBuilder::new(temp_dir.path())
             .map_size(1024 * 1024 * 100)
             .max_readers(126);
 
-        let lmdb = Lmdb::new(db_path, lmdb_options).unwrap();
+        let lmdb = Lmdb::from_builder(lmdb_builder).unwrap();
         let txn = lmdb.read_txn().unwrap();
 
         // Verify version is set to current
@@ -1531,14 +1508,13 @@ mod tests {
     fn test_migration_version_too_new() {
         // Create a temporary directory for the test database
         let temp_dir = TempDir::new().unwrap();
-        let db_path = temp_dir.path();
-        let lmdb_options = LmdbOptions::default()
+        let lmdb_builder = NostrLmdbBuilder::new(temp_dir.path())
             .map_size(1024 * 1024 * 100)
             .max_readers(126);
 
         // Create a database with a future version
         {
-            let lmdb = Lmdb::new(db_path, lmdb_options.clone()).unwrap();
+            let lmdb = Lmdb::from_builder(lmdb_builder.clone()).unwrap();
             let mut txn = lmdb.write_txn().unwrap();
 
             // Set version to something higher than current
@@ -1549,7 +1525,7 @@ mod tests {
         }
 
         // Try to reopen - should fail
-        let result = Lmdb::new(db_path, lmdb_options);
+        let result = Lmdb::from_builder(lmdb_builder);
         assert!(matches!(
             result.unwrap_err(),
             Error::Migration(MigrationError::NewerVersion { .. })

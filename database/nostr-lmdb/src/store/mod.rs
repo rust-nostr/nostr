@@ -4,7 +4,6 @@
 // Distributed under the MIT software license
 
 use std::fs;
-use std::path::{Path, PathBuf};
 
 use async_utility::task;
 use flume::Sender;
@@ -18,7 +17,8 @@ pub(crate) mod lmdb;
 
 use self::error::Error;
 use self::ingester::{Ingester, IngesterItem};
-use self::lmdb::{Lmdb, LmdbOptions};
+use self::lmdb::Lmdb;
+use crate::NostrLmdbBuilder;
 
 #[derive(Debug)]
 pub(super) struct Store {
@@ -27,18 +27,13 @@ pub(super) struct Store {
 }
 
 impl Store {
-    pub(super) async fn open<P>(path: P, lmdb_options: LmdbOptions) -> Result<Store, Error>
-    where
-        P: AsRef<Path>,
-    {
-        let path: PathBuf = path.as_ref().to_path_buf();
-
+    pub(super) async fn from_builder(builder: NostrLmdbBuilder) -> Result<Store, Error> {
         // Open the database in a blocking task
         let db: Lmdb = task::spawn_blocking(move || {
             // Create the directory if it doesn't exist
-            fs::create_dir_all(&path)?;
+            fs::create_dir_all(&builder.path)?;
 
-            let db: Lmdb = Lmdb::new(path, lmdb_options)?;
+            let db: Lmdb = Lmdb::from_builder(builder)?;
 
             Ok::<Lmdb, Error>(db)
         })

@@ -17,7 +17,6 @@ use nostr_database::prelude::*;
 pub mod prelude;
 mod store;
 
-use self::store::lmdb::LmdbOptions;
 use self::store::Store;
 
 // 64-bit
@@ -42,15 +41,15 @@ pub struct NostrLmdbBuilder {
     /// By default, the following map size is used:
     /// - 32GB for 64-bit arch
     /// - 4GB for 32-bit arch
-    pub map_size: Option<usize>,
+    pub map_size: usize,
     /// Maximum number of reader threads
     ///
     /// Defaults to 126 if not set
-    pub max_readers: Option<u32>,
+    pub max_readers: u32,
     /// Number of additional databases to allocate beyond the 9 internal ones
     ///
     /// Defaults to 0 if not set
-    pub additional_dbs: Option<u32>,
+    pub additional_dbs: u32,
     /// Whether to process request to vanish (NIP-62) events
     ///
     /// Defaults to `true`
@@ -69,9 +68,9 @@ impl NostrLmdbBuilder {
     {
         Self {
             path: path.as_ref().to_path_buf(),
-            map_size: None,
-            max_readers: None,
-            additional_dbs: None,
+            map_size: MAP_SIZE,
+            max_readers: 126,
+            additional_dbs: 0,
             process_nip62: true,
             process_nip09: true,
         }
@@ -83,7 +82,7 @@ impl NostrLmdbBuilder {
     /// - 32GB for 64-bit arch
     /// - 4GB for 32-bit arch
     pub fn map_size(mut self, map_size: usize) -> Self {
-        self.map_size = Some(map_size);
+        self.map_size = map_size;
         self
     }
 
@@ -91,7 +90,7 @@ impl NostrLmdbBuilder {
     ///
     /// Defaults to 126 if not set
     pub fn max_readers(mut self, max_readers: u32) -> Self {
-        self.max_readers = Some(max_readers);
+        self.max_readers = max_readers;
         self
     }
 
@@ -99,7 +98,7 @@ impl NostrLmdbBuilder {
     ///
     /// Defaults to 0 if not set
     pub fn additional_dbs(mut self, additional_dbs: u32) -> Self {
-        self.additional_dbs = Some(additional_dbs);
+        self.additional_dbs = additional_dbs;
         self
     }
 
@@ -121,17 +120,7 @@ impl NostrLmdbBuilder {
 
     /// Build
     pub async fn build(self) -> Result<NostrLmdb, DatabaseError> {
-        let map_size: usize = self.map_size.unwrap_or(MAP_SIZE);
-        let max_readers: u32 = self.max_readers.unwrap_or(126);
-        let additional_dbs: u32 = self.additional_dbs.unwrap_or(0);
-        let lmdb_options = LmdbOptions::default()
-            .map_size(map_size)
-            .max_readers(max_readers)
-            .additional_dbs(additional_dbs)
-            .process_nip62(self.process_nip62)
-            .process_nip09(self.process_nip09);
-
-        let db: Store = Store::open(self.path, lmdb_options)
+        let db: Store = Store::from_builder(self)
             .await
             .map_err(DatabaseError::backend)?;
         Ok(NostrLmdb { db })
