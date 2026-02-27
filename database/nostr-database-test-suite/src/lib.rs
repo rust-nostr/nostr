@@ -288,7 +288,7 @@ macro_rules! database_unit_tests {
         }
 
         #[tokio::test]
-        async fn test_event_deletion() {
+        async fn test_event_deletion_by_id() {
             let store: $store_type = $setup_fn().await;
             let keys = Keys::generate();
 
@@ -330,6 +330,43 @@ macro_rules! database_unit_tests {
             // (even though they're physically removed from the database)
             assert_eq!(status1, DatabaseEventStatus::Deleted);
             assert_eq!(status2, DatabaseEventStatus::Deleted);
+        }
+
+        #[tokio::test]
+        async fn test_event_deletion_by_coordinate() {
+            let store: $store_type = $setup_fn().await;
+            let keys = Keys::generate();
+
+            // Create events to delete
+            let event = EventBuilder::new(Kind::Custom(11_111), "To be deleted 1")
+                .sign_with_keys(&keys)
+                .expect("Failed to sign");
+
+            let status = store.save_event(&event).await.expect("Failed to save event");
+
+            assert_eq!(status, SaveEventStatus::Success);
+
+            // Create deletion event
+            let req = EventDeletionRequest::new()
+                .coordinate(event.coordinate().unwrap().into_owned());
+            let deletion =
+                EventBuilder::delete(req)
+                    .sign_with_keys(&keys)
+                    .expect("Failed to sign");
+
+            store.save_event(&deletion)
+                .await
+                .expect("Failed to save deletion");
+
+            // Sleep to ensure deletion is processed in the ingester
+            time::sleep(Duration::from_millis(50)).await;
+
+            // Try to resave event
+            let status = store.save_event(&event).await.expect("Failed to save event");
+
+            // Deleted events return Deleted status
+            // (even though they're physically removed from the database)
+            assert_eq!(status, SaveEventStatus::Rejected(RejectedReason::Deleted));
         }
 
         #[tokio::test]
