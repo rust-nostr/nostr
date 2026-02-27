@@ -929,10 +929,10 @@ macro_rules! database_unit_tests {
 
             // Try adding new event, should get rejected
             let status = store.save_event(&event1).await.unwrap();
-            assert!(matches!(
+            assert_eq!(
                 status,
                 SaveEventStatus::Rejected(RejectedReason::Vanished)
-            ));
+            );
         }
     };
 }
