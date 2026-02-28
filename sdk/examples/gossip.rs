@@ -39,8 +39,8 @@ async fn main() -> Result<()> {
     println!("Event ID: {}", output.to_bech32()?);
 
     println!("Sent to:");
-    for url in output.success.into_iter() {
-        println!("- {url}");
+    for (url, message) in output.success.into_iter() {
+        println!("- {url} (OK message: {message:?})");
     }
 
     println!("Not sent to:");

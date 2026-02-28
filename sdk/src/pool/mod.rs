@@ -305,7 +305,7 @@ impl RelayPool {
         for (url, result) in urls.into_iter().zip(list.into_iter()) {
             match result {
                 Ok(..) => {
-                    output.success.insert(url);
+                    output.success.insert(url, None);
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -459,7 +459,7 @@ impl RelayPool {
             match result {
                 Ok(()) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
+                    output.success.insert(url, None);
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -522,12 +522,12 @@ impl RelayPool {
 
         while let Some((url, result)) = futures.next().await {
             match result {
-                Ok(id) => {
+                Ok((id, message)) => {
                     // The ID must match
                     assert_eq!(id, event.id);
 
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
+                    output.success.insert(url, message);
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -589,7 +589,7 @@ impl RelayPool {
             match result {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
+                    output.success.insert(url, None);
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -624,7 +624,7 @@ impl RelayPool {
             match result {
                 Ok(true) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url.clone());
+                    output.success.insert(url.clone(), None);
                 }
                 // Subscription isn't found or auto-closing: do nothing
                 Ok(false) => {}
@@ -661,7 +661,7 @@ impl RelayPool {
             match result {
                 Ok(()) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
+                    output.success.insert(url, None);
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -714,7 +714,7 @@ impl RelayPool {
             match result {
                 Ok(reconciliation) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url.clone());
+                    output.success.insert(url.clone(), None);
                     output.merge_relay_summary(url, reconciliation);
                 }
                 Err(e) => {
