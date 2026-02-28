@@ -3,10 +3,10 @@ use std::future::IntoFuture;
 use std::iter;
 use std::time::Duration;
 
-use nostr::{Event, EventId, Kind, PublicKey, RelayUrl, RelayUrlArg};
+use nostr::{Event, Kind, PublicKey, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
 
-use super::output::Output;
+use super::output::SendEventOutput;
 use crate::client::gossip::Gossip;
 use crate::client::{Client, Error};
 use crate::future::BoxedFuture;
@@ -374,7 +374,7 @@ where
     'event: 'client,
     'url: 'client,
 {
-    type Output = Result<Output<EventId>, Error>;
+    type Output = Result<SendEventOutput, Error>;
     type IntoFuture = BoxedFuture<'client, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
@@ -478,11 +478,11 @@ mod tests {
         let output = client.send_event(&event).await.unwrap();
 
         assert_eq!(output.success.len(), 2);
-        assert!(output.success.contains(&url1));
-        assert!(output.success.contains(&url2));
-        assert!(!output.success.contains(&url3));
+        assert!(output.success.keys().any(|url| url == &url1));
+        assert!(output.success.keys().any(|url| url == &url2));
+        assert!(output.success.keys().all(|url| url != &url3));
         assert!(output.failed.is_empty());
-        assert_eq!(output.val, event.id);
+        assert_eq!(output.event_id, event.id);
     }
 
     #[tokio::test]
@@ -506,10 +506,10 @@ mod tests {
         let output = client.send_event(&event).to([&url1]).await.unwrap();
 
         assert_eq!(output.success.len(), 1);
-        assert!(output.success.contains(&url1));
-        assert!(!output.success.contains(&url2));
+        assert!(output.success.keys().any(|url| url == &url1));
+        assert!(output.success.keys().all(|url| url != &url2));
         assert!(output.failed.is_empty());
-        assert_eq!(output.val, event.id);
+        assert_eq!(output.event_id, event.id);
     }
 
     #[tokio::test]
@@ -547,11 +547,11 @@ mod tests {
         let output = client.send_event(&event).broadcast().await.unwrap();
 
         assert_eq!(output.success.len(), 2);
-        assert!(output.success.contains(&url1));
-        assert!(output.success.contains(&url2));
-        assert!(!output.success.contains(&url3));
+        assert!(output.success.keys().any(|url| url == &url1));
+        assert!(output.success.keys().any(|url| url == &url2));
+        assert!(output.success.keys().all(|url| url != &url3));
         assert!(output.failed.is_empty());
-        assert_eq!(output.val, event.id);
+        assert_eq!(output.event_id, event.id);
     }
 
     #[tokio::test]
@@ -628,11 +628,11 @@ mod tests {
 
         // Verify output
         assert_eq!(output.success.len(), 2);
-        assert!(output.success.contains(&outbox_url));
-        assert!(output.success.contains(&public_url));
-        assert!(!output.success.contains(&discovery_url));
+        assert!(output.success.keys().any(|url| url == &outbox_url));
+        assert!(output.success.keys().any(|url| url == &public_url));
+        assert!(output.success.keys().all(|url| url != &discovery_url));
         assert!(output.failed.is_empty());
-        assert_eq!(output.val, event.id);
+        assert_eq!(output.event_id, event.id);
 
         // Verify the client now has the outbox relay in its pool with GOSSIP capability
         let outbox_relay = client.relay(&outbox_url).await.unwrap().unwrap();
@@ -716,11 +716,11 @@ mod tests {
 
         // Should be sent ONLY to Bob's discovered inbox
         assert_eq!(output.success.len(), 1);
-        assert!(output.success.contains(&inbox_url));
-        assert!(!output.success.contains(&public_url));
-        assert!(!output.success.contains(&discovery_url));
+        assert!(output.success.keys().any(|url| url == &inbox_url));
+        assert!(output.success.keys().all(|url| url != &public_url));
+        assert!(output.success.keys().all(|url| url != &discovery_url));
         assert!(output.failed.is_empty());
-        assert_eq!(output.val, event.id);
+        assert_eq!(output.event_id, event.id);
 
         // Verify the client now has the outbox relay in its pool with GOSSIP capability
         let inbox_relay = client.relay(&inbox_url).await.unwrap().unwrap();
