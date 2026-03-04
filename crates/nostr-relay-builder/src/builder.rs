@@ -196,6 +196,32 @@ pub struct LocalRelayBuilderNip42 {
     // pub allowed: HashSet<PublicKey>,
 }
 
+impl LocalRelayBuilderNip42 {
+    /// Creates a new instance configured for write-only.
+    #[inline]
+    pub fn write() -> Self {
+        Self {
+            mode: LocalRelayBuilderNip42Mode::Write,
+        }
+    }
+
+    /// Creates a new instance configured for read-only.
+    #[inline]
+    pub fn read() -> Self {
+        Self {
+            mode: LocalRelayBuilderNip42Mode::Read,
+        }
+    }
+
+    /// Creates a new instance configured for both read and write.
+    #[inline]
+    pub fn read_and_write() -> Self {
+        Self {
+            mode: LocalRelayBuilderNip42Mode::Both,
+        }
+    }
+}
+
 #[allow(missing_docs)]
 #[deprecated(since = "0.45.0", note = "Use `LocalRelayBuilder` instead")]
 pub type RelayBuilder = LocalRelayBuilder;
