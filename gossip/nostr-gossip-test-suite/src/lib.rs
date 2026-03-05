@@ -349,5 +349,171 @@ macro_rules! gossip_unit_tests {
 
             assert_eq!(relays.len(), 0);
         }
+
+        #[tokio::test]
+        async fn test_record_delivery() {
+            let store: $store_type = $setup_fn().await;
+
+            let keys = Keys::generate();
+            let relay_url = RelayUrl::parse("wss://delivery.relay.io").unwrap();
+
+            // First, process some events so the relay exists in the store
+            for i in 0..3 {
+                let event = EventBuilder::text_note(format!("Delivery test {i}"))
+                    .sign_with_keys(&keys)
+                    .unwrap();
+                store.process(&event, Some(&relay_url)).await.unwrap();
+            }
+
+            // Record delivery stats
+            store.record_delivery(&relay_url, &keys.public_key, 1, 1).await.unwrap();
+            store.record_delivery(&relay_url, &keys.public_key, 1, 1).await.unwrap();
+            store.record_delivery(&relay_url, &keys.public_key, 0, 1).await.unwrap();
+
+            // The relay should still be selectable (delivery stats don't remove it)
+            let relays = store
+                .get_best_relays(
+                    &keys.public_key,
+                    BestRelaySelection::MostReceived { limit: 10 },
+                    GossipAllowedRelays::default(),
+                )
+                .await.unwrap();
+            assert_eq!(relays.len(), 1);
+            assert!(relays.contains(&relay_url));
+        }
+
+        #[tokio::test]
+        async fn test_thompson_exploration() {
+            let store: $store_type = $setup_fn().await;
+
+            // Set up a public key with 3 read relays (all with zero delivery history = uniform prior)
+            let json = r#"{"id":"0000000000000000000000000000000000000000000000000000000000000000","pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","created_at":1704644581,"kind":10002,"tags":[["r","wss://relay-a.io","read"],["r","wss://relay-b.io","read"],["r","wss://relay-c.io","read"]],"content":"","sig":"f5bc6c18b0013214588d018c9086358fb76a529aa10867d4d02a75feb239412ae1c94ac7c7917f6e6e2303d72f00dc4e9b03b168ef98f3c3c0dec9a457ce0304"}"#;
+            let event = Event::from_json(json).unwrap();
+            store.process(&event, None).await.unwrap();
+
+            let public_key = event.pubkey;
+
+            // With uniform priors and limit=2 out of 3, the excluded relay should vary
+            let mut seen_excluded: std::collections::HashSet<String> = std::collections::HashSet::new();
+            for _ in 0..100 {
+                let relays = store
+                    .get_best_relays(
+                        &public_key,
+                        BestRelaySelection::Read { limit: 2 },
+                        GossipAllowedRelays::default(),
+                    )
+                    .await.unwrap();
+                assert_eq!(relays.len(), 2);
+
+                // Find which relay was excluded
+                for url in &["wss://relay-a.io", "wss://relay-b.io", "wss://relay-c.io"] {
+                    let relay = RelayUrl::parse(url).unwrap();
+                    if !relays.contains(&relay) {
+                        seen_excluded.insert(url.to_string());
+                    }
+                }
+            }
+
+            // With Thompson Sampling, more than 1 distinct relay should be excluded across 100 runs
+            assert!(
+                seen_excluded.len() > 1,
+                "Expected non-deterministic relay selection, but only {:?} was excluded",
+                seen_excluded
+            );
+        }
+
+        #[tokio::test]
+        async fn test_thompson_exploitation() {
+            let store: $store_type = $setup_fn().await;
+
+            // Set up 2 read relays
+            let json = r#"{"id":"0000000000000000000000000000000000000000000000000000000000000000","pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","created_at":1704644581,"kind":10002,"tags":[["r","wss://good-relay.io","read"],["r","wss://bad-relay.io","read"]],"content":"","sig":"f5bc6c18b0013214588d018c9086358fb76a529aa10867d4d02a75feb239412ae1c94ac7c7917f6e6e2303d72f00dc4e9b03b168ef98f3c3c0dec9a457ce0304"}"#;
+            let event = Event::from_json(json).unwrap();
+            store.process(&event, None).await.unwrap();
+
+            let public_key = event.pubkey;
+            let good_relay = RelayUrl::parse("wss://good-relay.io").unwrap();
+            let bad_relay = RelayUrl::parse("wss://bad-relay.io").unwrap();
+
+            // Record strong delivery history: good_relay delivers 90%, bad_relay delivers 10%
+            for _ in 0..90 {
+                store.record_delivery(&good_relay, &public_key, 1, 1).await.unwrap();
+            }
+            for _ in 0..10 {
+                store.record_delivery(&good_relay, &public_key, 0, 1).await.unwrap();
+            }
+            for _ in 0..10 {
+                store.record_delivery(&bad_relay, &public_key, 1, 1).await.unwrap();
+            }
+            for _ in 0..90 {
+                store.record_delivery(&bad_relay, &public_key, 0, 1).await.unwrap();
+            }
+
+            // With limit=1, good_relay should win most of the time
+            let mut good_wins = 0u32;
+            for _ in 0..100 {
+                let relays = store
+                    .get_best_relays(
+                        &public_key,
+                        BestRelaySelection::Read { limit: 1 },
+                        GossipAllowedRelays::default(),
+                    )
+                    .await.unwrap();
+                assert_eq!(relays.len(), 1);
+                if relays.contains(&good_relay) {
+                    good_wins += 1;
+                }
+            }
+
+            assert!(
+                good_wins > 70,
+                "good_relay should win >70% of the time, but won {good_wins}/100"
+            );
+        }
+
+        #[tokio::test]
+        async fn test_cold_start_parity() {
+            let store: $store_type = $setup_fn().await;
+
+            // Set up 5 read relays with no delivery history
+            let json = r#"{"id":"0000000000000000000000000000000000000000000000000000000000000000","pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","created_at":1704644581,"kind":10002,"tags":[["r","wss://r1.io","read"],["r","wss://r2.io","read"],["r","wss://r3.io","read"],["r","wss://r4.io","read"],["r","wss://r5.io","read"]],"content":"","sig":"f5bc6c18b0013214588d018c9086358fb76a529aa10867d4d02a75feb239412ae1c94ac7c7917f6e6e2303d72f00dc4e9b03b168ef98f3c3c0dec9a457ce0304"}"#;
+            let event = Event::from_json(json).unwrap();
+            store.process(&event, None).await.unwrap();
+
+            let public_key = event.pubkey;
+
+            // With no delivery data, all 5 relays should be equally eligible
+            // Requesting all 5 should always return all 5
+            let relays = store
+                .get_best_relays(
+                    &public_key,
+                    BestRelaySelection::Read { limit: 5 },
+                    GossipAllowedRelays::default(),
+                )
+                .await.unwrap();
+            assert_eq!(relays.len(), 5);
+
+            // Each relay should appear in position 1 at least once over many runs (stochastic)
+            let mut first_seen: std::collections::HashSet<String> = std::collections::HashSet::new();
+            for _ in 0..200 {
+                let relays = store
+                    .get_best_relays(
+                        &public_key,
+                        BestRelaySelection::Read { limit: 1 },
+                        GossipAllowedRelays::default(),
+                    )
+                    .await.unwrap();
+                for r in &relays {
+                    first_seen.insert(r.to_string());
+                }
+            }
+
+            // With uniform Beta(1,1) prior, all 5 relays should appear at rank 1 at some point
+            assert!(
+                first_seen.len() >= 3,
+                "Expected at least 3 distinct relays at rank 1 with uniform prior, got {}",
+                first_seen.len()
+            );
+        }
     };
 }
