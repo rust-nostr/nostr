@@ -74,9 +74,6 @@ impl fmt::Display for Error {
     }
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
-
 /// Calendar Event RSVP Status
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum CalendarEventRsvpStatus {
@@ -231,7 +228,17 @@ impl From<DateBasedCalendarEvent> for Vec<Tag> {
             coordinates,
         } = event;
 
-        let mut tags = Vec::new();
+        let mut tags = Vec::with_capacity(
+            3 + usize::from(end.is_some())
+                + usize::from(summary.is_some())
+                + usize::from(image.is_some())
+                + locations.len()
+                + usize::from(geohash.is_some())
+                + participants.len()
+                + hashtags.len()
+                + references.len()
+                + coordinates.len(),
+        );
 
         tags.push(Tag::identifier(id));
         tags.push(Tag::from_standardized_without_cell(TagStandard::Title(
@@ -362,6 +369,7 @@ impl TryFrom<Vec<Tag>> for DateBasedCalendarEvent {
                             TagStandard::Image(url, dim) => event.image = Some((url, dim)),
                             TagStandard::Location(loc) => event.locations.push(loc),
                             TagStandard::Geohash(g) => event.geohash = Some(g),
+                            // NIP-52 uses lowercase `p` tags; uppercase `P` tags are ignored
                             TagStandard::PublicKey {
                                 public_key,
                                 relay_url,
@@ -372,6 +380,7 @@ impl TryFrom<Vec<Tag>> for DateBasedCalendarEvent {
                             }
                             TagStandard::Hashtag(h) => event.hashtags.push(h),
                             TagStandard::Reference(r) => event.references.push(r),
+                            // NIP-52 uses lowercase `a` tags; uppercase `A` tags are ignored
                             TagStandard::Coordinate {
                                 coordinate,
                                 relay_url,
@@ -480,7 +489,28 @@ impl From<TimeBasedCalendarEvent> for Vec<Tag> {
             coordinates,
         } = event;
 
-        let mut tags = Vec::new();
+        // Calculate D tag count before allocating
+        const SECONDS_PER_DAY: u64 = 86400;
+        let start_day = start.as_secs() / SECONDS_PER_DAY;
+        let end_day = end
+            .map(|e| e.as_secs() / SECONDS_PER_DAY)
+            .unwrap_or(start_day);
+        let d_tag_count = (end_day - start_day + 1) as usize;
+
+        let mut tags = Vec::with_capacity(
+            3 + usize::from(end.is_some())
+                + d_tag_count
+                + usize::from(start_tzid.is_some())
+                + usize::from(end_tzid.is_some())
+                + usize::from(summary.is_some())
+                + usize::from(image.is_some())
+                + locations.len()
+                + usize::from(geohash.is_some())
+                + participants.len()
+                + hashtags.len()
+                + references.len()
+                + coordinates.len(),
+        );
 
         tags.push(Tag::identifier(id));
         tags.push(Tag::from_standardized_without_cell(TagStandard::Title(
@@ -493,15 +523,10 @@ impl From<TimeBasedCalendarEvent> for Vec<Tag> {
         }
 
         // D tags: day-granularity timestamps for relay filtering
-        const SECONDS_PER_DAY: u64 = 86400;
         let d_upper = TagKind::SingleLetter(SingleLetterTag {
             character: Alphabet::D,
             uppercase: true,
         });
-        let start_day = start.as_secs() / SECONDS_PER_DAY;
-        let end_day = end
-            .map(|e| e.as_secs() / SECONDS_PER_DAY)
-            .unwrap_or(start_day);
         for day in start_day..=end_day {
             tags.push(Tag::custom(d_upper.clone(), [day.to_string()]));
         }
@@ -647,6 +672,7 @@ impl TryFrom<Vec<Tag>> for TimeBasedCalendarEvent {
                             TagStandard::Image(url, dim) => event.image = Some((url, dim)),
                             TagStandard::Location(loc) => event.locations.push(loc),
                             TagStandard::Geohash(g) => event.geohash = Some(g),
+                            // NIP-52 uses lowercase `p` tags; uppercase `P` tags are ignored
                             TagStandard::PublicKey {
                                 public_key,
                                 relay_url,
@@ -657,6 +683,7 @@ impl TryFrom<Vec<Tag>> for TimeBasedCalendarEvent {
                             }
                             TagStandard::Hashtag(h) => event.hashtags.push(h),
                             TagStandard::Reference(r) => event.references.push(r),
+                            // NIP-52 uses lowercase `a` tags; uppercase `A` tags are ignored
                             TagStandard::Coordinate {
                                 coordinate,
                                 relay_url,
@@ -721,7 +748,7 @@ impl From<Calendar> for Vec<Tag> {
             coordinates,
         } = calendar;
 
-        let mut tags = Vec::new();
+        let mut tags = Vec::with_capacity(2 + coordinates.len());
 
         tags.push(Tag::identifier(id));
         tags.push(Tag::from_standardized_without_cell(TagStandard::Title(
@@ -837,7 +864,11 @@ impl From<CalendarEventRsvp> for Vec<Tag> {
             free_busy,
         } = rsvp;
 
-        let mut tags = Vec::new();
+        let mut tags = Vec::with_capacity(
+            3 + usize::from(author.is_some())
+                + usize::from(event_id.is_some())
+                + usize::from(free_busy.is_some()),
+        );
 
         tags.push(Tag::identifier(id));
 
@@ -898,16 +929,12 @@ impl TryFrom<Vec<Tag>> for CalendarEventRsvp {
             match tag.kind() {
                 TagKind::Status => {
                     if let Some(content) = tag.content() {
-                        if let Ok(s) = CalendarEventRsvpStatus::from_str(content) {
-                            status = Some(s);
-                        }
+                        status = Some(CalendarEventRsvpStatus::from_str(content)?);
                     }
                 }
                 TagKind::Custom(ref s) if s.as_ref() == FB_STR => {
                     if let Some(content) = tag.content() {
-                        if let Ok(fb) = FreeBusy::from_str(content) {
-                            free_busy = Some(fb);
-                        }
+                        free_busy = Some(FreeBusy::from_str(content)?);
                     }
                 }
                 _ => {
@@ -1446,6 +1473,117 @@ mod tests {
         assert_eq!(
             CalendarEventRsvp::try_from(tags).unwrap_err(),
             Error::IdentifierMissing
+        );
+    }
+
+    #[test]
+    fn test_time_based_multi_day_d_tags() {
+        // Event spanning 3 days
+        let start = Timestamp::from(1700000000); // day 19675
+        let end = Timestamp::from(1700000000 + 2 * 86400); // day 19677
+        let event = TimeBasedCalendarEvent {
+            id: "multi-day".to_string(),
+            title: "Conference".to_string(),
+            start,
+            end: Some(end),
+            start_tzid: None,
+            end_tzid: None,
+            summary: None,
+            image: None,
+            locations: Vec::new(),
+            geohash: None,
+            participants: Vec::new(),
+            hashtags: Vec::new(),
+            references: Vec::new(),
+            coordinates: Vec::new(),
+        };
+
+        let tags: Vec<Tag> = event.into();
+        let d_upper = TagKind::single_letter(Alphabet::D, true);
+        let d_tags: Vec<&Tag> = tags.iter().filter(|t| t.kind() == d_upper).collect();
+        assert_eq!(d_tags.len(), 3);
+
+        let start_day = 1700000000u64 / 86400;
+        assert_eq!(d_tags[0].content(), Some(start_day.to_string().as_str()));
+        assert_eq!(
+            d_tags[1].content(),
+            Some((start_day + 1).to_string().as_str())
+        );
+        assert_eq!(
+            d_tags[2].content(),
+            Some((start_day + 2).to_string().as_str())
+        );
+    }
+
+    #[test]
+    fn test_rsvp_with_all_fields() {
+        let coord = Coordinate {
+            kind: Kind::TimeBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "meetup-123".to_string(),
+        };
+        let event_id = EventId::all_zeros();
+
+        let rsvp = CalendarEventRsvp {
+            id: "rsvp-full".to_string(),
+            coordinate: (coord, None),
+            status: CalendarEventRsvpStatus::Tentative,
+            author: Some(test_pubkey()),
+            event_id: Some(event_id),
+            free_busy: Some(FreeBusy::Busy),
+        };
+
+        let tags: Vec<Tag> = rsvp.clone().into();
+        let parsed = CalendarEventRsvp::try_from(tags).unwrap();
+        assert_eq!(parsed, rsvp);
+    }
+
+    #[test]
+    fn test_calendar_with_multiple_coordinates() {
+        let coords: Vec<(Coordinate, Option<RelayUrl>)> = (0..3)
+            .map(|i| {
+                (
+                    Coordinate {
+                        kind: Kind::DateBasedCalendarEvent,
+                        public_key: test_pubkey(),
+                        identifier: format!("event-{i}"),
+                    },
+                    None,
+                )
+            })
+            .collect();
+
+        let calendar = Calendar {
+            id: "my-cal".to_string(),
+            title: "My Calendar".to_string(),
+            coordinates: coords,
+        };
+
+        let tags: Vec<Tag> = calendar.clone().into();
+        let parsed = Calendar::try_from(tags).unwrap();
+        assert_eq!(parsed, calendar);
+        assert_eq!(parsed.coordinates.len(), 3);
+    }
+
+    #[test]
+    fn test_rsvp_unknown_status_returns_error() {
+        let coord = Coordinate {
+            kind: Kind::TimeBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "event".to_string(),
+        };
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Coordinate {
+                coordinate: coord,
+                relay_url: None,
+                uppercase: false,
+            }),
+            Tag::custom(TagKind::Status, ["maybe"]),
+        ];
+        assert_eq!(
+            CalendarEventRsvp::try_from(tags).unwrap_err(),
+            Error::UnknownRsvpStatus("maybe".to_string())
         );
     }
 }
