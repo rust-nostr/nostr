@@ -13,3 +13,4 @@ keywords = ["nostr", "gossip"]
 
 [dependencies]
 nostr = { workspace = true, features = ["std"] }
+rand = { version = "0.9", default-features = false, features = ["std", "std_rng", "thread_rng"] }

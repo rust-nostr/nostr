@@ -25,6 +25,10 @@ struct PkRelayData {
     bitflags: GossipFlags,
     received_events: u64,
     last_received_event: Option<Timestamp>,
+    /// Successful deliveries (Thompson Sampling)
+    delivered: u64,
+    /// Total expected deliveries (Thompson Sampling)
+    expected: u64,
 }
 
 struct PkData {
@@ -322,24 +326,23 @@ impl NostrGossipMemory {
         relays
     }
 
-    fn get_relays_by_flag(
+    /// Deterministic relay selection by received_events count (for MostReceived).
+    fn get_relays_by_received_events(
         &self,
         tx: &LruCache<PublicKey, PkData>,
         public_key: &PublicKey,
         flag: GossipFlags,
         allowed: GossipAllowedRelays,
         limit: u8,
-    ) -> impl Iterator<Item = RelayUrl> + '_ {
+    ) -> std::vec::IntoIter<RelayUrl> {
         let mut relays: Vec<(RelayUrl, u64, Option<Timestamp>)> = Vec::new();
 
         if let Some(pk_data) = tx.peek(public_key) {
             for (relay_url, relay_data) in pk_data.relays.iter() {
-                // Check if the relay is allowed by the allowed relays filter
                 if !allowed.is_allowed(relay_url) {
                     continue;
                 }
 
-                // Check if the relay has the specified flag
                 if relay_data.bitflags.has(flag) {
                     relays.push((
                         relay_url.clone(),
@@ -356,11 +359,61 @@ impl NostrGossipMemory {
             other => other,
         });
 
-        // Take only the requested limit and extract relay URLs
         relays
             .into_iter()
             .take(limit as usize)
             .map(|(url, _, _)| url)
+            .collect::<Vec<_>>()
+            .into_iter()
+    }
+
+    fn get_relays_by_flag(
+        &self,
+        tx: &LruCache<PublicKey, PkData>,
+        public_key: &PublicKey,
+        flag: GossipFlags,
+        allowed: GossipAllowedRelays,
+        limit: u8,
+    ) -> impl Iterator<Item = RelayUrl> + '_ {
+        // MostReceived (RECEIVED flag) uses deterministic received_events ranking.
+        // All other flags use Thompson Sampling on delivery stats.
+        if flag == GossipFlags::RECEIVED {
+            return self.get_relays_by_received_events(tx, public_key, flag, allowed, limit);
+        }
+
+        let mut relays: Vec<(RelayUrl, u64, u64)> = Vec::new();
+
+        if let Some(pk_data) = tx.peek(public_key) {
+            for (relay_url, relay_data) in pk_data.relays.iter() {
+                if !allowed.is_allowed(relay_url) {
+                    continue;
+                }
+
+                if relay_data.bitflags.has(flag) {
+                    relays.push((relay_url.clone(), relay_data.delivered, relay_data.expected));
+                }
+            }
+        }
+
+        // Thompson Sampling: score each relay by sampling from Beta(delivered+1, expected-delivered+1)
+        let mut rng = rand::rng();
+        let mut scored: Vec<(RelayUrl, f64)> = relays
+            .into_iter()
+            .map(|(url, delivered, expected)| {
+                let alpha = delivered as f64 + 1.0;
+                let beta = (expected.saturating_sub(delivered)) as f64 + 1.0;
+                let score = nostr_gossip::thompson::sample_beta(&mut rng, alpha, beta);
+                (url, score)
+            })
+            .collect();
+        scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+
+        scored
+            .into_iter()
+            .take(limit as usize)
+            .map(|(url, _)| url)
+            .collect::<Vec<_>>()
+            .into_iter()
     }
 }
 
@@ -430,6 +483,25 @@ impl NostrGossip for NostrGossipMemory {
         allowed: GossipAllowedRelays,
     ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>> {
         Box::pin(async move { Ok(self._get_best_relays(public_key, selection, allowed).await) })
+    }
+
+    fn record_delivery<'a>(
+        &'a self,
+        relay_url: &'a RelayUrl,
+        public_key: &'a PublicKey,
+        delivered: u64,
+        expected: u64,
+    ) -> BoxedFuture<'a, Result<(), GossipError>> {
+        Box::pin(async move {
+            let mut public_keys = self.public_keys.write().await;
+            if let Some(pk_data) = public_keys.peek_mut(public_key) {
+                if let Some(relay_data) = pk_data.relays.get_mut(relay_url) {
+                    relay_data.delivered = relay_data.delivered.saturating_add(delivered);
+                    relay_data.expected = relay_data.expected.saturating_add(expected);
+                }
+            }
+            Ok(())
+        })
     }
 }
 

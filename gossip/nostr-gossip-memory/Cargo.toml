@@ -16,6 +16,7 @@ indexmap = "2.13"
 lru.workspace = true
 nostr = { workspace = true, features = ["std"] }
 nostr-gossip.workspace = true
+rand = { version = "0.9", default-features = false, features = ["std", "std_rng", "thread_rng"] }
 tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]

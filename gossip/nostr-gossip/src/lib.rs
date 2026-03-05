@@ -21,6 +21,7 @@ use nostr::prelude::*;
 pub mod error;
 pub mod flags;
 pub mod prelude;
+pub mod thompson;
 
 use self::error::GossipError;
 
@@ -233,6 +234,22 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         selection: BestRelaySelection,
         allowed: GossipAllowedRelays,
     ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>>;
+
+    /// Record whether a relay delivered events for a given request.
+    ///
+    /// `delivered`: number of events received from this relay.
+    /// `expected`: number of events we expected (typically 1 for single-author queries).
+    ///
+    /// Default implementation is a no-op for backward compatibility.
+    fn record_delivery<'a>(
+        &'a self,
+        _relay_url: &'a RelayUrl,
+        _public_key: &'a PublicKey,
+        _delivered: u64,
+        _expected: u64,
+    ) -> BoxedFuture<'a, Result<(), GossipError>> {
+        Box::pin(async { Ok(()) })
+    }
 }
 
 #[doc(hidden)]

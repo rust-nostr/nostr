@@ -4,7 +4,7 @@ use rusqlite::Transaction;
 
 use crate::error::{Error, MigrationError};
 
-const DB_VERSION: i64 = 1;
+const DB_VERSION: i64 = 2;
 
 pub(super) fn run(tx: &Transaction<'_>) -> Result<(), Error> {
     // Get the current version
@@ -16,9 +16,9 @@ pub(super) fn run(tx: &Transaction<'_>) -> Result<(), Error> {
                 curr_version = mig_init(tx)?;
             }
 
-            // if curr_version == 1 {
-            //     curr_version = mig_1_to_2(tx)?;
-            // }
+            if curr_version == 1 {
+                curr_version = mig_1_to_2(tx)?;
+            }
 
             let _ = curr_version;
         }
@@ -49,4 +49,10 @@ fn mig_init(tx: &Transaction<'_>) -> Result<i64, Error> {
     tx.execute_batch(include_str!("../migrations/001_init.sql"))?;
     set_db_version(tx, 1)?;
     Ok(1)
+}
+
+fn mig_1_to_2(tx: &Transaction<'_>) -> Result<i64, Error> {
+    tx.execute_batch(include_str!("../migrations/002_relay_delivery.sql"))?;
+    set_db_version(tx, 2)?;
+    Ok(2)
 }

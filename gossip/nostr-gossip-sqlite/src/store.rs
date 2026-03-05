@@ -1,6 +1,6 @@
 //! Nostr gossip SQLite store.
 
-use std::cmp;
+use std::cmp::{self, Ordering};
 use std::collections::{BTreeSet, HashSet};
 use std::num::NonZeroUsize;
 use std::path::Path;
@@ -15,7 +15,7 @@ use nostr_gossip::{
     BestRelaySelection, GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip,
     OutdatedPublicKey,
 };
-use rusqlite::{params, OptionalExtension, Transaction};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 
 use crate::constant::{READ_WRITE_FLAGS, RELAYS_QUERY_LIMIT, TTL_OUTDATED};
 use crate::error::Error;
@@ -342,48 +342,115 @@ impl NostrGossipSqlite {
     ) -> Result<Vec<RelayUrl>, Error> {
         self.pool
             .interact(move |conn| {
+                // MostReceived (RECEIVED flag) uses deterministic received_events ranking.
+                // All other flags use Thompson Sampling on delivery stats.
+                if flag == GossipFlags::RECEIVED {
+                    return get_relays_by_received_events(conn, &public_key, flag, &allowed, limit);
+                }
+
+                // Fetch ALL eligible relays (no LIMIT) so Thompson sees the full candidate set
                 let query = r#"
-            SELECT r.url
+            SELECT r.url, rpu.delivered, rpu.expected
             FROM relays_per_user rpu
             INNER JOIN relays r ON rpu.relay_id = r.id
             INNER JOIN public_keys pk ON rpu.public_key_id = pk.id
             WHERE pk.public_key = ?1 AND (rpu.bitflags & ?2) = ?2
-            ORDER BY rpu.received_events DESC, rpu.last_received_event DESC
-            LIMIT ?3
         "#;
-
-                let query_limit: u8 = cmp::max(limit, RELAYS_QUERY_LIMIT);
 
                 let mut stmt = conn.prepare(query)?;
                 let rows = stmt.query_map(
-                    params![
-                        public_key.as_bytes().as_slice(),
-                        flag.as_u32(),
-                        i64::from(query_limit)
-                    ],
-                    |row| row.get::<_, String>(0),
+                    params![public_key.as_bytes().as_slice(), flag.as_u32(),],
+                    |row| {
+                        let url: String = row.get(0)?;
+                        let delivered: i64 = row.get(1)?;
+                        let expected: i64 = row.get(2)?;
+                        Ok((url, delivered as u64, expected as u64))
+                    },
                 )?;
 
-                let mut relays = Vec::new();
+                // Collect eligible relays with their delivery stats
+                let mut candidates: Vec<(RelayUrl, u64, u64)> = Vec::new();
                 for row in rows {
-                    let url = row?;
-                    if relays.len() >= limit as usize {
-                        break;
-                    }
+                    let (url, delivered, expected) = row?;
 
                     if let Ok(relay_url) = RelayUrl::parse(&url) {
                         if !allowed.is_allowed(&relay_url) {
                             continue;
                         }
-
-                        relays.push(relay_url);
+                        candidates.push((relay_url, delivered, expected));
                     }
                 }
 
-                Ok(relays)
+                // Thompson Sampling: score each relay from Beta(delivered+1, expected-delivered+1)
+                let mut rng = rand::rng();
+                let mut scored: Vec<(RelayUrl, f64)> = candidates
+                    .into_iter()
+                    .map(|(url, delivered, expected)| {
+                        let alpha = delivered as f64 + 1.0;
+                        let beta = (expected.saturating_sub(delivered)) as f64 + 1.0;
+                        let score = nostr_gossip::thompson::sample_beta(&mut rng, alpha, beta);
+                        (url, score)
+                    })
+                    .collect();
+                scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(Ordering::Equal));
+
+                Ok(scored
+                    .into_iter()
+                    .take(limit as usize)
+                    .map(|(url, _)| url)
+                    .collect())
             })
             .await
     }
+}
+
+/// Deterministic relay selection by received_events count (for MostReceived).
+fn get_relays_by_received_events(
+    conn: &Connection,
+    public_key: &PublicKey,
+    flag: GossipFlags,
+    allowed: &GossipAllowedRelays,
+    limit: u8,
+) -> Result<Vec<RelayUrl>, Error> {
+    let query = r#"
+        SELECT r.url
+        FROM relays_per_user rpu
+        INNER JOIN relays r ON rpu.relay_id = r.id
+        INNER JOIN public_keys pk ON rpu.public_key_id = pk.id
+        WHERE pk.public_key = ?1 AND (rpu.bitflags & ?2) = ?2
+        ORDER BY rpu.received_events DESC, rpu.last_received_event DESC
+        LIMIT ?3
+    "#;
+
+    let query_limit: u8 = cmp::max(limit, RELAYS_QUERY_LIMIT);
+
+    let mut stmt = conn.prepare(query)?;
+    let rows = stmt.query_map(
+        params![
+            public_key.as_bytes().as_slice(),
+            flag.as_u32(),
+            i64::from(query_limit)
+        ],
+        |row| row.get::<_, String>(0),
+    )?;
+
+    let mut relays = Vec::new();
+    for row in rows {
+        let url = row?;
+        if relays.len() >= limit as usize {
+            break;
+        }
+
+        if let Ok(relay_url) = RelayUrl::parse(&url) {
+            if !allowed.is_allowed(&relay_url) {
+                continue;
+            }
+
+            relays.push(relay_url);
+        }
+    }
+
+    Ok(relays)
 }
 
 fn get_or_save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Result<i32, Error> {
@@ -636,6 +703,40 @@ impl NostrGossip for NostrGossipSqlite {
     ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>> {
         Box::pin(async move {
             self._get_best_relays(*public_key, selection, allowed)
+                .await
+                .map_err(GossipError::backend)
+        })
+    }
+
+    fn record_delivery<'a>(
+        &'a self,
+        relay_url: &'a RelayUrl,
+        public_key: &'a PublicKey,
+        delivered: u64,
+        expected: u64,
+    ) -> BoxedFuture<'a, Result<(), GossipError>> {
+        let relay_url = relay_url.clone();
+        let public_key = *public_key;
+
+        Box::pin(async move {
+            self.pool
+                .interact(move |conn| {
+                    conn.execute(
+                        r#"
+                        UPDATE relays_per_user
+                        SET delivered = delivered + ?1, expected = expected + ?2
+                        WHERE relay_id = (SELECT id FROM relays WHERE url = ?3)
+                          AND public_key_id = (SELECT id FROM public_keys WHERE public_key = ?4)
+                        "#,
+                        params![
+                            delivered as i64,
+                            expected as i64,
+                            relay_url.as_str_without_trailing_slash(),
+                            public_key.as_bytes().as_slice()
+                        ],
+                    )?;
+                    Ok(())
+                })
                 .await
                 .map_err(GossipError::backend)
         })
