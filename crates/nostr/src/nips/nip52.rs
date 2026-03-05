@@ -13,7 +13,10 @@ use core::str::FromStr;
 
 use crate::nips::nip01::Coordinate;
 use crate::types::{RelayUrl, Url};
-use crate::{Alphabet, EventId, ImageDimensions, PublicKey, SingleLetterTag, Tag, TagKind, TagStandard, Timestamp};
+use crate::{
+    Alphabet, EventId, ImageDimensions, PublicKey, SingleLetterTag, Tag, TagKind, TagStandard,
+    Timestamp,
+};
 
 /// Check if a string matches YYYY-MM-DD format
 fn is_valid_date_format(s: &str) -> bool {
@@ -63,7 +66,9 @@ impl fmt::Display for Error {
             Self::CoordinateMissing => f.write_str("Missing coordinate (a tag)"),
             Self::UnknownRsvpStatus(s) => write!(f, "Unknown RSVP status: {s}"),
             Self::UnknownFreeBusy(s) => write!(f, "Unknown free/busy value: {s}"),
-            Self::InvalidDateFormat(s) => write!(f, "Invalid date format (expected YYYY-MM-DD): {s}"),
+            Self::InvalidDateFormat(s) => {
+                write!(f, "Invalid date format (expected YYYY-MM-DD): {s}")
+            }
             Self::InvalidTimestamp(s) => write!(f, "Invalid timestamp: {s}"),
         }
     }
@@ -263,12 +268,14 @@ impl From<DateBasedCalendarEvent> for Vec<Tag> {
         }
 
         for (pubkey, relay_url, role) in participants {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::PublicKey {
-                public_key: pubkey,
-                relay_url,
-                alias: role,
-                uppercase: false,
-            }));
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::PublicKey {
+                    public_key: pubkey,
+                    relay_url,
+                    alias: role,
+                    uppercase: false,
+                },
+            ));
         }
 
         for hashtag in hashtags {
@@ -278,9 +285,9 @@ impl From<DateBasedCalendarEvent> for Vec<Tag> {
         }
 
         for reference in references {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::Reference(reference),
-            ));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Reference(
+                reference,
+            )));
         }
 
         for (coordinate, relay_url) in coordinates {
@@ -532,12 +539,14 @@ impl From<TimeBasedCalendarEvent> for Vec<Tag> {
         }
 
         for (pubkey, relay_url, role) in participants {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::PublicKey {
-                public_key: pubkey,
-                relay_url,
-                alias: role,
-                uppercase: false,
-            }));
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::PublicKey {
+                    public_key: pubkey,
+                    relay_url,
+                    alias: role,
+                    uppercase: false,
+                },
+            ));
         }
 
         for hashtag in hashtags {
@@ -547,9 +556,9 @@ impl From<TimeBasedCalendarEvent> for Vec<Tag> {
         }
 
         for reference in references {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::Reference(reference),
-            ));
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Reference(
+                reference,
+            )));
         }
 
         for (coordinate, relay_url) in coordinates {
@@ -802,11 +811,7 @@ pub struct CalendarEventRsvp {
 
 impl CalendarEventRsvp {
     /// Create a new calendar event RSVP
-    pub fn new<S>(
-        id: S,
-        coordinate: Coordinate,
-        status: CalendarEventRsvpStatus,
-    ) -> Self
+    pub fn new<S>(id: S, coordinate: Coordinate, status: CalendarEventRsvpStatus) -> Self
     where
         S: Into<String>,
     {
@@ -845,18 +850,17 @@ impl From<CalendarEventRsvp> for Vec<Tag> {
             },
         ));
 
-        tags.push(Tag::custom(
-            TagKind::Status,
-            [status.as_str()],
-        ));
+        tags.push(Tag::custom(TagKind::Status, [status.as_str()]));
 
         if let Some(author) = author {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::PublicKey {
-                public_key: author,
-                relay_url: None,
-                alias: None,
-                uppercase: false,
-            }));
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::PublicKey {
+                    public_key: author,
+                    relay_url: None,
+                    alias: None,
+                    uppercase: false,
+                },
+            ));
         }
 
         if let Some(event_id) = event_id {
@@ -1067,7 +1071,8 @@ mod tests {
 
     #[test]
     fn test_time_based_calendar_event_minimal() {
-        let event = TimeBasedCalendarEvent::new("event-1", "Quick Chat", Timestamp::from(1700000000));
+        let event =
+            TimeBasedCalendarEvent::new("event-1", "Quick Chat", Timestamp::from(1700000000));
 
         let tags: Vec<Tag> = event.clone().into();
 
@@ -1125,7 +1130,8 @@ mod tests {
         };
 
         let rsvp = CalendarEventRsvp {
-            id: "31923:32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245:meetup-123".to_string(),
+            id: "31923:32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245:meetup-123"
+                .to_string(),
             coordinate: (coord, None),
             status: CalendarEventRsvpStatus::Accepted,
             author: None,
