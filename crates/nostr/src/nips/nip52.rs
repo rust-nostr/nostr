@@ -15,6 +15,17 @@ use crate::nips::nip01::Coordinate;
 use crate::types::{RelayUrl, Url};
 use crate::{Alphabet, EventId, ImageDimensions, PublicKey, SingleLetterTag, Tag, TagKind, TagStandard, Timestamp};
 
+/// Check if a string matches YYYY-MM-DD format
+fn is_valid_date_format(s: &str) -> bool {
+    let bytes = s.as_bytes();
+    bytes.len() == 10
+        && bytes[4] == b'-'
+        && bytes[7] == b'-'
+        && bytes[..4].iter().all(|b| b.is_ascii_digit())
+        && bytes[5..7].iter().all(|b| b.is_ascii_digit())
+        && bytes[8..10].iter().all(|b| b.is_ascii_digit())
+}
+
 const START_TZID_STR: &str = "start_tzid";
 const END_TZID_STR: &str = "end_tzid";
 const FB_STR: &str = "fb";
@@ -36,6 +47,10 @@ pub enum Error {
     UnknownRsvpStatus(String),
     /// Unknown free/busy value
     UnknownFreeBusy(String),
+    /// Invalid date format (expected YYYY-MM-DD)
+    InvalidDateFormat(String),
+    /// Invalid timestamp
+    InvalidTimestamp(String),
 }
 
 impl fmt::Display for Error {
@@ -48,9 +63,14 @@ impl fmt::Display for Error {
             Self::CoordinateMissing => f.write_str("Missing coordinate (a tag)"),
             Self::UnknownRsvpStatus(s) => write!(f, "Unknown RSVP status: {s}"),
             Self::UnknownFreeBusy(s) => write!(f, "Unknown free/busy value: {s}"),
+            Self::InvalidDateFormat(s) => write!(f, "Invalid date format (expected YYYY-MM-DD): {s}"),
+            Self::InvalidTimestamp(s) => write!(f, "Invalid timestamp: {s}"),
         }
     }
 }
+
+#[cfg(feature = "std")]
+impl std::error::Error for Error {}
 
 /// Calendar Event RSVP Status
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -132,6 +152,9 @@ impl FromStr for FreeBusy {
 
 /// Date-Based Calendar Event (kind 31922)
 ///
+/// The event description is stored in the Nostr event's `content` field
+/// and is not modeled here (handled at the `Event` level).
+///
 /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct DateBasedCalendarEvent {
@@ -157,7 +180,7 @@ pub struct DateBasedCalendarEvent {
     pub hashtags: Vec<String>,
     /// References
     pub references: Vec<String>,
-    /// Coordinates (`a` tags)
+    /// Coordinates (`a` tags, optional) — references to kind:31924 calendars requesting inclusion
     pub coordinates: Vec<(Coordinate, Option<RelayUrl>)>,
 }
 
@@ -306,12 +329,18 @@ impl TryFrom<Vec<Tag>> for DateBasedCalendarEvent {
             match tag.kind() {
                 TagKind::Start => {
                     if let Some(content) = tag.content() {
+                        if !is_valid_date_format(content) {
+                            return Err(Error::InvalidDateFormat(content.to_string()));
+                        }
                         event.start = content.to_string();
                         has_start = true;
                     }
                 }
                 TagKind::End => {
                     if let Some(content) = tag.content() {
+                        if !is_valid_date_format(content) {
+                            return Err(Error::InvalidDateFormat(content.to_string()));
+                        }
                         event.end = Some(content.to_string());
                     }
                 }
@@ -363,6 +392,9 @@ impl TryFrom<Vec<Tag>> for DateBasedCalendarEvent {
 
 /// Time-Based Calendar Event (kind 31923)
 ///
+/// The event description is stored in the Nostr event's `content` field
+/// and is not modeled here (handled at the `Event` level).
+///
 /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TimeBasedCalendarEvent {
@@ -392,7 +424,7 @@ pub struct TimeBasedCalendarEvent {
     pub hashtags: Vec<String>,
     /// References
     pub references: Vec<String>,
-    /// Coordinates (`a` tags)
+    /// Coordinates (`a` tags, optional) — references to kind:31924 calendars requesting inclusion
     pub coordinates: Vec<(Coordinate, Option<RelayUrl>)>,
 }
 
@@ -568,16 +600,20 @@ impl TryFrom<Vec<Tag>> for TimeBasedCalendarEvent {
             match tag.kind() {
                 TagKind::Start => {
                     if let Some(content) = tag.content() {
-                        if let Ok(ts) = Timestamp::from_str(content) {
-                            event.start = ts;
-                            has_start = true;
+                        match Timestamp::from_str(content) {
+                            Ok(ts) => {
+                                event.start = ts;
+                                has_start = true;
+                            }
+                            Err(_) => return Err(Error::InvalidTimestamp(content.to_string())),
                         }
                     }
                 }
                 TagKind::End => {
                     if let Some(content) = tag.content() {
-                        if let Ok(ts) = Timestamp::from_str(content) {
-                            event.end = Some(ts);
+                        match Timestamp::from_str(content) {
+                            Ok(ts) => event.end = Some(ts),
+                            Err(_) => return Err(Error::InvalidTimestamp(content.to_string())),
                         }
                     }
                 }
@@ -638,6 +674,9 @@ impl TryFrom<Vec<Tag>> for TimeBasedCalendarEvent {
 }
 
 /// Calendar (kind 31924)
+///
+/// The calendar description is stored in the Nostr event's `content` field
+/// and is not modeled here (handled at the `Event` level).
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -740,6 +779,9 @@ impl TryFrom<Vec<Tag>> for Calendar {
 }
 
 /// Calendar Event RSVP (kind 31925)
+///
+/// The RSVP note is stored in the Nostr event's `content` field
+/// and is not modeled here (handled at the `Event` level).
 ///
 /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -1251,10 +1293,9 @@ mod tests {
             Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
             Tag::custom(TagKind::Start, ["not-a-timestamp"]),
         ];
-        // Unparseable timestamp is treated as missing (M4 notes this)
         assert_eq!(
             TimeBasedCalendarEvent::try_from(tags).unwrap_err(),
-            Error::StartMissing
+            Error::InvalidTimestamp("not-a-timestamp".to_string())
         );
     }
 
@@ -1284,6 +1325,90 @@ mod tests {
         let event = TimeBasedCalendarEvent::try_from(tags).unwrap();
         assert_eq!(event.id, "test");
         assert_eq!(event.start, Timestamp::from(1700000000));
+    }
+
+    // M2: Date format validation for DateBasedCalendarEvent
+
+    #[test]
+    fn test_date_based_invalid_start_format() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["not-a-date"]),
+        ];
+        assert_eq!(
+            DateBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::InvalidDateFormat("not-a-date".to_string())
+        );
+    }
+
+    #[test]
+    fn test_date_based_invalid_start_wrong_separator() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["2024/01/15"]),
+        ];
+        assert_eq!(
+            DateBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::InvalidDateFormat("2024/01/15".to_string())
+        );
+    }
+
+    #[test]
+    fn test_date_based_invalid_end_format() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["2024-01-15"]),
+            Tag::custom(TagKind::End, ["bad-end"]),
+        ];
+        assert_eq!(
+            DateBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::InvalidDateFormat("bad-end".to_string())
+        );
+    }
+
+    #[test]
+    fn test_date_based_valid_date_format() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["2024-01-15"]),
+            Tag::custom(TagKind::End, ["2024-01-16"]),
+        ];
+        let event = DateBasedCalendarEvent::try_from(tags).unwrap();
+        assert_eq!(event.start, "2024-01-15");
+        assert_eq!(event.end, Some("2024-01-16".to_string()));
+    }
+
+    // M4: Invalid timestamp should return InvalidTimestamp, not StartMissing
+
+    #[test]
+    fn test_time_based_invalid_start_timestamp() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["not-a-timestamp"]),
+        ];
+        assert_eq!(
+            TimeBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::InvalidTimestamp("not-a-timestamp".to_string())
+        );
+    }
+
+    #[test]
+    fn test_time_based_invalid_end_timestamp() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["1700000000"]),
+            Tag::custom(TagKind::End, ["garbage"]),
+        ];
+        assert_eq!(
+            TimeBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::InvalidTimestamp("garbage".to_string())
+        );
     }
 
     #[test]
