@@ -916,8 +916,20 @@ mod tests {
         };
 
         let tags: Vec<Tag> = event.clone().into();
-        let parsed = DateBasedCalendarEvent::try_from(tags).unwrap();
 
+        // Verify serialized tag count and key values
+        // d, title, start, end, summary, location, geohash, p, t, r = 10
+        assert_eq!(tags.len(), 10);
+        assert_eq!(tags[0].kind(), TagKind::d());
+        assert_eq!(tags[0].content(), Some("poker-night"));
+        assert_eq!(tags[1].kind(), TagKind::Title);
+        assert_eq!(tags[1].content(), Some("Poker Night"));
+        assert_eq!(tags[2].kind(), TagKind::Start);
+        assert_eq!(tags[2].content(), Some("2023-12-25"));
+        assert_eq!(tags[3].kind(), TagKind::End);
+        assert_eq!(tags[3].content(), Some("2023-12-26"));
+
+        let parsed = DateBasedCalendarEvent::try_from(tags).unwrap();
         assert_eq!(parsed, event);
     }
 
@@ -971,8 +983,19 @@ mod tests {
         };
 
         let tags: Vec<Tag> = event.clone().into();
-        let parsed = TimeBasedCalendarEvent::try_from(tags).unwrap();
 
+        // d, title, start, end, start_tzid, end_tzid, summary, location, p, t = 10
+        assert_eq!(tags.len(), 10);
+        assert_eq!(tags[0].kind(), TagKind::d());
+        assert_eq!(tags[0].content(), Some("meetup-123"));
+        assert_eq!(tags[1].kind(), TagKind::Title);
+        assert_eq!(tags[1].content(), Some("Nostr Meetup"));
+        assert_eq!(tags[2].kind(), TagKind::Start);
+        assert_eq!(tags[2].content(), Some("1700000000"));
+        assert_eq!(tags[3].kind(), TagKind::End);
+        assert_eq!(tags[3].content(), Some("1700003600"));
+
+        let parsed = TimeBasedCalendarEvent::try_from(tags).unwrap();
         assert_eq!(parsed, event);
     }
 
@@ -981,8 +1004,17 @@ mod tests {
         let event = TimeBasedCalendarEvent::new("event-1", "Quick Chat", Timestamp::from(1700000000));
 
         let tags: Vec<Tag> = event.clone().into();
-        let parsed = TimeBasedCalendarEvent::try_from(tags).unwrap();
 
+        // d, title, start = 3 tags
+        assert_eq!(tags.len(), 3);
+        assert_eq!(tags[0].kind(), TagKind::d());
+        assert_eq!(tags[0].content(), Some("event-1"));
+        assert_eq!(tags[1].kind(), TagKind::Title);
+        assert_eq!(tags[1].content(), Some("Quick Chat"));
+        assert_eq!(tags[2].kind(), TagKind::Start);
+        assert_eq!(tags[2].content(), Some("1700000000"));
+
+        let parsed = TimeBasedCalendarEvent::try_from(tags).unwrap();
         assert_eq!(parsed, event);
     }
 
@@ -1036,26 +1068,6 @@ mod tests {
     }
 
     #[test]
-    fn test_rsvp_all_statuses() {
-        let coord = Coordinate {
-            kind: Kind::TimeBasedCalendarEvent,
-            public_key: test_pubkey(),
-            identifier: "event".to_string(),
-        };
-
-        for status in [
-            CalendarEventRsvpStatus::Accepted,
-            CalendarEventRsvpStatus::Declined,
-            CalendarEventRsvpStatus::Tentative,
-        ] {
-            let rsvp = CalendarEventRsvp::new("test", coord.clone(), status.clone());
-            let tags: Vec<Tag> = rsvp.clone().into();
-            let parsed = CalendarEventRsvp::try_from(tags).unwrap();
-            assert_eq!(parsed.status, status);
-        }
-    }
-
-    #[test]
     fn test_rsvp_missing_coordinate() {
         let tags = vec![
             Tag::identifier("test"),
@@ -1106,5 +1118,172 @@ mod tests {
         assert_eq!(FreeBusy::from_str("free").unwrap(), FreeBusy::Free);
         assert_eq!(FreeBusy::from_str("busy").unwrap(), FreeBusy::Busy);
         assert!(FreeBusy::from_str("unknown").is_err());
+    }
+
+    #[test]
+    fn test_rsvp_status_serialized_values() {
+        let coord = Coordinate {
+            kind: Kind::TimeBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "event".to_string(),
+        };
+
+        for (status, expected_str) in [
+            (CalendarEventRsvpStatus::Accepted, "accepted"),
+            (CalendarEventRsvpStatus::Declined, "declined"),
+            (CalendarEventRsvpStatus::Tentative, "tentative"),
+        ] {
+            let rsvp = CalendarEventRsvp::new("test", coord.clone(), status);
+            let tags: Vec<Tag> = rsvp.into();
+
+            let status_tag = tags
+                .iter()
+                .find(|t| t.kind() == TagKind::Status)
+                .expect("status tag must exist");
+            assert_eq!(status_tag.content(), Some(expected_str));
+        }
+    }
+
+    #[test]
+    fn test_rsvp_round_trip_free() {
+        let coord = Coordinate {
+            kind: Kind::TimeBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "meetup-123".to_string(),
+        };
+
+        let rsvp = CalendarEventRsvp {
+            id: "rsvp-free".to_string(),
+            coordinate: (coord, None),
+            status: CalendarEventRsvpStatus::Accepted,
+            event_id: None,
+            free_busy: Some(FreeBusy::Free),
+        };
+
+        let tags: Vec<Tag> = rsvp.clone().into();
+        let parsed = CalendarEventRsvp::try_from(tags).unwrap();
+        assert_eq!(parsed, rsvp);
+    }
+
+    #[test]
+    fn test_date_based_missing_identifier() {
+        let tags = vec![
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["2024-01-01"]),
+        ];
+        assert_eq!(
+            DateBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::IdentifierMissing
+        );
+    }
+
+    #[test]
+    fn test_time_based_missing_identifier() {
+        let tags = vec![
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["1700000000"]),
+        ];
+        assert_eq!(
+            TimeBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::IdentifierMissing
+        );
+    }
+
+    #[test]
+    fn test_time_based_missing_title() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::custom(TagKind::Start, ["1700000000"]),
+        ];
+        assert_eq!(
+            TimeBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::TitleMissing
+        );
+    }
+
+    #[test]
+    fn test_time_based_missing_start() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+        ];
+        assert_eq!(
+            TimeBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::StartMissing
+        );
+    }
+
+    #[test]
+    fn test_time_based_unparseable_start() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["not-a-timestamp"]),
+        ];
+        // Unparseable timestamp is treated as missing (M4 notes this)
+        assert_eq!(
+            TimeBasedCalendarEvent::try_from(tags).unwrap_err(),
+            Error::StartMissing
+        );
+    }
+
+    #[test]
+    fn test_date_based_ignores_unknown_tags() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["2024-01-01"]),
+            Tag::custom(TagKind::custom("unknown_tag"), ["some_value"]),
+            Tag::custom(TagKind::custom("another"), ["a", "b", "c"]),
+        ];
+        let event = DateBasedCalendarEvent::try_from(tags).unwrap();
+        assert_eq!(event.id, "test");
+        assert_eq!(event.title, "Test");
+        assert_eq!(event.start, "2024-01-01");
+    }
+
+    #[test]
+    fn test_time_based_ignores_unknown_tags() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+            Tag::custom(TagKind::Start, ["1700000000"]),
+            Tag::custom(TagKind::custom("foo"), ["bar"]),
+        ];
+        let event = TimeBasedCalendarEvent::try_from(tags).unwrap();
+        assert_eq!(event.id, "test");
+        assert_eq!(event.start, Timestamp::from(1700000000));
+    }
+
+    #[test]
+    fn test_calendar_missing_identifier() {
+        let tags = vec![Tag::from_standardized_without_cell(TagStandard::Title(
+            "Test".to_string(),
+        ))];
+        assert_eq!(
+            Calendar::try_from(tags).unwrap_err(),
+            Error::IdentifierMissing
+        );
+    }
+
+    #[test]
+    fn test_rsvp_missing_identifier() {
+        let coord = Coordinate {
+            kind: Kind::TimeBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "event".to_string(),
+        };
+        let tags = vec![
+            Tag::from_standardized_without_cell(TagStandard::Coordinate {
+                coordinate: coord,
+                relay_url: None,
+                uppercase: false,
+            }),
+            Tag::custom(TagKind::Status, ["accepted"]),
+        ];
+        assert_eq!(
+            CalendarEventRsvp::try_from(tags).unwrap_err(),
+            Error::IdentifierMissing
+        );
     }
 }
