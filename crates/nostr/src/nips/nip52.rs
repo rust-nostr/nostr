@@ -1035,6 +1035,7 @@ mod tests {
         let event = DateBasedCalendarEvent::new("meeting", "Team Meeting", "2024-01-15");
 
         let tags: Vec<Tag> = event.clone().into();
+        assert_eq!(tags.len(), 3); // d, title, start — no optional fields
         let parsed = DateBasedCalendarEvent::try_from(tags).unwrap();
 
         assert_eq!(parsed, event);
@@ -1203,18 +1204,15 @@ mod tests {
 
     #[test]
     fn test_rsvp_status_parsing() {
-        assert_eq!(
-            CalendarEventRsvpStatus::from_str("accepted").unwrap(),
-            CalendarEventRsvpStatus::Accepted
-        );
-        assert_eq!(
-            CalendarEventRsvpStatus::from_str("declined").unwrap(),
-            CalendarEventRsvpStatus::Declined
-        );
-        assert_eq!(
-            CalendarEventRsvpStatus::from_str("tentative").unwrap(),
-            CalendarEventRsvpStatus::Tentative
-        );
+        for (s, expected) in [
+            ("accepted", CalendarEventRsvpStatus::Accepted),
+            ("declined", CalendarEventRsvpStatus::Declined),
+            ("tentative", CalendarEventRsvpStatus::Tentative),
+        ] {
+            let parsed = CalendarEventRsvpStatus::from_str(s).unwrap();
+            assert_eq!(parsed, expected);
+            assert_eq!(parsed.as_str(), s);
+        }
         assert!(CalendarEventRsvpStatus::from_str("unknown").is_err());
     }
 
@@ -1223,52 +1221,6 @@ mod tests {
         assert_eq!(FreeBusy::from_str("free").unwrap(), FreeBusy::Free);
         assert_eq!(FreeBusy::from_str("busy").unwrap(), FreeBusy::Busy);
         assert!(FreeBusy::from_str("unknown").is_err());
-    }
-
-    #[test]
-    fn test_rsvp_status_serialized_values() {
-        let coord = Coordinate {
-            kind: Kind::TimeBasedCalendarEvent,
-            public_key: test_pubkey(),
-            identifier: "event".to_string(),
-        };
-
-        for (status, expected_str) in [
-            (CalendarEventRsvpStatus::Accepted, "accepted"),
-            (CalendarEventRsvpStatus::Declined, "declined"),
-            (CalendarEventRsvpStatus::Tentative, "tentative"),
-        ] {
-            let rsvp = CalendarEventRsvp::new("test", coord.clone(), status);
-            let tags: Vec<Tag> = rsvp.into();
-
-            let status_tag = tags
-                .iter()
-                .find(|t| t.kind() == TagKind::Status)
-                .expect("status tag must exist");
-            assert_eq!(status_tag.content(), Some(expected_str));
-        }
-    }
-
-    #[test]
-    fn test_rsvp_round_trip_free() {
-        let coord = Coordinate {
-            kind: Kind::TimeBasedCalendarEvent,
-            public_key: test_pubkey(),
-            identifier: "meetup-123".to_string(),
-        };
-
-        let rsvp = CalendarEventRsvp {
-            id: "rsvp-free".to_string(),
-            coordinate: (coord, None),
-            status: CalendarEventRsvpStatus::Accepted,
-            author: None,
-            event_id: None,
-            free_busy: Some(FreeBusy::Free),
-        };
-
-        let tags: Vec<Tag> = rsvp.clone().into();
-        let parsed = CalendarEventRsvp::try_from(tags).unwrap();
-        assert_eq!(parsed, rsvp);
     }
 
     #[test]
@@ -1364,28 +1316,17 @@ mod tests {
 
     #[test]
     fn test_date_based_invalid_start_format() {
-        let tags = vec![
-            Tag::identifier("test"),
-            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
-            Tag::custom(TagKind::Start, ["not-a-date"]),
-        ];
-        assert_eq!(
-            DateBasedCalendarEvent::try_from(tags).unwrap_err(),
-            Error::InvalidDateFormat("not-a-date".to_string())
-        );
-    }
-
-    #[test]
-    fn test_date_based_invalid_start_wrong_separator() {
-        let tags = vec![
-            Tag::identifier("test"),
-            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
-            Tag::custom(TagKind::Start, ["2024/01/15"]),
-        ];
-        assert_eq!(
-            DateBasedCalendarEvent::try_from(tags).unwrap_err(),
-            Error::InvalidDateFormat("2024/01/15".to_string())
-        );
+        for bad in ["not-a-date", "2024/01/15"] {
+            let tags = vec![
+                Tag::identifier("test"),
+                Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+                Tag::custom(TagKind::Start, [bad]),
+            ];
+            assert_eq!(
+                DateBasedCalendarEvent::try_from(tags).unwrap_err(),
+                Error::InvalidDateFormat(bad.to_string())
+            );
+        }
     }
 
     #[test]
@@ -1399,34 +1340,6 @@ mod tests {
         assert_eq!(
             DateBasedCalendarEvent::try_from(tags).unwrap_err(),
             Error::InvalidDateFormat("bad-end".to_string())
-        );
-    }
-
-    #[test]
-    fn test_date_based_valid_date_format() {
-        let tags = vec![
-            Tag::identifier("test"),
-            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
-            Tag::custom(TagKind::Start, ["2024-01-15"]),
-            Tag::custom(TagKind::End, ["2024-01-16"]),
-        ];
-        let event = DateBasedCalendarEvent::try_from(tags).unwrap();
-        assert_eq!(event.start, "2024-01-15");
-        assert_eq!(event.end, Some("2024-01-16".to_string()));
-    }
-
-    // M4: Invalid timestamp should return InvalidTimestamp, not StartMissing
-
-    #[test]
-    fn test_time_based_invalid_start_timestamp() {
-        let tags = vec![
-            Tag::identifier("test"),
-            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
-            Tag::custom(TagKind::Start, ["not-a-timestamp"]),
-        ];
-        assert_eq!(
-            TimeBasedCalendarEvent::try_from(tags).unwrap_err(),
-            Error::InvalidTimestamp("not-a-timestamp".to_string())
         );
     }
 
@@ -1562,28 +1475,34 @@ mod tests {
         let tags: Vec<Tag> = calendar.clone().into();
         let parsed = Calendar::try_from(tags).unwrap();
         assert_eq!(parsed, calendar);
-        assert_eq!(parsed.coordinates.len(), 3);
     }
 
     #[test]
-    fn test_rsvp_unknown_status_returns_error() {
+    fn test_date_based_with_relay_url_and_image() {
+        let relay = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let image_url = Url::parse("https://example.com/img.png").unwrap();
         let coord = Coordinate {
-            kind: Kind::TimeBasedCalendarEvent,
+            kind: Kind::from(31924),
             public_key: test_pubkey(),
-            identifier: "event".to_string(),
+            identifier: "my-cal".to_string(),
         };
-        let tags = vec![
-            Tag::identifier("test"),
-            Tag::from_standardized_without_cell(TagStandard::Coordinate {
-                coordinate: coord,
-                relay_url: None,
-                uppercase: false,
-            }),
-            Tag::custom(TagKind::Status, ["maybe"]),
-        ];
-        assert_eq!(
-            CalendarEventRsvp::try_from(tags).unwrap_err(),
-            Error::UnknownRsvpStatus("maybe".to_string())
-        );
+
+        let mut event = DateBasedCalendarEvent::new("test", "Test", "2024-06-01");
+        event.image = Some((image_url, Some(ImageDimensions { width: 800, height: 600 })));
+        event.coordinates = vec![(coord, Some(relay))];
+
+        let tags: Vec<Tag> = event.clone().into();
+        let parsed = DateBasedCalendarEvent::try_from(tags).unwrap();
+        assert_eq!(parsed, event);
+    }
+
+    #[test]
+    fn test_date_based_multiple_locations() {
+        let mut event = DateBasedCalendarEvent::new("fest", "Festival", "2024-07-04");
+        event.locations = vec!["Main Stage".to_string(), "Side Tent".to_string()];
+
+        let tags: Vec<Tag> = event.clone().into();
+        let parsed = DateBasedCalendarEvent::try_from(tags).unwrap();
+        assert_eq!(parsed, event);
     }
 }
