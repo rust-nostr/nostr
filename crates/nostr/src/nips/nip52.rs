@@ -1,0 +1,1110 @@
+// Copyright (c) 2022-2023 Yuki Kishimoto
+// Copyright (c) 2023-2025 Rust Nostr Developers
+// Distributed under the MIT software license
+
+//! NIP-52: Calendar Events
+//!
+//! <https://github.com/nostr-protocol/nips/blob/master/52.md>
+
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::fmt;
+use core::str::FromStr;
+
+use crate::nips::nip01::Coordinate;
+use crate::types::{RelayUrl, Url};
+use crate::{EventId, ImageDimensions, PublicKey, Tag, TagKind, TagStandard, Timestamp};
+
+const START_TZID_STR: &str = "start_tzid";
+const END_TZID_STR: &str = "end_tzid";
+const FB_STR: &str = "fb";
+
+/// NIP-52 Error
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error {
+    /// Identifier (`d` tag) missing
+    IdentifierMissing,
+    /// Title missing
+    TitleMissing,
+    /// Start missing
+    StartMissing,
+    /// Status missing
+    StatusMissing,
+    /// Coordinate (`a` tag) missing
+    CoordinateMissing,
+    /// Unknown RSVP status
+    UnknownRsvpStatus(String),
+    /// Unknown free/busy value
+    UnknownFreeBusy(String),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::IdentifierMissing => f.write_str("Missing identifier (d tag)"),
+            Self::TitleMissing => f.write_str("Missing title"),
+            Self::StartMissing => f.write_str("Missing start"),
+            Self::StatusMissing => f.write_str("Missing status"),
+            Self::CoordinateMissing => f.write_str("Missing coordinate (a tag)"),
+            Self::UnknownRsvpStatus(s) => write!(f, "Unknown RSVP status: {s}"),
+            Self::UnknownFreeBusy(s) => write!(f, "Unknown free/busy value: {s}"),
+        }
+    }
+}
+
+/// Calendar Event RSVP Status
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum CalendarEventRsvpStatus {
+    /// Accepted
+    Accepted,
+    /// Declined
+    Declined,
+    /// Tentative
+    Tentative,
+}
+
+impl fmt::Display for CalendarEventRsvpStatus {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl CalendarEventRsvpStatus {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Accepted => "accepted",
+            Self::Declined => "declined",
+            Self::Tentative => "tentative",
+        }
+    }
+}
+
+impl FromStr for CalendarEventRsvpStatus {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "accepted" => Ok(Self::Accepted),
+            "declined" => Ok(Self::Declined),
+            "tentative" => Ok(Self::Tentative),
+            s => Err(Error::UnknownRsvpStatus(s.to_string())),
+        }
+    }
+}
+
+/// Free/Busy indicator
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum FreeBusy {
+    /// Free
+    Free,
+    /// Busy
+    Busy,
+}
+
+impl fmt::Display for FreeBusy {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+impl FreeBusy {
+    /// Get as `&str`
+    pub fn as_str(&self) -> &str {
+        match self {
+            Self::Free => "free",
+            Self::Busy => "busy",
+        }
+    }
+}
+
+impl FromStr for FreeBusy {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "free" => Ok(Self::Free),
+            "busy" => Ok(Self::Busy),
+            s => Err(Error::UnknownFreeBusy(s.to_string())),
+        }
+    }
+}
+
+/// Date-Based Calendar Event (kind 31922)
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct DateBasedCalendarEvent {
+    /// Identifier (`d` tag)
+    pub id: String,
+    /// Title
+    pub title: String,
+    /// Start date (YYYY-MM-DD)
+    pub start: String,
+    /// End date (YYYY-MM-DD, exclusive)
+    pub end: Option<String>,
+    /// Summary
+    pub summary: Option<String>,
+    /// Image
+    pub image: Option<(Url, Option<ImageDimensions>)>,
+    /// Location
+    pub location: Option<String>,
+    /// Geohash
+    pub geohash: Option<String>,
+    /// Participants (pubkey, optional relay URL, optional role)
+    pub participants: Vec<(PublicKey, Option<RelayUrl>, Option<String>)>,
+    /// Hashtags
+    pub hashtags: Vec<String>,
+    /// References
+    pub references: Vec<String>,
+    /// Coordinates (`a` tags)
+    pub coordinates: Vec<(Coordinate, Option<RelayUrl>)>,
+}
+
+impl DateBasedCalendarEvent {
+    /// Create a new date-based calendar event
+    pub fn new<S1, S2, S3>(id: S1, title: S2, start: S3) -> Self
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+        S3: Into<String>,
+    {
+        Self {
+            id: id.into(),
+            title: title.into(),
+            start: start.into(),
+            end: None,
+            summary: None,
+            image: None,
+            location: None,
+            geohash: None,
+            participants: Vec::new(),
+            hashtags: Vec::new(),
+            references: Vec::new(),
+            coordinates: Vec::new(),
+        }
+    }
+}
+
+impl From<DateBasedCalendarEvent> for Vec<Tag> {
+    fn from(event: DateBasedCalendarEvent) -> Self {
+        let DateBasedCalendarEvent {
+            id,
+            title,
+            start,
+            end,
+            summary,
+            image,
+            location,
+            geohash,
+            participants,
+            hashtags,
+            references,
+            coordinates,
+        } = event;
+
+        let mut tags = Vec::new();
+
+        tags.push(Tag::identifier(id));
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Title(
+            title,
+        )));
+        tags.push(Tag::custom(TagKind::Start, [&start]));
+
+        if let Some(end) = end {
+            tags.push(Tag::custom(TagKind::End, [&end]));
+        }
+
+        if let Some(summary) = summary {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Summary(
+                summary,
+            )));
+        }
+
+        if let Some((image, dim)) = image {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Image(
+                image, dim,
+            )));
+        }
+
+        if let Some(location) = location {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Location(
+                location,
+            )));
+        }
+
+        if let Some(geohash) = geohash {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Geohash(
+                geohash,
+            )));
+        }
+
+        for (pubkey, relay_url, role) in participants {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::PublicKey {
+                public_key: pubkey,
+                relay_url,
+                alias: role,
+                uppercase: false,
+            }));
+        }
+
+        for hashtag in hashtags {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Hashtag(
+                hashtag,
+            )));
+        }
+
+        for reference in references {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::Reference(reference),
+            ));
+        }
+
+        for (coordinate, relay_url) in coordinates {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::Coordinate {
+                    coordinate,
+                    relay_url,
+                    uppercase: false,
+                },
+            ));
+        }
+
+        tags
+    }
+}
+
+impl TryFrom<Vec<Tag>> for DateBasedCalendarEvent {
+    type Error = Error;
+
+    fn try_from(tags: Vec<Tag>) -> Result<Self, Self::Error> {
+        let id: &str = tags
+            .iter()
+            .find(|t| t.kind() == TagKind::d())
+            .and_then(|t| t.content())
+            .ok_or(Error::IdentifierMissing)?;
+
+        let mut event = DateBasedCalendarEvent {
+            id: id.to_string(),
+            title: String::new(),
+            start: String::new(),
+            end: None,
+            summary: None,
+            image: None,
+            location: None,
+            geohash: None,
+            participants: Vec::new(),
+            hashtags: Vec::new(),
+            references: Vec::new(),
+            coordinates: Vec::new(),
+        };
+
+        let mut has_title = false;
+        let mut has_start = false;
+
+        for tag in tags.into_iter() {
+            match tag.kind() {
+                TagKind::Start => {
+                    if let Some(content) = tag.content() {
+                        event.start = content.to_string();
+                        has_start = true;
+                    }
+                }
+                TagKind::End => {
+                    if let Some(content) = tag.content() {
+                        event.end = Some(content.to_string());
+                    }
+                }
+                _ => {
+                    if let Some(std_tag) = tag.to_standardized() {
+                        match std_tag {
+                            TagStandard::Title(title) => {
+                                event.title = title;
+                                has_title = true;
+                            }
+                            TagStandard::Summary(summary) => event.summary = Some(summary),
+                            TagStandard::Image(url, dim) => event.image = Some((url, dim)),
+                            TagStandard::Location(loc) => event.location = Some(loc),
+                            TagStandard::Geohash(g) => event.geohash = Some(g),
+                            TagStandard::PublicKey {
+                                public_key,
+                                relay_url,
+                                alias,
+                                uppercase: false,
+                            } => {
+                                event.participants.push((public_key, relay_url, alias));
+                            }
+                            TagStandard::Hashtag(h) => event.hashtags.push(h),
+                            TagStandard::Reference(r) => event.references.push(r),
+                            TagStandard::Coordinate {
+                                coordinate,
+                                relay_url,
+                                uppercase: false,
+                            } => {
+                                event.coordinates.push((coordinate, relay_url));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        if !has_title {
+            return Err(Error::TitleMissing);
+        }
+        if !has_start {
+            return Err(Error::StartMissing);
+        }
+
+        Ok(event)
+    }
+}
+
+/// Time-Based Calendar Event (kind 31923)
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct TimeBasedCalendarEvent {
+    /// Identifier (`d` tag)
+    pub id: String,
+    /// Title
+    pub title: String,
+    /// Start timestamp (Unix)
+    pub start: Timestamp,
+    /// End timestamp (Unix)
+    pub end: Option<Timestamp>,
+    /// Start timezone (IANA)
+    pub start_tzid: Option<String>,
+    /// End timezone (IANA)
+    pub end_tzid: Option<String>,
+    /// Summary
+    pub summary: Option<String>,
+    /// Image
+    pub image: Option<(Url, Option<ImageDimensions>)>,
+    /// Location
+    pub location: Option<String>,
+    /// Geohash
+    pub geohash: Option<String>,
+    /// Participants (pubkey, optional relay URL, optional role)
+    pub participants: Vec<(PublicKey, Option<RelayUrl>, Option<String>)>,
+    /// Hashtags
+    pub hashtags: Vec<String>,
+    /// References
+    pub references: Vec<String>,
+    /// Coordinates (`a` tags)
+    pub coordinates: Vec<(Coordinate, Option<RelayUrl>)>,
+}
+
+impl TimeBasedCalendarEvent {
+    /// Create a new time-based calendar event
+    pub fn new<S1, S2>(id: S1, title: S2, start: Timestamp) -> Self
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
+        Self {
+            id: id.into(),
+            title: title.into(),
+            start,
+            end: None,
+            start_tzid: None,
+            end_tzid: None,
+            summary: None,
+            image: None,
+            location: None,
+            geohash: None,
+            participants: Vec::new(),
+            hashtags: Vec::new(),
+            references: Vec::new(),
+            coordinates: Vec::new(),
+        }
+    }
+}
+
+impl From<TimeBasedCalendarEvent> for Vec<Tag> {
+    fn from(event: TimeBasedCalendarEvent) -> Self {
+        let TimeBasedCalendarEvent {
+            id,
+            title,
+            start,
+            end,
+            start_tzid,
+            end_tzid,
+            summary,
+            image,
+            location,
+            geohash,
+            participants,
+            hashtags,
+            references,
+            coordinates,
+        } = event;
+
+        let mut tags = Vec::new();
+
+        tags.push(Tag::identifier(id));
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Title(
+            title,
+        )));
+        tags.push(Tag::custom(TagKind::Start, [start.to_string()]));
+
+        if let Some(end) = end {
+            tags.push(Tag::custom(TagKind::End, [end.to_string()]));
+        }
+
+        if let Some(tzid) = start_tzid {
+            tags.push(Tag::custom(TagKind::custom(START_TZID_STR), [tzid]));
+        }
+
+        if let Some(tzid) = end_tzid {
+            tags.push(Tag::custom(TagKind::custom(END_TZID_STR), [tzid]));
+        }
+
+        if let Some(summary) = summary {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Summary(
+                summary,
+            )));
+        }
+
+        if let Some((image, dim)) = image {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Image(
+                image, dim,
+            )));
+        }
+
+        if let Some(location) = location {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Location(
+                location,
+            )));
+        }
+
+        if let Some(geohash) = geohash {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Geohash(
+                geohash,
+            )));
+        }
+
+        for (pubkey, relay_url, role) in participants {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::PublicKey {
+                public_key: pubkey,
+                relay_url,
+                alias: role,
+                uppercase: false,
+            }));
+        }
+
+        for hashtag in hashtags {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Hashtag(
+                hashtag,
+            )));
+        }
+
+        for reference in references {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::Reference(reference),
+            ));
+        }
+
+        for (coordinate, relay_url) in coordinates {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::Coordinate {
+                    coordinate,
+                    relay_url,
+                    uppercase: false,
+                },
+            ));
+        }
+
+        tags
+    }
+}
+
+impl TryFrom<Vec<Tag>> for TimeBasedCalendarEvent {
+    type Error = Error;
+
+    fn try_from(tags: Vec<Tag>) -> Result<Self, Self::Error> {
+        let id: &str = tags
+            .iter()
+            .find(|t| t.kind() == TagKind::d())
+            .and_then(|t| t.content())
+            .ok_or(Error::IdentifierMissing)?;
+
+        let mut event = TimeBasedCalendarEvent {
+            id: id.to_string(),
+            title: String::new(),
+            start: Timestamp::from(0),
+            end: None,
+            start_tzid: None,
+            end_tzid: None,
+            summary: None,
+            image: None,
+            location: None,
+            geohash: None,
+            participants: Vec::new(),
+            hashtags: Vec::new(),
+            references: Vec::new(),
+            coordinates: Vec::new(),
+        };
+
+        let mut has_title = false;
+        let mut has_start = false;
+
+        for tag in tags.into_iter() {
+            match tag.kind() {
+                TagKind::Start => {
+                    if let Some(content) = tag.content() {
+                        if let Ok(ts) = Timestamp::from_str(content) {
+                            event.start = ts;
+                            has_start = true;
+                        }
+                    }
+                }
+                TagKind::End => {
+                    if let Some(content) = tag.content() {
+                        if let Ok(ts) = Timestamp::from_str(content) {
+                            event.end = Some(ts);
+                        }
+                    }
+                }
+                TagKind::Custom(ref s) if s.as_ref() == START_TZID_STR => {
+                    if let Some(content) = tag.content() {
+                        event.start_tzid = Some(content.to_string());
+                    }
+                }
+                TagKind::Custom(ref s) if s.as_ref() == END_TZID_STR => {
+                    if let Some(content) = tag.content() {
+                        event.end_tzid = Some(content.to_string());
+                    }
+                }
+                _ => {
+                    if let Some(std_tag) = tag.to_standardized() {
+                        match std_tag {
+                            TagStandard::Title(title) => {
+                                event.title = title;
+                                has_title = true;
+                            }
+                            TagStandard::Summary(summary) => event.summary = Some(summary),
+                            TagStandard::Image(url, dim) => event.image = Some((url, dim)),
+                            TagStandard::Location(loc) => event.location = Some(loc),
+                            TagStandard::Geohash(g) => event.geohash = Some(g),
+                            TagStandard::PublicKey {
+                                public_key,
+                                relay_url,
+                                alias,
+                                uppercase: false,
+                            } => {
+                                event.participants.push((public_key, relay_url, alias));
+                            }
+                            TagStandard::Hashtag(h) => event.hashtags.push(h),
+                            TagStandard::Reference(r) => event.references.push(r),
+                            TagStandard::Coordinate {
+                                coordinate,
+                                relay_url,
+                                uppercase: false,
+                            } => {
+                                event.coordinates.push((coordinate, relay_url));
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        if !has_title {
+            return Err(Error::TitleMissing);
+        }
+        if !has_start {
+            return Err(Error::StartMissing);
+        }
+
+        Ok(event)
+    }
+}
+
+/// Calendar (kind 31924)
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Calendar {
+    /// Identifier (`d` tag)
+    pub id: String,
+    /// Title
+    pub title: String,
+    /// Calendar event coordinates (`a` tags)
+    pub coordinates: Vec<(Coordinate, Option<RelayUrl>)>,
+}
+
+impl Calendar {
+    /// Create a new calendar
+    pub fn new<S1, S2>(id: S1, title: S2) -> Self
+    where
+        S1: Into<String>,
+        S2: Into<String>,
+    {
+        Self {
+            id: id.into(),
+            title: title.into(),
+            coordinates: Vec::new(),
+        }
+    }
+}
+
+impl From<Calendar> for Vec<Tag> {
+    fn from(calendar: Calendar) -> Self {
+        let Calendar {
+            id,
+            title,
+            coordinates,
+        } = calendar;
+
+        let mut tags = Vec::new();
+
+        tags.push(Tag::identifier(id));
+        tags.push(Tag::from_standardized_without_cell(TagStandard::Title(
+            title,
+        )));
+
+        for (coordinate, relay_url) in coordinates {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::Coordinate {
+                    coordinate,
+                    relay_url,
+                    uppercase: false,
+                },
+            ));
+        }
+
+        tags
+    }
+}
+
+impl TryFrom<Vec<Tag>> for Calendar {
+    type Error = Error;
+
+    fn try_from(tags: Vec<Tag>) -> Result<Self, Self::Error> {
+        let id: &str = tags
+            .iter()
+            .find(|t| t.kind() == TagKind::d())
+            .and_then(|t| t.content())
+            .ok_or(Error::IdentifierMissing)?;
+
+        let mut calendar = Calendar {
+            id: id.to_string(),
+            title: String::new(),
+            coordinates: Vec::new(),
+        };
+
+        let mut has_title = false;
+
+        for tag in tags.into_iter() {
+            if let Some(std_tag) = tag.to_standardized() {
+                match std_tag {
+                    TagStandard::Title(title) => {
+                        calendar.title = title;
+                        has_title = true;
+                    }
+                    TagStandard::Coordinate {
+                        coordinate,
+                        relay_url,
+                        uppercase: false,
+                    } => {
+                        calendar.coordinates.push((coordinate, relay_url));
+                    }
+                    _ => {}
+                }
+            }
+        }
+
+        if !has_title {
+            return Err(Error::TitleMissing);
+        }
+
+        Ok(calendar)
+    }
+}
+
+/// Calendar Event RSVP (kind 31925)
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CalendarEventRsvp {
+    /// Identifier (`d` tag)
+    pub id: String,
+    /// Coordinate of the calendar event (`a` tag, required)
+    pub coordinate: (Coordinate, Option<RelayUrl>),
+    /// RSVP status
+    pub status: CalendarEventRsvpStatus,
+    /// Optional event ID (`e` tag, specific revision)
+    pub event_id: Option<EventId>,
+    /// Free/busy indicator
+    pub free_busy: Option<FreeBusy>,
+}
+
+impl CalendarEventRsvp {
+    /// Create a new calendar event RSVP
+    pub fn new<S>(
+        id: S,
+        coordinate: Coordinate,
+        status: CalendarEventRsvpStatus,
+    ) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            id: id.into(),
+            coordinate: (coordinate, None),
+            status,
+            event_id: None,
+            free_busy: None,
+        }
+    }
+}
+
+impl From<CalendarEventRsvp> for Vec<Tag> {
+    fn from(rsvp: CalendarEventRsvp) -> Self {
+        let CalendarEventRsvp {
+            id,
+            coordinate,
+            status,
+            event_id,
+            free_busy,
+        } = rsvp;
+
+        let mut tags = Vec::new();
+
+        tags.push(Tag::identifier(id));
+
+        let (coord, relay_url) = coordinate;
+        tags.push(Tag::from_standardized_without_cell(
+            TagStandard::Coordinate {
+                coordinate: coord,
+                relay_url,
+                uppercase: false,
+            },
+        ));
+
+        tags.push(Tag::custom(
+            TagKind::Status,
+            [status.as_str()],
+        ));
+
+        if let Some(event_id) = event_id {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::event(
+                event_id,
+            )));
+        }
+
+        if let Some(fb) = free_busy {
+            tags.push(Tag::custom(TagKind::custom(FB_STR), [fb.as_str()]));
+        }
+
+        tags
+    }
+}
+
+impl TryFrom<Vec<Tag>> for CalendarEventRsvp {
+    type Error = Error;
+
+    fn try_from(tags: Vec<Tag>) -> Result<Self, Self::Error> {
+        let id: &str = tags
+            .iter()
+            .find(|t| t.kind() == TagKind::d())
+            .and_then(|t| t.content())
+            .ok_or(Error::IdentifierMissing)?;
+
+        let mut rsvp = CalendarEventRsvp {
+            id: id.to_string(),
+            coordinate: (
+                Coordinate {
+                    kind: crate::Kind::Custom(0),
+                    public_key: PublicKey::from_slice(&[0; 32])
+                        .expect("valid zero pubkey for placeholder"),
+                    identifier: String::new(),
+                },
+                None,
+            ),
+            status: CalendarEventRsvpStatus::Accepted,
+            event_id: None,
+            free_busy: None,
+        };
+
+        let mut has_coordinate = false;
+        let mut has_status = false;
+
+        for tag in tags.into_iter() {
+            match tag.kind() {
+                TagKind::Status => {
+                    if let Some(content) = tag.content() {
+                        if let Ok(s) = CalendarEventRsvpStatus::from_str(content) {
+                            rsvp.status = s;
+                            has_status = true;
+                        }
+                    }
+                }
+                TagKind::Custom(ref s) if s.as_ref() == FB_STR => {
+                    if let Some(content) = tag.content() {
+                        if let Ok(fb) = FreeBusy::from_str(content) {
+                            rsvp.free_busy = Some(fb);
+                        }
+                    }
+                }
+                _ => {
+                    if let Some(std_tag) = tag.to_standardized() {
+                        match std_tag {
+                            TagStandard::Coordinate {
+                                coordinate,
+                                relay_url,
+                                uppercase: false,
+                            } => {
+                                if !has_coordinate {
+                                    rsvp.coordinate = (coordinate, relay_url);
+                                    has_coordinate = true;
+                                }
+                            }
+                            TagStandard::Event {
+                                event_id,
+                                uppercase: false,
+                                ..
+                            } => {
+                                rsvp.event_id = Some(event_id);
+                            }
+                            _ => {}
+                        }
+                    }
+                }
+            }
+        }
+
+        if !has_coordinate {
+            return Err(Error::CoordinateMissing);
+        }
+        if !has_status {
+            return Err(Error::StatusMissing);
+        }
+
+        Ok(rsvp)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::Kind;
+
+    fn test_pubkey() -> PublicKey {
+        PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
+            .unwrap()
+    }
+
+    #[test]
+    fn test_date_based_calendar_event_round_trip() {
+        let event = DateBasedCalendarEvent {
+            id: "poker-night".to_string(),
+            title: "Poker Night".to_string(),
+            start: "2023-12-25".to_string(),
+            end: Some("2023-12-26".to_string()),
+            summary: Some("A fun poker night".to_string()),
+            image: None,
+            location: Some("The Pub".to_string()),
+            geohash: Some("u4pruydqqvj".to_string()),
+            participants: vec![(test_pubkey(), None, Some("dealer".to_string()))],
+            hashtags: vec!["poker".to_string()],
+            references: vec!["https://example.com".to_string()],
+            coordinates: Vec::new(),
+        };
+
+        let tags: Vec<Tag> = event.clone().into();
+        let parsed = DateBasedCalendarEvent::try_from(tags).unwrap();
+
+        assert_eq!(parsed, event);
+    }
+
+    #[test]
+    fn test_date_based_calendar_event_minimal() {
+        let event = DateBasedCalendarEvent::new("meeting", "Team Meeting", "2024-01-15");
+
+        let tags: Vec<Tag> = event.clone().into();
+        let parsed = DateBasedCalendarEvent::try_from(tags).unwrap();
+
+        assert_eq!(parsed, event);
+    }
+
+    #[test]
+    fn test_date_based_calendar_event_missing_title() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::custom(TagKind::Start, ["2024-01-01"]),
+        ];
+        let result = DateBasedCalendarEvent::try_from(tags);
+        assert_eq!(result.unwrap_err(), Error::TitleMissing);
+    }
+
+    #[test]
+    fn test_date_based_calendar_event_missing_start() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Title("Test".to_string())),
+        ];
+        let result = DateBasedCalendarEvent::try_from(tags);
+        assert_eq!(result.unwrap_err(), Error::StartMissing);
+    }
+
+    #[test]
+    fn test_time_based_calendar_event_round_trip() {
+        let event = TimeBasedCalendarEvent {
+            id: "meetup-123".to_string(),
+            title: "Nostr Meetup".to_string(),
+            start: Timestamp::from(1700000000),
+            end: Some(Timestamp::from(1700003600)),
+            start_tzid: Some("America/New_York".to_string()),
+            end_tzid: Some("America/New_York".to_string()),
+            summary: Some("Monthly nostr meetup".to_string()),
+            image: None,
+            location: Some("NYC Hackerspace".to_string()),
+            geohash: None,
+            participants: vec![(test_pubkey(), None, Some("organizer".to_string()))],
+            hashtags: vec!["nostr".to_string()],
+            references: Vec::new(),
+            coordinates: Vec::new(),
+        };
+
+        let tags: Vec<Tag> = event.clone().into();
+        let parsed = TimeBasedCalendarEvent::try_from(tags).unwrap();
+
+        assert_eq!(parsed, event);
+    }
+
+    #[test]
+    fn test_time_based_calendar_event_minimal() {
+        let event = TimeBasedCalendarEvent::new("event-1", "Quick Chat", Timestamp::from(1700000000));
+
+        let tags: Vec<Tag> = event.clone().into();
+        let parsed = TimeBasedCalendarEvent::try_from(tags).unwrap();
+
+        assert_eq!(parsed, event);
+    }
+
+    #[test]
+    fn test_calendar_round_trip() {
+        let coord = Coordinate {
+            kind: Kind::DateBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "poker-night".to_string(),
+        };
+
+        let calendar = Calendar {
+            id: "my-calendar".to_string(),
+            title: "My Calendar".to_string(),
+            coordinates: vec![(coord, None)],
+        };
+
+        let tags: Vec<Tag> = calendar.clone().into();
+        let parsed = Calendar::try_from(tags).unwrap();
+
+        assert_eq!(parsed, calendar);
+    }
+
+    #[test]
+    fn test_calendar_missing_title() {
+        let tags = vec![Tag::identifier("test")];
+        let result = Calendar::try_from(tags);
+        assert_eq!(result.unwrap_err(), Error::TitleMissing);
+    }
+
+    #[test]
+    fn test_rsvp_round_trip() {
+        let coord = Coordinate {
+            kind: Kind::TimeBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "meetup-123".to_string(),
+        };
+
+        let rsvp = CalendarEventRsvp {
+            id: "31923:32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245:meetup-123".to_string(),
+            coordinate: (coord, None),
+            status: CalendarEventRsvpStatus::Accepted,
+            event_id: None,
+            free_busy: Some(FreeBusy::Busy),
+        };
+
+        let tags: Vec<Tag> = rsvp.clone().into();
+        let parsed = CalendarEventRsvp::try_from(tags).unwrap();
+
+        assert_eq!(parsed, rsvp);
+    }
+
+    #[test]
+    fn test_rsvp_all_statuses() {
+        let coord = Coordinate {
+            kind: Kind::TimeBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "event".to_string(),
+        };
+
+        for status in [
+            CalendarEventRsvpStatus::Accepted,
+            CalendarEventRsvpStatus::Declined,
+            CalendarEventRsvpStatus::Tentative,
+        ] {
+            let rsvp = CalendarEventRsvp::new("test", coord.clone(), status.clone());
+            let tags: Vec<Tag> = rsvp.clone().into();
+            let parsed = CalendarEventRsvp::try_from(tags).unwrap();
+            assert_eq!(parsed.status, status);
+        }
+    }
+
+    #[test]
+    fn test_rsvp_missing_coordinate() {
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::custom(TagKind::Status, ["accepted"]),
+        ];
+        let result = CalendarEventRsvp::try_from(tags);
+        assert_eq!(result.unwrap_err(), Error::CoordinateMissing);
+    }
+
+    #[test]
+    fn test_rsvp_missing_status() {
+        let coord = Coordinate {
+            kind: Kind::TimeBasedCalendarEvent,
+            public_key: test_pubkey(),
+            identifier: "event".to_string(),
+        };
+        let tags = vec![
+            Tag::identifier("test"),
+            Tag::from_standardized_without_cell(TagStandard::Coordinate {
+                coordinate: coord,
+                relay_url: None,
+                uppercase: false,
+            }),
+        ];
+        let result = CalendarEventRsvp::try_from(tags);
+        assert_eq!(result.unwrap_err(), Error::StatusMissing);
+    }
+
+    #[test]
+    fn test_rsvp_status_parsing() {
+        assert_eq!(
+            CalendarEventRsvpStatus::from_str("accepted").unwrap(),
+            CalendarEventRsvpStatus::Accepted
+        );
+        assert_eq!(
+            CalendarEventRsvpStatus::from_str("declined").unwrap(),
+            CalendarEventRsvpStatus::Declined
+        );
+        assert_eq!(
+            CalendarEventRsvpStatus::from_str("tentative").unwrap(),
+            CalendarEventRsvpStatus::Tentative
+        );
+        assert!(CalendarEventRsvpStatus::from_str("unknown").is_err());
+    }
+
+    #[test]
+    fn test_free_busy_parsing() {
+        assert_eq!(FreeBusy::from_str("free").unwrap(), FreeBusy::Free);
+        assert_eq!(FreeBusy::from_str("busy").unwrap(), FreeBusy::Busy);
+        assert!(FreeBusy::from_str("unknown").is_err());
+    }
+}
