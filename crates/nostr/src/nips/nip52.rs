@@ -1488,7 +1488,13 @@ mod tests {
         };
 
         let mut event = DateBasedCalendarEvent::new("test", "Test", "2024-06-01");
-        event.image = Some((image_url, Some(ImageDimensions { width: 800, height: 600 })));
+        event.image = Some((
+            image_url,
+            Some(ImageDimensions {
+                width: 800,
+                height: 600,
+            }),
+        ));
         event.coordinates = vec![(coord, Some(relay))];
 
         let tags: Vec<Tag> = event.clone().into();
