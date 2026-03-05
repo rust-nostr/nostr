@@ -1775,6 +1775,42 @@ impl EventBuilder {
         )))
     }
 
+    /// Date-Based Calendar Event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+    #[inline]
+    pub fn date_based_calendar_event(event: DateBasedCalendarEvent) -> Self {
+        let tags: Vec<Tag> = event.into();
+        Self::new(Kind::DateBasedCalendarEvent, "").tags(tags)
+    }
+
+    /// Time-Based Calendar Event
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+    #[inline]
+    pub fn time_based_calendar_event(event: TimeBasedCalendarEvent) -> Self {
+        let tags: Vec<Tag> = event.into();
+        Self::new(Kind::TimeBasedCalendarEvent, "").tags(tags)
+    }
+
+    /// Calendar
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+    #[inline]
+    pub fn calendar(calendar: Calendar) -> Self {
+        let tags: Vec<Tag> = calendar.into();
+        Self::new(Kind::Calendar, "").tags(tags)
+    }
+
+    /// Calendar Event RSVP
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+    #[inline]
+    pub fn calendar_event_rsvp(rsvp: CalendarEventRsvp) -> Self {
+        let tags: Vec<Tag> = rsvp.into();
+        Self::new(Kind::CalendarEventRsvp, "").tags(tags)
+    }
+
     /// Label
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/32.md>
