@@ -321,10 +321,28 @@ impl TagStandard {
             None => return Err(Error::KindNotFound),
         };
 
-        Self::internal_parse(tag_kind, tag)
+        Self::internal_parse(None, tag_kind, tag)
     }
 
-    fn internal_parse<S>(tag_kind: TagKind, tag: &[S]) -> Result<Self, Error>
+    /// Parse tag from slice of string, using the event kind for ambiguous tags.
+    #[inline]
+    pub fn parse_with_kind<S>(event_kind: Kind, tag: &[S]) -> Result<Self, Error>
+    where
+        S: AsRef<str>,
+    {
+        let tag_kind: TagKind = match tag.first() {
+            Some(kind) => TagKind::from(kind.as_ref()),
+            None => return Err(Error::KindNotFound),
+        };
+
+        Self::internal_parse(Some(event_kind), tag_kind, tag)
+    }
+
+    fn internal_parse<S>(
+        event_kind: Option<Kind>,
+        tag_kind: TagKind,
+        tag: &[S],
+    ) -> Result<Self, Error>
     where
         S: AsRef<str>,
     {
@@ -464,8 +482,7 @@ impl TagStandard {
                 TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
                 TagKind::Extension => Ok(Self::Extension(tag_1.to_string())),
                 TagKind::License => Ok(Self::License(tag_1.to_string())),
-                // TODO: depending on the event kind, handle the tag in the right way.
-                TagKind::Response => Ok(Self::PollResponse(tag_1.to_string())),
+                TagKind::Response => parse_response_tag(event_kind, tag_1),
                 TagKind::PollType => Ok(Self::PollType(PollType::from_str(tag_1)?)),
                 TagKind::Runtime => Ok(Self::Runtime(tag_1.to_string())),
                 TagKind::Repository => Ok(Self::Repository(tag_1.to_string())),
@@ -501,13 +518,7 @@ impl TagStandard {
                 TagKind::Custom(Cow::Borrowed(nip88::ENDS_AT_TAG_KIND_STR)) => {
                     Ok(Self::PollEndsAt(Timestamp::from_str(tag_1)?))
                 }
-                TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
-                    Ok(status) => Ok(Self::DataVendingMachineStatus {
-                        status,
-                        extra_info: None,
-                    }),
-                    Err(_) => Ok(Self::LiveEventStatus(LiveEventStatus::from(tag_1))), /* TODO: check if unknown status error? */
-                },
+                TagKind::Status => parse_status_tag(event_kind, tag_1, None),
                 TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(tag_1.parse()?)),
                 TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
                 #[cfg(feature = "nip98")]
@@ -554,13 +565,7 @@ impl TagStandard {
                     shortcode: tag_1.to_string(),
                     url: Url::parse(tag_2)?,
                 }),
-                TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
-                    Ok(status) => Ok(Self::DataVendingMachineStatus {
-                        status,
-                        extra_info: Some(tag_2.to_string()),
-                    }),
-                    Err(_) => Err(Error::UnknownStandardizedTag),
-                },
+                TagKind::Status => parse_status_tag(event_kind, tag_1, Some(tag_2)),
                 _ => Err(Error::UnknownStandardizedTag),
             };
         }
@@ -1092,6 +1097,53 @@ impl From<TagStandard> for Vec<String> {
     }
 }
 
+fn parse_response_tag(event_kind: Option<Kind>, response: &str) -> Result<TagStandard, Error> {
+    match event_kind {
+        Some(Kind::PollResponse) | None => Ok(TagStandard::PollResponse(response.to_string())),
+        Some(_) => Err(Error::UnknownStandardizedTag),
+    }
+}
+
+fn parse_status_tag(
+    event_kind: Option<Kind>,
+    status: &str,
+    extra_info: Option<&str>,
+) -> Result<TagStandard, Error> {
+    match event_kind {
+        Some(Kind::LiveEvent) => match extra_info {
+            Some(_) => Err(Error::UnknownStandardizedTag),
+            None => Ok(TagStandard::LiveEventStatus(LiveEventStatus::from(status))),
+        },
+        Some(kind) if kind.is_job_result() || kind == Kind::JobFeedback => {
+            let status: DataVendingMachineStatus =
+                DataVendingMachineStatus::from_str(status).map_err(|_| Error::UnknownStandardizedTag)?;
+
+            Ok(TagStandard::DataVendingMachineStatus {
+                status,
+                extra_info: extra_info.map(|info| info.to_string()),
+            })
+        }
+        Some(_) => Err(Error::UnknownStandardizedTag),
+        None => match extra_info {
+            Some(info) => {
+                let status: DataVendingMachineStatus =
+                    DataVendingMachineStatus::from_str(status).map_err(|_| Error::UnknownStandardizedTag)?;
+
+                Ok(TagStandard::DataVendingMachineStatus {
+                    status,
+                    extra_info: Some(info.to_string()),
+                })
+            }
+            None => match DataVendingMachineStatus::from_str(status) {
+                Ok(status) => Ok(TagStandard::DataVendingMachineStatus {
+                    status,
+                    extra_info: None,
+                }),
+                Err(_) => Ok(TagStandard::LiveEventStatus(LiveEventStatus::from(status))),
+            },
+        },
+    }
+}
 fn parse_a_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
@@ -2987,6 +3039,62 @@ mod tests {
         );
         assert!(TagStandard::parse(&["t", "nostr"]).is_ok());
         assert!(TagStandard::parse(&["t", "سلام"]).is_ok());
+    }
+
+    #[test]
+    fn test_tag_standard_parsing_with_kind() {
+        let event_id =
+            EventId::from_hex("378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7")
+                .unwrap();
+
+        assert_eq!(
+            TagStandard::parse_with_kind(
+                Kind::TextNote,
+                &[
+                    "e",
+                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
+                ]
+            )
+            .unwrap(),
+            TagStandard::event(event_id)
+        );
+
+        assert_eq!(
+            TagStandard::parse_with_kind(Kind::PollResponse, &["response", "qj518h583"]).unwrap(),
+            TagStandard::PollResponse(String::from("qj518h583"))
+        );
+
+        assert_eq!(
+            TagStandard::parse_with_kind(Kind::TextNote, &["response", "qj518h583"]),
+            Err(Error::UnknownStandardizedTag)
+        );
+
+        assert_eq!(
+            TagStandard::parse_with_kind(Kind::LiveEvent, &["status", "success"]).unwrap(),
+            TagStandard::LiveEventStatus(LiveEventStatus::Custom(String::from("success")))
+        );
+
+        assert_eq!(
+            TagStandard::parse_with_kind(Kind::JobFeedback, &["status", "success"]).unwrap(),
+            TagStandard::DataVendingMachineStatus {
+                status: DataVendingMachineStatus::Success,
+                extra_info: None,
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse_with_kind(Kind::JobFeedback, &["status", "success", "done"])
+                .unwrap(),
+            TagStandard::DataVendingMachineStatus {
+                status: DataVendingMachineStatus::Success,
+                extra_info: Some(String::from("done")),
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse_with_kind(Kind::TextNote, &["status", "success"]),
+            Err(Error::UnknownStandardizedTag)
+        );
     }
 
     #[test]

@@ -35,7 +35,7 @@ use crate::nips::nip10::Marker;
 use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
 use crate::types::Url;
-use crate::{ImageDimensions, PublicKey, RelayUrl, SingleLetterTag, Timestamp};
+use crate::{ImageDimensions, Kind, PublicKey, RelayUrl, SingleLetterTag, Timestamp};
 
 /// Tag
 #[derive(Clone)]
@@ -163,6 +163,15 @@ impl Tag {
             .as_ref()
     }
 
+    /// Parse tag using the event kind for ambiguous tags.
+    ///
+    /// This does not reuse the internal cache because the same raw tag may map to
+    /// different standardized variants depending on the event kind.
+    #[inline]
+    pub fn as_standardized_with_kind(&self, kind: Kind) -> Option<TagStandard> {
+        TagStandard::parse_with_kind(kind, self.as_slice()).ok()
+    }
+
     /// Consume tag and get standardized tag
     #[inline]
     pub fn to_standardized(self) -> Option<TagStandard> {
@@ -170,6 +179,12 @@ impl Tag {
             Some(inner) => inner,
             None => TagStandard::parse(&self.buf).ok(),
         }
+    }
+
+    /// Consume tag and get standardized tag using the event kind for ambiguous tags.
+    #[inline]
+    pub fn to_standardized_with_kind(self, kind: Kind) -> Option<TagStandard> {
+        TagStandard::parse_with_kind(kind, &self.buf).ok()
     }
 
     /// Get tag len

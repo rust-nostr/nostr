@@ -15,7 +15,8 @@ use secp256k1::schnorr::Signature;
 
 use crate::types::{RelayUrl, Url};
 use crate::{
-    Alphabet, ImageDimensions, PublicKey, SingleLetterTag, Tag, TagKind, TagStandard, Timestamp,
+    Alphabet, ImageDimensions, Kind, PublicKey, SingleLetterTag, Tag, TagKind, TagStandard,
+    Timestamp,
 };
 
 /// NIP53 Error
@@ -349,7 +350,7 @@ impl TryFrom<Vec<Tag>> for LiveEvent {
         let mut live_event = LiveEvent::new(id);
 
         for tag in tags.into_iter() {
-            let Some(tag) = tag.to_standardized() else {
+            let Some(tag) = tag.to_standardized_with_kind(Kind::LiveEvent) else {
                 continue;
             };
 
@@ -389,5 +390,25 @@ impl TryFrom<Vec<Tag>> for LiveEvent {
         }
 
         Ok(live_event)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn live_event_preserves_custom_status_tags() {
+        let live_event = LiveEvent::try_from(
+            crate::Tags::parse([vec!["d", "test"], vec!["status", "success"]])
+                .unwrap()
+                .to_vec(),
+        )
+        .unwrap();
+
+        assert_eq!(
+            live_event.status,
+            Some(LiveEventStatus::Custom(String::from("success")))
+        );
     }
 }
