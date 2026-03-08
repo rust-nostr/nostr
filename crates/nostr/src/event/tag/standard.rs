@@ -35,6 +35,8 @@ use crate::{
 
 const ALL_RELAYS: &str = "ALL_RELAYS";
 const GIT_REFS_HEADS: &str = "ref: refs/heads/";
+const GIT_REFS_HEADS_NO_PREFIX: &str = "refs/heads/";
+const GIT_REFS_TAGS: &str = "refs/tags/";
 
 /// Standardized tag
 #[allow(deprecated)]
@@ -77,6 +79,13 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     GitHead(String),
+    /// Git repository reference state
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    GitRef {
+        reference: String,
+        commit: Sha1Hash,
+    },
     /// Git clone ([`TagKind::Clone`] tag)
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
@@ -328,6 +337,17 @@ impl TagStandard {
     where
         S: AsRef<str>,
     {
+        if tag.len() == 2 {
+            if let TagKind::Custom(kind) = &tag_kind {
+                if is_git_reference(kind.as_ref()) {
+                    return Ok(Self::GitRef {
+                        reference: kind.to_string(),
+                        commit: Sha1Hash::from_str(tag[1].as_ref())?,
+                    });
+                }
+            }
+        }
+
         match tag_kind {
             TagKind::SingleLetter(single_letter) => match single_letter {
                 // Parse `a` tag
@@ -471,7 +491,7 @@ impl TagStandard {
                 TagKind::Repository => Ok(Self::Repository(tag_1.to_string())),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
-                TagKind::Head => Ok(Self::GitHead(tag_1.to_string())),
+                TagKind::Head => Ok(Self::GitHead(parse_git_head_ref(tag_1)?)),
                 TagKind::Commit => Ok(Self::GitCommit(Sha1Hash::from_str(tag_1)?)),
                 TagKind::MergeBase => Ok(Self::GitMergeBase(Sha1Hash::from_str(tag_1)?)),
                 TagKind::BranchName => Ok(Self::GitBranchName(tag_1.to_string())),
@@ -622,6 +642,7 @@ impl TagStandard {
             }
             Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
             Self::GitHead(..) => TagKind::Head,
+            Self::GitRef { reference, .. } => TagKind::Custom(Cow::Borrowed(reference.as_str())),
             Self::GitClone(..) => TagKind::Clone,
             Self::GitCommit(..) => TagKind::Commit,
             Self::GitEarliestUniqueCommitId(..) => {
@@ -841,7 +862,11 @@ impl From<TagStandard> for Vec<String> {
                 vec![tag_kind, id.to_hex(), report.to_string()]
             }
             TagStandard::GitHead(branch) => {
+                let branch: &str = strip_git_head_prefix(branch.as_str()).unwrap_or(branch.as_str());
                 vec![tag_kind, format!("{GIT_REFS_HEADS}{branch}")]
+            }
+            TagStandard::GitRef { reference, commit } => {
+                vec![reference, commit.to_string()]
             }
             TagStandard::GitClone(urls) => {
                 let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
@@ -1090,6 +1115,26 @@ impl From<TagStandard> for Vec<String> {
 
         tag
     }
+}
+
+fn is_git_reference(reference: &str) -> bool {
+    reference.starts_with(GIT_REFS_HEADS_NO_PREFIX) || reference.starts_with(GIT_REFS_TAGS)
+}
+
+fn strip_git_head_prefix(reference: &str) -> Option<&str> {
+    reference
+        .strip_prefix(GIT_REFS_HEADS)
+        .or_else(|| reference.strip_prefix(GIT_REFS_HEADS_NO_PREFIX))
+}
+
+fn parse_git_head_ref(reference: &str) -> Result<String, Error> {
+    let branch: &str = strip_git_head_prefix(reference).ok_or(Error::UnknownStandardizedTag)?;
+
+    if branch.is_empty() {
+        return Err(Error::UnknownStandardizedTag);
+    }
+
+    Ok(branch.to_string())
 }
 
 fn parse_a_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
@@ -2242,6 +2287,29 @@ mod tests {
         );
 
         assert_eq!(
+            vec!["HEAD", "ref: refs/heads/master"],
+            TagStandard::GitHead(String::from("master")).to_vec()
+        );
+
+        assert_eq!(
+            vec!["HEAD", "ref: refs/heads/master"],
+            TagStandard::GitHead(String::from("ref: refs/heads/master")).to_vec()
+        );
+
+        assert_eq!(
+            vec![
+                "refs/heads/master",
+                "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2"
+            ],
+            TagStandard::GitRef {
+                reference: String::from("refs/heads/master"),
+                commit: Sha1Hash::from_str("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2")
+                    .unwrap(),
+            }
+            .to_vec()
+        );
+
+        assert_eq!(
             vec!["clone", "https://github.com/rust-nostr/nostr.git",],
             TagStandard::GitClone(vec![
                 Url::parse("https://github.com/rust-nostr/nostr.git").unwrap()
@@ -2947,6 +3015,37 @@ mod tests {
             TagStandard::GitClone(vec![
                 Url::parse("https://github.com/rust-nostr/nostr.git").unwrap()
             ])
+        );
+
+        assert_eq!(
+            TagStandard::parse(&["HEAD", "ref: refs/heads/master"]).unwrap(),
+            TagStandard::GitHead(String::from("master"))
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "refs/heads/master",
+                "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2"
+            ])
+            .unwrap(),
+            TagStandard::GitRef {
+                reference: String::from("refs/heads/master"),
+                commit: Sha1Hash::from_str("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2")
+                    .unwrap(),
+            }
+        );
+
+        assert_eq!(
+            TagStandard::parse(&[
+                "refs/tags/v0.45.0",
+                "aa231c4c6a5777dc89b42207b499891a344add5c"
+            ])
+            .unwrap(),
+            TagStandard::GitRef {
+                reference: String::from("refs/tags/v0.45.0"),
+                commit: Sha1Hash::from_str("aa231c4c6a5777dc89b42207b499891a344add5c")
+                    .unwrap(),
+            }
         );
 
         assert_eq!(

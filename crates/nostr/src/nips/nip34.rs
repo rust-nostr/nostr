@@ -116,6 +116,54 @@ impl GitRepositoryAnnouncement {
     }
 }
 
+/// Git repository state reference
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GitRepositoryStateRef {
+    /// Full git reference name, like `refs/heads/master` or `refs/tags/v0.45.0`
+    pub reference: String,
+    /// Commit pointed to by the reference
+    pub commit: Sha1Hash,
+}
+
+/// Git repository state announcement
+///
+/// Optional source of truth for repository branches and tags.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct GitRepositoryState {
+    /// Repository ID (matches the repository announcement `d` tag)
+    pub id: String,
+    /// Branches and tags advertised by the repository
+    pub refs: Vec<GitRepositoryStateRef>,
+    /// Current HEAD branch name
+    pub head: Option<String>,
+}
+
+impl GitRepositoryState {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+        if self.id.is_empty() {
+            return Err(Error::NIP01(nip01::Error::InvalidCoordinate));
+        }
+
+        let mut tags: Vec<Tag> =
+            Vec::with_capacity(1 + self.refs.len() + usize::from(self.head.is_some()));
+
+        tags.push(Tag::identifier(self.id));
+
+        tags.extend(self.refs.into_iter().map(|git_ref| {
+            Tag::from_standardized_without_cell(TagStandard::GitRef {
+                reference: git_ref.reference,
+                commit: git_ref.commit,
+            })
+        }));
+
+        if let Some(head) = self.head {
+            tags.push(Tag::head(head));
+        }
+
+        Ok(EventBuilder::new(Kind::RepoState, "").tags(tags))
+    }
+}
+
 /// Git Issue
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct GitIssue {
@@ -593,6 +641,51 @@ mod tests {
             ],
             vec!["subject", "My issue subject"],
             vec!["t", "bug"],
+        ])
+        .unwrap();
+        assert_eq!(event.tags, tags);
+    }
+
+    #[test]
+    fn test_git_repository_state() {
+        let repo = GitRepositoryState {
+            id: String::from("rust-nostr"),
+            refs: vec![
+                GitRepositoryStateRef {
+                    reference: String::from("refs/heads/master"),
+                    commit: Sha1Hash::from_str("aa231c4c6a5777dc89b42207b499891a344add5c")
+                        .unwrap(),
+                },
+                GitRepositoryStateRef {
+                    reference: String::from("refs/tags/v0.45.0"),
+                    commit: Sha1Hash::from_str("59429cfc6cb35b0a1ddace73b5a5c5ed57b8f5ca")
+                        .unwrap(),
+                },
+            ],
+            head: Some(String::from("master")),
+        };
+
+        let keys = Keys::generate();
+        let event: Event = repo
+            .to_event_builder()
+            .unwrap()
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        assert_eq!(event.kind, Kind::RepoState);
+        assert!(event.content.is_empty());
+
+        let tags = Tags::parse([
+            vec!["d", "rust-nostr"],
+            vec![
+                "refs/heads/master",
+                "aa231c4c6a5777dc89b42207b499891a344add5c",
+            ],
+            vec![
+                "refs/tags/v0.45.0",
+                "59429cfc6cb35b0a1ddace73b5a5c5ed57b8f5ca",
+            ],
+            vec!["HEAD", "ref: refs/heads/master"],
         ])
         .unwrap();
         assert_eq!(event.tags, tags);

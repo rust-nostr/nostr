@@ -1824,6 +1824,14 @@ impl EventBuilder {
         announcement.to_event_builder()
     }
 
+    /// Git Repository State
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+    #[inline]
+    pub fn git_repository_state(state: GitRepositoryState) -> Result<Self, Error> {
+        state.to_event_builder()
+    }
+
     /// Git Issue
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
