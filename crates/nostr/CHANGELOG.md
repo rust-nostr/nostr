@@ -57,6 +57,7 @@
 - Add `Kind::BlossomServerList` variant (https://github.com/rust-nostr/nostr/pull/1195)
 - Add `EventBuilder::blossom_server_list` function (https://github.com/rust-nostr/nostr/pull/1195)
 - Add support for `nprofile` parsing in `PublicKey::from_bech32` (https://github.com/rust-nostr/nostr/pull/1248)
+- Add support for `nevent` parsing in `EventId::from_bech32`
 - Add `MachineReadablePrefix::Custom` variant
 
 ### Removed

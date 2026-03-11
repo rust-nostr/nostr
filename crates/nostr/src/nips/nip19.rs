@@ -369,11 +369,18 @@ impl FromBech32 for EventId {
     fn from_bech32(id: &str) -> Result<Self, Self::Err> {
         let (hrp, data) = bech32::decode(id)?;
 
-        if hrp != HRP_NOTE_ID {
-            return Err(Error::WrongPrefix);
+        // Parse note
+        if hrp == HRP_NOTE_ID {
+            return Ok(Self::from_slice(data.as_slice())?);
         }
 
-        Ok(Self::from_slice(data.as_slice())?)
+        // Parse nevent
+        if hrp == HRP_EVENT {
+            let event: Nip19Event = Nip19Event::from_bech32_data(data)?;
+            return Ok(event.event_id);
+        }
+
+        Err(Error::WrongPrefix)
     }
 }
 
@@ -855,6 +862,16 @@ mod tests {
                 .unwrap();
 
         assert_eq!(Nip19::EventId(expected_event_id), nip19);
+    }
+
+    #[test]
+    fn parse_event_id_from_nevent() {
+        let nevent = "nevent1qqsdhet4232flykq3048jzc9msmaa3hnxuesxy3lnc33vd0wt9xwk6szyqewrqnkx4zsaweutf739s0cu7et29zrntqs5elw70vlm8zudr3y24sqsgy";
+        let event_id = EventId::from_bech32(nevent).unwrap();
+        assert_eq!(
+            event_id.to_hex(),
+            "dbe57554549f92c08bea790b05dc37dec6f3373303123f9e231635ee594ceb6a"
+        );
     }
 
     #[test]
