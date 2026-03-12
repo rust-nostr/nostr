@@ -3,7 +3,6 @@
 // Distributed under the MIT software license
 
 #![feature(alloc_error_handler)]
-#![feature(panic_info_message)]
 #![no_std]
 #![no_main]
 
@@ -46,7 +45,7 @@ impl RngCore for FakeRng {
 
 #[entry]
 fn main() -> ! {
-    hprintln!("heap size {}\n", HEAP_SIZE).unwrap();
+    hprintln!("heap size {}\n", HEAP_SIZE);
 
     unsafe { ALLOCATOR.init(cortex_m_rt::heap_start() as usize, HEAP_SIZE) }
 
@@ -57,18 +56,18 @@ fn main() -> ! {
         SecretKey::from_bech32("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
             .unwrap();
     let keys = Keys::new_with_ctx(&secp, secret_key);
-    hprintln!("Restored keys from bech32:").unwrap();
+    hprintln!("Restored keys from bech32:");
     print_keys(&keys);
 
     // Restore from menmonic
     let mnemonic: &str = "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot";
     let keys = Keys::from_mnemonic_with_ctx(&secp, mnemonic, None, None, None, None).unwrap();
-    hprintln!("\nRestore keys from mnemonic:").unwrap();
+    hprintln!("\nRestore keys from mnemonic:");
     print_keys(&keys);
 
     // Generate new random keys
     let keys = Keys::generate_with_rng(&secp, &mut FakeRng);
-    hprintln!("\nRandom keys (using FakeRng):").unwrap();
+    hprintln!("\nRandom keys (using FakeRng):");
     print_keys(&keys);
 
     // exit QEMU
@@ -82,25 +81,22 @@ fn print_keys(keys: &Keys) {
     hprintln!(
         "- Secret Key (hex): {}",
         keys.secret_key().to_secret_hex()
-    )
-    .unwrap();
-    hprintln!("- Public Key (hex): {}", keys.public_key()).unwrap();
+    );
+    hprintln!("- Public Key (hex): {}", keys.public_key());
     hprintln!(
         "- Secret Key (bech32): {}",
         keys.secret_key().to_bech32().unwrap()
-    )
-    .unwrap();
+    );
     hprintln!(
         "- Public Key (bech32): {}",
         keys.public_key().to_bech32().unwrap()
-    )
-    .unwrap();
+    );
 }
 
 #[inline(never)]
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    hprintln!("panic {:?}", info.message()).unwrap();
+    hprintln!("panic {:?}", info.message());
     debug::exit(debug::EXIT_FAILURE);
     loop {}
 }
