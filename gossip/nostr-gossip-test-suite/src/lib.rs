@@ -99,7 +99,6 @@ macro_rules! gossip_unit_tests {
                     TagStandard::PublicKey {
                         public_key,
                         relay_url: Some(relay_url.clone()),
-                        alias: None,
                         uppercase: false,
                     },
                 ))

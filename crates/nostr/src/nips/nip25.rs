@@ -58,7 +58,6 @@ impl ReactionTarget {
         tags.push(Tag::from_standardized(TagStandard::PublicKey {
             public_key: self.public_key,
             relay_url: self.relay_hint,
-            alias: None,
             uppercase: false,
         }));
 

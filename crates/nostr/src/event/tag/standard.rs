@@ -107,7 +107,6 @@ pub enum TagStandard {
     PublicKey {
         public_key: PublicKey,
         relay_url: Option<RelayUrl>,
-        alias: Option<String>,
         /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
@@ -585,7 +584,6 @@ impl TagStandard {
         Self::PublicKey {
             public_key,
             relay_url: None,
-            alias: None,
             uppercase: false,
         }
     }
@@ -815,16 +813,11 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::PublicKey {
                 public_key,
                 relay_url,
-                alias,
                 ..
             } => {
                 let mut tag = vec![tag_kind, public_key.to_string()];
                 if let Some(relay_url) = relay_url {
                     tag.push(relay_url.to_string());
-                }
-                if let Some(alias) = alias {
-                    tag.resize_with(3, String::new);
-                    tag.push(alias);
                 }
                 tag
             }
@@ -1272,20 +1265,13 @@ where
                 None
             };
 
-            return match LiveEventMarker::from_str(tag_3) {
-                Ok(marker) => Ok(TagStandard::PublicKeyLiveEvent {
-                    public_key,
-                    relay_url,
-                    marker,
-                    proof: None,
-                }),
-                Err(_) => Ok(TagStandard::PublicKey {
-                    public_key,
-                    relay_url,
-                    alias: (!tag_3.is_empty()).then_some(tag_3.to_string()),
-                    uppercase,
-                }),
-            };
+            let marker = LiveEventMarker::from_str(tag_3)?;
+            return Ok(TagStandard::PublicKeyLiveEvent {
+                public_key,
+                relay_url,
+                marker,
+                proof: None,
+            });
         }
 
         if tag.len() >= 3 && !uppercase {
@@ -1295,7 +1281,6 @@ where
                 Ok(TagStandard::PublicKey {
                     public_key,
                     relay_url: None,
-                    alias: None,
                     uppercase,
                 })
             } else {
@@ -1304,7 +1289,6 @@ where
                     Err(_) => Ok(TagStandard::PublicKey {
                         public_key,
                         relay_url: Some(RelayUrl::parse(tag_2)?),
-                        alias: None,
                         uppercase,
                     }),
                 }
@@ -1314,7 +1298,6 @@ where
         Ok(TagStandard::PublicKey {
             public_key,
             relay_url: None,
-            alias: None,
             uppercase,
         })
     } else {
@@ -1798,7 +1781,6 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                alias: None,
                 uppercase: false,
             }
             .to_vec()
@@ -2044,25 +2026,6 @@ mod tests {
                 relay_url: None,
                 marker: LiveEventMarker::Participant,
                 proof: None
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "p",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io",
-                "alias",
-            ],
-            TagStandard::PublicKey {
-                public_key: PublicKey::from_str(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                alias: Some(String::from("alias")),
-                uppercase: false,
             }
             .to_vec()
         );
@@ -2479,7 +2442,6 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                alias: None,
                 uppercase: false
             }
         );
@@ -2742,25 +2704,6 @@ mod tests {
             TagStandard::RelayMetadata {
                 relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
                 metadata: Some(RelayMetadata::Write)
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "p",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io/",
-                "alias",
-            ])
-            .unwrap(),
-            TagStandard::PublicKey {
-                public_key: PublicKey::from_str(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io/").unwrap()),
-                alias: Some(String::from("alias")),
-                uppercase: false,
             }
         );
 

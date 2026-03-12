@@ -608,7 +608,6 @@ mod tests {
             public_key: pubkey1,
             relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
             uppercase: false,
-            alias: None,
         });
 
         let long_e_tag_2 = Tag::from_standardized(TagStandard::Event {

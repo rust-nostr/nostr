@@ -505,12 +505,12 @@ impl EventBuilder {
         I: IntoIterator<Item = Contact>,
     {
         let tags = contacts.into_iter().map(|contact| {
-            Tag::from_standardized(TagStandard::PublicKey {
+            Nip02Tag::PublicKey {
                 public_key: contact.public_key,
-                relay_url: contact.relay_url,
+                relay_hint: contact.relay_url,
                 alias: contact.alias,
-                uppercase: false,
-            })
+            }
+            .to_tag()
         });
         Self::new(Kind::ContactList, "").tags(tags)
     }
@@ -941,7 +941,6 @@ impl EventBuilder {
         tags.push(Tag::from_standardized(TagStandard::PublicKey {
             public_key: zap_request.pubkey,
             relay_url: None,
-            alias: None,
             uppercase: true,
         }));
 

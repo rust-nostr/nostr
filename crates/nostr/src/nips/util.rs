@@ -54,6 +54,25 @@ where
     }
 }
 
+/// Take an **optional** string
+///
+/// If the value is empty, None is returned.
+pub(super) fn take_optional_string<I, S>(iter: &mut I) -> Option<String>
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    iter.next().and_then(|value| {
+        let value: &str = value.as_ref();
+
+        if value.is_empty() {
+            None
+        } else {
+            Some(value.to_string())
+        }
+    })
+}
+
 /// Take a string
 pub(super) fn take_string<I, S>(
     iter: &mut I,

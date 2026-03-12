@@ -140,7 +140,6 @@ impl<'a> CommentTarget<'a> {
                     tags.push(Tag::from_standardized(TagStandard::PublicKey {
                         public_key: *pubkey,
                         relay_url: relay_hint.clone().map(|r| r.into_owned()),
-                        alias: None,
                         uppercase: is_root,
                     }));
                 }
@@ -169,7 +168,6 @@ impl<'a> CommentTarget<'a> {
                 tags.push(Tag::from_standardized(TagStandard::PublicKey {
                     public_key,
                     relay_url: relay_hint.clone().map(|r| r.into_owned()),
-                    alias: None,
                     uppercase: is_root,
                 }));
                 tags.push(Tag::from_standardized(TagStandard::Kind {
@@ -371,7 +369,6 @@ mod tests {
             tags.contains(&Tag::from_standardized(TagStandard::PublicKey {
                 public_key,
                 relay_url: None,
-                alias: None,
                 uppercase
             }))
         );
