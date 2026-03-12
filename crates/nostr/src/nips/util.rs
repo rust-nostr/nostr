@@ -118,3 +118,14 @@ where
     let event_id: EventId = EventId::from_hex(event_id.as_ref())?;
     Ok(event_id)
 }
+
+pub(super) fn take_relay_url<T, S, E>(iter: &mut T) -> Result<RelayUrl, E>
+where
+    T: Iterator<Item = S>,
+    S: AsRef<str>,
+    E: From<url::Error> + From<TagCodecError>,
+{
+    let relay_url: S = iter.next().ok_or(TagCodecError::Missing("relay URL"))?;
+    let relay_url: RelayUrl = RelayUrl::parse(relay_url.as_ref())?;
+    Ok(relay_url)
+}

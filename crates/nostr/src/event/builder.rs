@@ -1382,7 +1382,7 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = RelayUrl>,
     {
-        Self::new(Kind::InboxRelays, "").tags(urls.into_iter().map(Tag::relay))
+        Self::new(Kind::InboxRelays, "").tags(urls.into_iter().map(Nip17Tag::Relay).map(Into::into))
     }
 
     /// Private Direct message rumor
