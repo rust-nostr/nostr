@@ -1,7 +1,7 @@
 [package]
 name = "nostr-gossip-memory"
 version = "0.44.0"
-edition = "2021"
+edition.workspace = true
 description = "In-memory gossip database"
 authors.workspace = true
 homepage.workspace = true

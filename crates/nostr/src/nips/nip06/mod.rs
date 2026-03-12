@@ -186,9 +186,18 @@ mod tests {
         let secp = Secp256k1::new();
 
         let list = vec![
-            ("equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot", "06992419a8fe821dd8de03d4c300614e8feefb5ea936b76f89976dcace8aebee"),
-            ("leader monkey parrot ring guide accident before fence cannon height naive bean", "7f7ff03d123792d6ac594bfa67bf6d0c0ab55b6b1fdb6249303fe861f1ccba9a"),
-            ("what bleak badge arrange retreat wolf trade produce cricket blur garlic valid proud rude strong choose busy staff weather area salt hollow arm fade", "c15d739894c81a2fcfd3a2df85a0d2c0dbc47a280d092799f144d73d7ae78add"),
+            (
+                "equal dragon fabric refuse stable cherry smoke allow alley easy never medal attend together lumber movie what sad siege weather matrix buffalo state shoot",
+                "06992419a8fe821dd8de03d4c300614e8feefb5ea936b76f89976dcace8aebee",
+            ),
+            (
+                "leader monkey parrot ring guide accident before fence cannon height naive bean",
+                "7f7ff03d123792d6ac594bfa67bf6d0c0ab55b6b1fdb6249303fe861f1ccba9a",
+            ),
+            (
+                "what bleak badge arrange retreat wolf trade produce cricket blur garlic valid proud rude strong choose busy staff weather area salt hollow arm fade",
+                "c15d739894c81a2fcfd3a2df85a0d2c0dbc47a280d092799f144d73d7ae78add",
+            ),
         ];
 
         for (mnemonic, expected_secret_key) in list.into_iter() {

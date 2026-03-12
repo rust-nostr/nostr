@@ -9,8 +9,8 @@ use std::fmt;
 use nostr::event::builder;
 use nostr::signer::SignerError;
 use nostr::types::ParseError;
-use reqwest::header::{InvalidHeaderValue, ToStrError};
 use reqwest::Response;
+use reqwest::header::{InvalidHeaderValue, ToStrError};
 
 /// Blossom error
 #[derive(Debug)]

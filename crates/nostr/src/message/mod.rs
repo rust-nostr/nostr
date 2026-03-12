@@ -8,15 +8,15 @@ use alloc::string::{String, ToString};
 use core::fmt;
 
 #[cfg(feature = "rand")]
-use hashes::sha256::Hash as Sha256Hash;
-#[cfg(feature = "rand")]
 use hashes::Hash;
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+#[cfg(feature = "rand")]
+use hashes::sha256::Hash as Sha256Hash;
 #[cfg(feature = "rand")]
 use rand::RngCore;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::rngs::OsRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod client;

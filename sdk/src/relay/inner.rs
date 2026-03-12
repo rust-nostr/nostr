@@ -1,20 +1,20 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use async_utility::{task, time};
 use async_wsocket::{ConnectionMode, Message};
 use futures::{self, SinkExt, StreamExt};
-use nostr::rand::rngs::OsRng;
 #[cfg(not(target_arch = "wasm32"))]
 use nostr::rand::RngCore;
+use nostr::rand::rngs::OsRng;
 use nostr::rand::{Rng, TryRngCore};
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
-use tokio::sync::{broadcast, oneshot, Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard};
+use tokio::sync::{Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard, broadcast, oneshot};
 use universal_time::Instant;
 
 use super::capabilities::{AtomicRelayCapabilities, RelayCapabilities};

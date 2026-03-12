@@ -3,8 +3,8 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::HashMap;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use async_utility::time;

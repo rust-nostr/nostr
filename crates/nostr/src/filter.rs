@@ -1290,10 +1290,10 @@ mod tests {
         assert!(filter.match_event(&event, MatchEventOptions::new()));
 
         // Not match (tags)
-        let filter: Filter = Filter::new().events(vec![EventId::from_hex(
-            "70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5",
-        )
-        .unwrap()]);
+        let filter: Filter = Filter::new().events(vec![
+            EventId::from_hex("70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5")
+                .unwrap(),
+        ]);
         assert!(!filter.match_event(&event, MatchEventOptions::new()));
 
         // Not match (tags filter for events with empty tags)
@@ -1343,7 +1343,7 @@ mod benches {
     use core::str::FromStr;
 
     use secp256k1::schnorr::Signature;
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
     use crate::{Tag, TagStandard};

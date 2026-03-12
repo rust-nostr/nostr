@@ -1,7 +1,7 @@
 [package]
 name = "nostr-keyring"
 version = "0.44.1"
-edition = "2021"
+edition.workspace = true
 description = "Keyring for nostr"
 authors.workspace = true
 homepage.workspace = true

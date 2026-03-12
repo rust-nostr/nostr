@@ -15,7 +15,7 @@ use std::fmt;
 #[cfg(feature = "async")]
 use async_utility::{task, tokio};
 pub use keyring::{Entry, Error as KeyringError};
-use nostr::{key, Keys, SecretKey};
+use nostr::{Keys, SecretKey, key};
 
 pub mod prelude;
 

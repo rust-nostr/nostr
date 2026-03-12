@@ -489,7 +489,7 @@ mod tests {
 #[cfg(bench)]
 mod benches {
     use super::*;
-    use crate::test::{black_box, Bencher};
+    use crate::test::{Bencher, black_box};
 
     const LOCAL_URL: &str = "ws://127.0.0.1:7777";
     const CLEARNET_URL: &str = "wss://relay.damus.io";

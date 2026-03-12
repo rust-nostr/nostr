@@ -12,22 +12,22 @@ use core::pin::Pin;
 #[cfg(feature = "std")]
 use std::sync::LazyLock;
 
-#[cfg(feature = "os-rng")]
-use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
-use secp256k1::{ecdh, Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey};
+#[cfg(feature = "os-rng")]
+use rand::rngs::OsRng;
 #[cfg(feature = "std")]
 use secp256k1::{All, Secp256k1};
-use serde::de::DeserializeOwned;
+use secp256k1::{Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey, ecdh};
 use serde::Serialize;
+use serde::de::DeserializeOwned;
 
 #[cfg(feature = "nip44")]
 pub mod hkdf;
 
-use crate::{key, PublicKey, SecretKey};
+use crate::{PublicKey, SecretKey, key};
 
 /// A boxed future
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]

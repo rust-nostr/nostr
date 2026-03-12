@@ -7,19 +7,19 @@
 use alloc::string::String;
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
-#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::{CryptoRng, RngCore};
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, Secp256k1, Signing, Verification};
 
 use super::error::Error;
-#[cfg(feature = "rand")]
-use crate::util;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+#[cfg(feature = "rand")]
+use crate::util;
 use crate::{Event, EventId, JsonUtil, Keys, Kind, NostrSigner, PublicKey, Tag, Tags, Timestamp};
 
 /// Unsigned event

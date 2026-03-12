@@ -11,9 +11,9 @@ use alloc::vec::Vec;
 use core::fmt;
 
 #[cfg(all(feature = "std", feature = "rand"))]
-use hashes::sha256::Hash as Sha256Hash;
-#[cfg(all(feature = "std", feature = "rand"))]
 use hashes::Hash;
+#[cfg(all(feature = "std", feature = "rand"))]
+use hashes::sha256::Hash as Sha256Hash;
 use serde::{Deserialize, Serialize};
 
 use crate::nips::nip98;

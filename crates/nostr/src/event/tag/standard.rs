@@ -398,7 +398,7 @@ impl TagStandard {
             TagKind::Anon => {
                 return Ok(Self::Anon {
                     msg: extract_optional_string(tag, 1).map(|s| s.to_string()),
-                })
+                });
             }
             TagKind::Client => return parse_client_tag(tag),
             TagKind::Clone => {
@@ -408,7 +408,7 @@ impl TagStandard {
             TagKind::ContentWarning => {
                 return Ok(Self::ContentWarning {
                     reason: extract_optional_string(tag, 1).map(|s| s.to_string()),
-                })
+                });
             }
             TagKind::Encrypted => return Ok(Self::Encrypted),
             TagKind::Maintainers => {

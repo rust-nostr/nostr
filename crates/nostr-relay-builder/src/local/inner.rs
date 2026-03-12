@@ -6,8 +6,8 @@ use std::borrow::Cow;
 use std::collections::HashMap;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::num::NonZeroUsize;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
@@ -19,7 +19,7 @@ use nostr_sdk::client::SyncSummary;
 use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
-use tokio::sync::{broadcast, Notify, OnceCell, Semaphore};
+use tokio::sync::{Notify, OnceCell, Semaphore, broadcast};
 
 use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
 use super::util;

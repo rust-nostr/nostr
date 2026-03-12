@@ -2,8 +2,8 @@
 
 use std::sync::Arc;
 
-use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr::RelayUrl;
+use nostr::signer::{IntoNostrSigner, NostrSigner};
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
 
 use super::options::RelayOptions;

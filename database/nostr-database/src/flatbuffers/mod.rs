@@ -13,7 +13,14 @@ use nostr::prelude::*;
 use nostr::secp256k1;
 use nostr::secp256k1::schnorr::Signature;
 
-#[allow(unused_imports, dead_code, clippy::all, unsafe_code, missing_docs)]
+#[allow(
+    unused_imports,
+    dead_code,
+    clippy::all,
+    unsafe_code,
+    missing_docs,
+    unsafe_op_in_unsafe_fn
+)]
 mod event_generated;
 
 pub use self::event_generated::event_fbs;
@@ -206,7 +213,7 @@ impl<'a> FlatBufferDecodeBorrowed<'a> for EventBorrow<'a> {
 #[cfg(bench)]
 mod benches {
     use super::*;
-    use crate::test::{black_box, Bencher};
+    use crate::test::{Bencher, black_box};
 
     #[bench]
     pub fn bench_decode_flatbuf_event_borrow(bh: &mut Bencher) {

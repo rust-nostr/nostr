@@ -1,7 +1,7 @@
 [package]
 name = "nostr-sqlite"
 version = "0.44.0"
-edition = "2021"
+edition.workspace = true
 description = "SQLite storage backend for nostr apps"
 authors.workspace = true
 homepage.workspace = true

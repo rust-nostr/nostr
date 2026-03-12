@@ -5,16 +5,16 @@ use std::iter::Zip;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::pin::Pin;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 use std::vec::IntoIter;
 
 use async_utility::task;
 use futures::stream::FuturesUnordered;
-use futures::{future, StreamExt};
+use futures::{StreamExt, future};
 use nostr_database::prelude::*;
-use tokio::sync::{broadcast, mpsc, Mutex, RwLock};
+use tokio::sync::{Mutex, RwLock, broadcast, mpsc};
 
 mod builder;
 mod error;

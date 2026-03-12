@@ -10,7 +10,7 @@ use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use super::nip44;
-use crate::event::{self, tag, Event, EventId, TagKind};
+use crate::event::{self, Event, EventId, TagKind, tag};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::event::{EventBuilder, Kind, Tag};
 use crate::key::{PublicKey, SecretKey};

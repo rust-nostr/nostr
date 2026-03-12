@@ -1,7 +1,7 @@
 [package]
 name = "nwc"
 version = "0.44.0"
-edition = "2021"
+edition.workspace = true
 description = "Nostr Wallet Connect client"
 authors.workspace = true
 homepage.workspace = true

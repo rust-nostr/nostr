@@ -7,12 +7,12 @@ use std::path::PathBuf;
 
 use nostr_database::prelude::*;
 use rusqlite::types::Value;
-use rusqlite::{params, params_from_iter, Connection, OptionalExtension, Transaction};
+use rusqlite::{Connection, OptionalExtension, Transaction, params, params_from_iter};
 
 use crate::builder::{DatabaseConnType, NostrSqliteBuilder};
 use crate::error::Error;
 use crate::migration;
-use crate::model::{extract_tags, EventDb};
+use crate::model::{EventDb, extract_tags};
 use crate::pool::Pool;
 
 const EVENTS_QUERY_LIMIT: usize = 10_000;

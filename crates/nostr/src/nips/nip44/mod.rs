@@ -10,20 +10,20 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
 
-use base64::engine::{general_purpose, Engine};
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use base64::engine::{Engine, general_purpose};
 #[cfg(feature = "rand")]
 use rand::RngCore;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::rngs::OsRng;
 
 pub mod v2;
 
 use self::v2::ConversationKey;
 #[cfg(feature = "rand")]
 use crate::util;
-use crate::{key, PublicKey, SecretKey};
+use crate::{PublicKey, SecretKey, key};
 
 /// Error
 #[derive(Debug, PartialEq)]

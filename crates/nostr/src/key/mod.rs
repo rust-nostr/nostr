@@ -16,9 +16,9 @@ use core::str::FromStr;
 use std::sync::OnceLock as OnceCell;
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
-#[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::{CryptoRng, RngCore};
 use secp256k1::schnorr::Signature;
@@ -398,7 +398,7 @@ mod tests {
 #[cfg(bench)]
 #[cfg(all(feature = "std", feature = "os-rng"))]
 mod benches {
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
 

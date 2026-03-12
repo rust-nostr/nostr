@@ -114,21 +114,25 @@ mod tests {
         assert_eq!(client.pool().all_relays().await.len(), 2);
 
         // Force remove the non-gossip relay
-        assert!(client
-            .remove_relay("ws://127.0.0.1:6666")
-            .force()
-            .await
-            .is_ok());
+        assert!(
+            client
+                .remove_relay("ws://127.0.0.1:6666")
+                .force()
+                .await
+                .is_ok()
+        );
         assert!(client.relay("ws://127.0.0.1:6666").await.unwrap().is_none());
         assert_eq!(client.relays().await.len(), 1);
         assert_eq!(client.pool().all_relays().await.len(), 1);
 
         // Force remove the gossip relay
-        assert!(client
-            .remove_relay("ws://127.0.0.1:8888")
-            .force()
-            .await
-            .is_ok());
+        assert!(
+            client
+                .remove_relay("ws://127.0.0.1:8888")
+                .force()
+                .await
+                .is_ok()
+        );
         assert!(client.relay("ws://127.0.0.1:8888").await.unwrap().is_none());
         assert!(client.relays().await.is_empty());
         assert!(client.pool().all_relays().await.is_empty());

@@ -8,7 +8,7 @@ use nostr_database::prelude::*;
 use nostr_gossip::prelude::*;
 
 use super::{
-    find_filter_pattern, BrokenDownFilters, Gossip, GossipFilterPattern, GossipSemaphorePermit,
+    BrokenDownFilters, Gossip, GossipFilterPattern, GossipSemaphorePermit, find_filter_pattern,
 };
 use crate::client::{Client, Error, Output, SyncSummary};
 use crate::relay::{RelayCapabilities, ReqExitPolicy, SyncDirection, SyncOptions};

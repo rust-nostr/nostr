@@ -8,10 +8,10 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::str::FromStr;
 
-use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
+use hashes::sha256::Hash as Sha256Hash;
 use serde::{Deserialize, Deserializer, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 use super::error::Error;
 use super::{Kind, Tag, Tags};
@@ -222,7 +222,7 @@ mod tests {
 #[cfg(bench)]
 mod benches {
     use super::*;
-    use crate::test::{black_box, Bencher};
+    use crate::test::{Bencher, black_box};
 
     const ID: &str = "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45";
 

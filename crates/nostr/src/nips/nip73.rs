@@ -423,10 +423,14 @@ mod tests {
             }
         );
         assert_eq!(
-            ExternalContentId::from_str("ethereum:100:tx:0x98f7812be496f97f80e2e98d66358d1fc733cf34176a8356d171ea7fbbe97ccd").unwrap(),
+            ExternalContentId::from_str(
+                "ethereum:100:tx:0x98f7812be496f97f80e2e98d66358d1fc733cf34176a8356d171ea7fbbe97ccd"
+            )
+            .unwrap(),
             ExternalContentId::BlockchainTransaction {
                 chain: "ethereum".to_string(),
-                transaction_hash: "0x98f7812be496f97f80e2e98d66358d1fc733cf34176a8356d171ea7fbbe97ccd".to_string(),
+                transaction_hash:
+                    "0x98f7812be496f97f80e2e98d66358d1fc733cf34176a8356d171ea7fbbe97ccd".to_string(),
                 chain_id: Some("100".to_string()),
             }
         );

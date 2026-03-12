@@ -29,11 +29,11 @@ pub use self::id::EventId;
 pub use self::kind::Kind;
 pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 use crate::nips::nip01::CoordinateBorrow;
 use crate::nips::nip19::{self, Nip19Event, ToBech32};
 use crate::nips::nip21::ToNostrUri;
-#[cfg(feature = "std")]
-use crate::SECP256K1;
 use crate::{JsonUtil, Metadata, PublicKey, Timestamp};
 
 const ID: &str = "id";
@@ -521,7 +521,7 @@ mod tests {
 
 #[cfg(bench)]
 mod benches {
-    use test::{black_box, Bencher};
+    use test::{Bencher, black_box};
 
     use super::*;
 

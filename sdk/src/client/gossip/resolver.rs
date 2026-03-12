@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashMap, HashSet};
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use nostr::prelude::*;
 use nostr_gossip::{BestRelaySelection, GossipAllowedRelays, NostrGossip};

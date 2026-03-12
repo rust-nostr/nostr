@@ -9,7 +9,7 @@ use std::iter;
 use std::ops::Bound;
 
 use heed::byteorder::NativeEndian;
-use heed::types::{Bytes, Unit, U64};
+use heed::types::{Bytes, U64, Unit};
 use heed::{Database, Env, EnvFlags, EnvOpenOptions, RoRange, RoTxn, RwTxn};
 use nostr::prelude::*;
 use nostr_database::flatbuffers::FlatBufferDecodeBorrowed;

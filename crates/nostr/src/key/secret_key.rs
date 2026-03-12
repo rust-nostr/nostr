@@ -8,12 +8,12 @@ use alloc::string::String;
 use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::RngCore;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::rngs::OsRng;
 use serde::{Deserialize, Deserializer};
 
 use super::Error;

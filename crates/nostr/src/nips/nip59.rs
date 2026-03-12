@@ -12,11 +12,11 @@ use core::ops::Range;
 
 use secp256k1::{Secp256k1, Verification};
 
+#[cfg(feature = "std")]
+use crate::SECP256K1;
 use crate::event::unsigned::UnsignedEvent;
 use crate::event::{self, Event};
 use crate::signer::SignerError;
-#[cfg(feature = "std")]
-use crate::SECP256K1;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::{EventBuilder, Timestamp};
 use crate::{JsonUtil, Kind, NostrSigner, PublicKey};

@@ -374,8 +374,8 @@ mod tests {
     use tempfile::TempDir;
 
     use super::*;
-    use crate::store::Store;
     use crate::NostrLmdbBuilder;
+    use crate::store::Store;
 
     async fn setup_test_store() -> (Arc<Store>, TempDir) {
         let temp_dir = TempDir::new().expect("Failed to create temp directory");

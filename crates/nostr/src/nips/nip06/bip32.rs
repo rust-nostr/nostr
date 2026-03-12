@@ -8,7 +8,7 @@
 use alloc::vec::Vec;
 use core::fmt;
 
-use hashes::{hash160, sha512, Hash, HashEngine, Hmac, HmacEngine};
+use hashes::{Hash, HashEngine, Hmac, HmacEngine, hash160, sha512};
 use secp256k1::{self, PublicKey, Secp256k1, SecretKey, Signing};
 
 /// A BIP32 error
@@ -26,8 +26,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
-            Self::Secp256k1(ref e) => e.fmt(f),
-            Self::InvalidChildNumber(ref n) => {
+            Self::Secp256k1(e) => e.fmt(f),
+            Self::InvalidChildNumber(n) => {
                 write!(f, "child number {n} is invalid (not within [0, 2^31 - 1])")
             }
         }

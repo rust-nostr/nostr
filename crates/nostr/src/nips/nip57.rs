@@ -10,36 +10,36 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 
-use aes::cipher::block_padding::Pkcs7;
+use aes::Aes256;
 #[cfg(feature = "rand")]
 use aes::cipher::BlockEncryptMut;
+use aes::cipher::block_padding::Pkcs7;
 use aes::cipher::{BlockDecryptMut, KeyIvInit};
-use aes::Aes256;
 #[cfg(feature = "rand")]
 use bech32::Bech32;
 use bech32::Hrp;
 use cbc::Decryptor;
 #[cfg(feature = "rand")]
 use cbc::Encryptor;
-use hashes::sha256::Hash as Sha256Hash;
 use hashes::Hash;
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use hashes::sha256::Hash as Sha256Hash;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::rngs::OsRng;
 #[cfg(feature = "rand")]
 use rand::{CryptoRng, RngCore};
 #[cfg(feature = "rand")]
 use secp256k1::{Secp256k1, Signing, Verification};
 
 use super::nip01::Coordinate;
-use crate::event::builder::Error as BuilderError;
-use crate::key::Error as KeyError;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::SECP256K1;
+use crate::event::builder::Error as BuilderError;
+use crate::key::Error as KeyError;
 use crate::{
-    event, util, Event, EventId, JsonUtil, PublicKey, RelayUrl, SecretKey, Tag, TagStandard,
-    Timestamp,
+    Event, EventId, JsonUtil, PublicKey, RelayUrl, SecretKey, Tag, TagStandard, Timestamp, event,
+    util,
 };
 #[cfg(feature = "rand")]
 use crate::{EventBuilder, Keys, Kind};
