@@ -46,7 +46,7 @@ impl Nip42Session {
         match event.tags.challenge() {
             Some(challenge) => {
                 // Tried to remove challenge but wasn't in the set: return false.
-                if !self.challenges.remove(challenge) {
+                if !self.challenges.remove(&challenge) {
                     return Err(String::from("received invalid challenge"));
                 }
 

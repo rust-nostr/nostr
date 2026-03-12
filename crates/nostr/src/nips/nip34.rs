@@ -66,49 +66,43 @@ impl GitRepositoryAnnouncement {
 
         // Add name
         if let Some(name) = self.name {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Name(name)));
+            tags.push(Tag::from_standardized(TagStandard::Name(name)));
         }
 
         // Add description
         if let Some(description) = self.description {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::Description(description),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::Description(
+                description,
+            )));
         }
 
         // Add web
         if !self.web.is_empty() {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Web(
-                self.web,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Web(self.web)));
         }
 
         // Add clone
         if !self.clone.is_empty() {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::GitClone(
-                self.clone,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::GitClone(self.clone)));
         }
 
         // Add relays
         if !self.relays.is_empty() {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Relays(
-                self.relays,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Relays(self.relays)));
         }
 
         // Add EUC
         if let Some(commit) = self.euc {
-            tags.push(Tag::from_standardized_without_cell(
+            tags.push(Tag::from_standardized(
                 TagStandard::GitEarliestUniqueCommitId(commit),
             ));
         }
 
         // Add maintainers
         if !self.maintainers.is_empty() {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::GitMaintainers(self.maintainers),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::GitMaintainers(
+                self.maintainers,
+            )));
         }
 
         // Build
@@ -155,9 +149,7 @@ impl GitIssue {
 
         // Add subject
         if let Some(subject) = self.subject {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Subject(
-                subject,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Subject(subject)));
         }
 
         // Add labels
@@ -286,9 +278,7 @@ impl GitPatch {
             } => {
                 tags.reserve_exact(5);
                 tags.push(Tag::reference(commit.to_string()));
-                tags.push(Tag::from_standardized_without_cell(TagStandard::GitCommit(
-                    commit,
-                )));
+                tags.push(Tag::from_standardized(TagStandard::GitCommit(commit)));
                 tags.push(Tag::custom(
                     TagKind::Custom(Cow::Borrowed("parent-commit")),
                     vec![parent_commit.to_string()],
@@ -367,9 +357,7 @@ impl GitPullRequest {
 
         // Add subject
         if let Some(subject) = self.subject {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Subject(
-                subject,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Subject(subject)));
         }
 
         // Add labels
@@ -383,16 +371,14 @@ impl GitPullRequest {
 
         // Add clone URLs
         if !self.clone.is_empty() {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::GitClone(
-                self.clone,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::GitClone(self.clone)));
         }
 
         // Add branch name
         if let Some(branch_name) = self.branch_name {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::GitBranchName(branch_name),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::GitBranchName(
+                branch_name,
+            )));
         }
 
         // Add root patch event (if this is a revision)
@@ -402,9 +388,9 @@ impl GitPullRequest {
 
         // Add merge base
         if let Some(merge_base) = self.merge_base {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::GitMergeBase(merge_base),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::GitMergeBase(
+                merge_base,
+            )));
         }
 
         // Build
@@ -471,16 +457,14 @@ impl GitPullRequestUpdate {
 
         // Add clone URLs
         if !self.clone.is_empty() {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::GitClone(
-                self.clone,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::GitClone(self.clone)));
         }
 
         // Add merge base
         if let Some(merge_base) = self.merge_base {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::GitMergeBase(merge_base),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::GitMergeBase(
+                merge_base,
+            )));
         }
 
         // Build

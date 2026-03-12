@@ -272,13 +272,11 @@ impl From<HttpData> for Vec<Tag> {
         } = data;
 
         let mut tags: Vec<Tag> = vec![
-            Tag::from_standardized_without_cell(TagStandard::AbsoluteURL(url)),
-            Tag::from_standardized_without_cell(TagStandard::Method(method)),
+            Tag::from_standardized(TagStandard::AbsoluteURL(url)),
+            Tag::from_standardized(TagStandard::Method(method)),
         ];
         if let Some(payload) = payload {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Payload(
-                payload,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Payload(payload)));
         }
 
         tags
@@ -291,27 +289,22 @@ impl TryFrom<Vec<Tag>> for HttpData {
     fn try_from(value: Vec<Tag>) -> Result<Self, Self::Error> {
         let url = value
             .iter()
-            .find_map(|t| match t.as_standardized() {
+            .find_map(|t| match t.standardized() {
                 Some(TagStandard::AbsoluteURL(u)) => Some(u),
                 _ => None,
             })
-            .cloned()
             .ok_or(Error::MissingTag(RequiredTags::AbsoluteURL))?;
         let method = value
             .iter()
-            .find_map(|t| match t.as_standardized() {
+            .find_map(|t| match t.standardized() {
                 Some(TagStandard::Method(m)) => Some(m),
                 _ => None,
             })
-            .cloned()
             .ok_or(Error::MissingTag(RequiredTags::Method))?;
-        let payload = value
-            .iter()
-            .find_map(|t| match t.as_standardized() {
-                Some(TagStandard::Payload(p)) => Some(p),
-                _ => None,
-            })
-            .cloned();
+        let payload = value.iter().find_map(|t| match t.standardized() {
+            Some(TagStandard::Payload(p)) => Some(p),
+            _ => None,
+        });
 
         Ok(Self {
             url,
@@ -365,7 +358,7 @@ pub fn verify_auth_header(
         return Err(Error::WrongAuthHeaderKind);
     }
 
-    let authorized_url: &Url = event
+    let authorized_url: Url = event
         .tags
         .find_standardized(TagKind::u())
         .and_then(|tag| match tag {
@@ -374,7 +367,7 @@ pub fn verify_auth_header(
         })
         .ok_or(Error::MissingTag(RequiredTags::AbsoluteURL))?;
 
-    let authorized_method: &HttpMethod = event
+    let authorized_method: HttpMethod = event
         .tags
         .find_standardized(TagKind::Method)
         .and_then(|tag| match tag {
@@ -383,10 +376,10 @@ pub fn verify_auth_header(
         })
         .ok_or(Error::MissingTag(RequiredTags::Method))?;
 
-    if authorized_url != url || authorized_method != &method {
+    if &authorized_url != url || authorized_method != method {
         return Err(Error::AuthorizationNotMatchRequest {
             authorized_url: Box::new(authorized_url.clone()),
-            authorized_method: *authorized_method,
+            authorized_method,
             request_url: Box::new(url.clone()),
             request_method: method,
         });
@@ -404,7 +397,7 @@ pub fn verify_auth_header(
 
     if let Some(body_data) = body {
         // Get payload hash
-        let payload: &Sha256Hash = match event.tags.find_standardized(TagKind::Payload) {
+        let payload: Sha256Hash = match event.tags.find_standardized(TagKind::Payload) {
             Some(TagStandard::Payload(p)) => p,
             _ => return Err(Error::MissingTag(RequiredTags::Payload)),
         };
@@ -413,7 +406,7 @@ pub fn verify_auth_header(
         let body_hash: Sha256Hash = Sha256Hash::hash(body_data);
 
         // Check if payload and body hash matches
-        if payload != &body_hash {
+        if payload != body_hash {
             return Err(Error::PayloadHashMismatch);
         }
     }

@@ -30,7 +30,7 @@ impl ReactionTarget {
         Self {
             event_id: event.id,
             public_key: event.pubkey,
-            coordinate: event.coordinate().map(|c| c.into_owned()),
+            coordinate: event.coordinate(),
             kind: Some(event.kind),
             relay_hint,
         }
@@ -43,7 +43,7 @@ impl ReactionTarget {
 
         // Serialization order: keep the `e` and `a` tags together, followed by the `p` and other tags.
 
-        tags.push(Tag::from_standardized_without_cell(TagStandard::Event {
+        tags.push(Tag::from_standardized(TagStandard::Event {
             event_id: self.event_id,
             relay_url: self.relay_hint.clone(),
             public_key: Some(self.public_key),
@@ -55,17 +55,15 @@ impl ReactionTarget {
             tags.push(Tag::coordinate(coordinate, self.relay_hint.clone()));
         }
 
-        tags.push(Tag::from_standardized_without_cell(
-            TagStandard::PublicKey {
-                public_key: self.public_key,
-                relay_url: self.relay_hint,
-                alias: None,
-                uppercase: false,
-            },
-        ));
+        tags.push(Tag::from_standardized(TagStandard::PublicKey {
+            public_key: self.public_key,
+            relay_url: self.relay_hint,
+            alias: None,
+            uppercase: false,
+        }));
 
         if let Some(kind) = self.kind {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Kind {
+            tags.push(Tag::from_standardized(TagStandard::Kind {
                 kind,
                 uppercase: false,
             }));
@@ -80,7 +78,7 @@ impl From<&Event> for ReactionTarget {
         Self {
             event_id: event.id,
             public_key: event.pubkey,
-            coordinate: event.coordinate().map(|c| c.into_owned()),
+            coordinate: event.coordinate(),
             kind: Some(event.kind),
             relay_hint: None,
         }

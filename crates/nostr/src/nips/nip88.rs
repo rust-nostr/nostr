@@ -103,7 +103,7 @@ impl Poll {
     pub fn from_event(event: &Event) -> Result<Self, Error> {
         // Search poll type
         let poll_type: PollType = match event.tags.find_standardized(TagKind::PollType) {
-            Some(TagStandard::PollType(poll_type)) => *poll_type,
+            Some(TagStandard::PollType(poll_type)) => poll_type,
             // Found an unexpected tag.
             Some(..) => return Err(Error::UnexpectedTag),
             // If no valid "polltype" tag is found, the "singlechoice" will be the default.
@@ -132,7 +132,7 @@ impl Poll {
 
         // Search ends timestamp
         let ends_at: Option<Timestamp> = match event.tags.find_standardized(ENDS_AT_TAG_KIND) {
-            Some(TagStandard::PollEndsAt(timestamp)) => Some(*timestamp),
+            Some(TagStandard::PollEndsAt(timestamp)) => Some(timestamp),
             Some(..) => return Err(Error::UnexpectedTag),
             None => None,
         };
@@ -150,14 +150,10 @@ impl Poll {
     pub(crate) fn to_event_builder(self) -> EventBuilder {
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + self.options.len() + self.relays.len());
 
-        tags.push(Tag::from_standardized_without_cell(TagStandard::PollType(
-            self.r#type,
-        )));
+        tags.push(Tag::from_standardized(TagStandard::PollType(self.r#type)));
 
         for option in self.options.into_iter() {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::PollOption(option),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::PollOption(option)));
         }
 
         for url in self.relays.into_iter() {
@@ -198,7 +194,7 @@ impl PollResponse {
             Self::SingleChoice { poll_id, response } => {
                 vec![
                     Tag::event(poll_id),
-                    Tag::from_standardized_without_cell(TagStandard::PollResponse(response)),
+                    Tag::from_standardized(TagStandard::PollResponse(response)),
                 ]
             }
             Self::MultipleChoice { poll_id, responses } => {
@@ -207,9 +203,7 @@ impl PollResponse {
                 tags.push(Tag::event(poll_id));
 
                 for response in responses.into_iter() {
-                    tags.push(Tag::from_standardized_without_cell(
-                        TagStandard::PollResponse(response),
-                    ));
+                    tags.push(Tag::from_standardized(TagStandard::PollResponse(response)));
                 }
 
                 tags

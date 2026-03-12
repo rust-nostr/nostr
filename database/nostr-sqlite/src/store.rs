@@ -142,17 +142,17 @@ impl NostrSqlite {
 
     fn handle_deletion_event(tx: &Transaction<'_>, event: &Event) -> Result<bool, Error> {
         for id in event.tags.event_ids() {
-            if let Some(pubkey) = Self::get_pubkey_of_event_by_id(tx, id)? {
+            if let Some(pubkey) = Self::get_pubkey_of_event_by_id(tx, &id)? {
                 // Author must match
                 if pubkey != event.pubkey {
                     return Ok(true);
                 }
 
                 // Mark the event ID as deleted (for NIP-09 deletion events)
-                Self::mark_event_as_deleted(tx, id)?;
+                Self::mark_event_as_deleted(tx, &id)?;
 
                 // Remove event from store
-                Self::remove_event(tx, id)?;
+                Self::remove_event(tx, &id)?;
             }
         }
 
@@ -163,13 +163,13 @@ impl NostrSqlite {
             }
 
             // Mark deleted
-            Self::mark_coordinate_deleted(tx, &coordinate.borrow(), event.created_at)?;
+            Self::mark_coordinate_deleted(tx, &coordinate, event.created_at)?;
 
             // Remove events (up to the created_at of the deletion event)
             if coordinate.kind.is_replaceable() {
-                Self::remove_replaceable(tx, coordinate, &event.created_at)?;
+                Self::remove_replaceable(tx, &coordinate, &event.created_at)?;
             } else if coordinate.kind.is_addressable() {
-                Self::remove_addressable(tx, coordinate, event.created_at)?;
+                Self::remove_addressable(tx, &coordinate, event.created_at)?;
             }
         }
 
@@ -282,7 +282,7 @@ impl NostrSqlite {
         if options.process_nip62 && event.kind == Kind::RequestToVanish {
             let is_targeted = event.tags.filter_standardized(TagKind::Relay).any(|tag| {
                 matches!(tag, TagStandard::AllRelays)
-                    || matches!(tag, TagStandard::Relay(relay) if Some(relay) == options.relay_url.as_ref())
+                    || matches!(tag, TagStandard::Relay(ref relay) if Some(relay) == options.relay_url.as_ref())
             });
 
             if is_targeted {
@@ -324,7 +324,7 @@ impl NostrSqlite {
 
     fn mark_coordinate_deleted(
         tx: &Transaction<'_>,
-        coordinate: &CoordinateBorrow<'_>,
+        coordinate: &Coordinate,
         deleted_at: Timestamp,
     ) -> Result<(), Error> {
         tx.execute(
@@ -332,7 +332,7 @@ impl NostrSqlite {
             params![
                 coordinate.public_key.as_bytes().as_slice(),
                 coordinate.kind.as_u16() as i64,
-                coordinate.identifier.unwrap_or_default(),
+                &coordinate.identifier,
                 deleted_at.as_secs() as i64
             ],
         )?;
@@ -350,7 +350,7 @@ impl NostrSqlite {
 
     fn when_is_coordinate_deleted(
         tx: &Transaction<'_>,
-        coordinate: &CoordinateBorrow<'_>,
+        coordinate: &Coordinate,
     ) -> Result<Option<Timestamp>, Error> {
         let timestamp: Option<i64> = tx
             .query_row(
@@ -358,7 +358,7 @@ impl NostrSqlite {
                 params![
                     coordinate.public_key.as_bytes().as_slice(),
                     coordinate.kind.as_u16() as i64,
-                    coordinate.identifier.unwrap_or_default()
+                    &coordinate.identifier
                 ],
                 |row| row.get(0),
             )

@@ -6,7 +6,7 @@
 use core::cmp;
 
 use nostr::event::borrow::EventBorrow;
-use nostr::nips::nip01::CoordinateBorrow;
+use nostr::nips::nip01::Coordinate;
 use nostr::{EventId, PublicKey, SingleLetterTag, Timestamp};
 
 const CREATED_AT_BE: usize = 8;
@@ -262,12 +262,12 @@ pub fn make_ktc_index_key(
 /// ## Structure
 ///
 /// `kind(2)` + `author(32)` + `d_len(1)` + `d(182)`
-pub fn make_coordinate_index_key(coordinate: &CoordinateBorrow<'_>) -> Vec<u8> {
+pub fn make_coordinate_index_key(coordinate: &Coordinate) -> Vec<u8> {
     let mut key: Vec<u8> = Vec::with_capacity(KIND_BE + PublicKey::LEN + 1 + TAG_VALUE_PAD_LEN);
     key.extend(coordinate.kind.as_u16().to_be_bytes());
     key.extend(coordinate.public_key.to_bytes());
 
-    let identifier: &str = coordinate.identifier.unwrap_or_default();
+    let identifier: &str = &coordinate.identifier;
 
     let dlen: usize = cmp::min(identifier.len(), TAG_VALUE_PAD_LEN);
     key.push(dlen as u8);

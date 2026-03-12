@@ -175,7 +175,7 @@ impl MemoryStore {
         self.vanished_public_keys.contains(pubkey)
     }
 
-    fn internal_index_event(&mut self, event: &Event, now: &Timestamp) -> SaveEventStatus {
+    fn internal_index_event(&mut self, event: &Event, now: Timestamp) -> SaveEventStatus {
         // Check if was already added
         if self.ids.contains_key(&event.id) {
             return SaveEventStatus::Rejected(RejectedReason::Duplicate);
@@ -193,7 +193,6 @@ impl MemoryStore {
         // Reject event if ADDR was deleted after it's created_at date
         // (non-parameterized or parameterized)
         if let Some(coordinate) = event.coordinate() {
-            let coordinate: Coordinate = coordinate.into_owned();
             if let Some(time) = self.deleted_coordinates.get(&coordinate) {
                 if &event.created_at <= time {
                     return SaveEventStatus::Rejected(RejectedReason::Deleted);
@@ -227,14 +226,14 @@ impl MemoryStore {
             match event.tags.identifier() {
                 Some(identifier) => {
                     let coordinate: Coordinate =
-                        Coordinate::new(kind, author).identifier(identifier);
+                        Coordinate::new(kind, author).identifier(identifier.clone());
 
                     // Check if coordinate was deleted
                     if self.has_coordinate_been_deleted(&coordinate, &event.created_at) {
                         status = SaveEventStatus::Rejected(RejectedReason::Deleted);
                     } else {
                         let params: QueryByParamReplaceable =
-                            QueryByParamReplaceable::new(kind, author, identifier.to_string());
+                            QueryByParamReplaceable::new(kind, author, identifier);
                         if let Some(ev) = self.internal_query_param_replaceable(params) {
                             if has_event_been_replaced(ev, event) || ev.id == event.id {
                                 status = SaveEventStatus::Rejected(RejectedReason::Replaced);
@@ -249,7 +248,7 @@ impl MemoryStore {
         } else if self.options.process_nip09 && kind == Kind::EventDeletion {
             // Check `e` tags
             for id in event.tags.event_ids() {
-                if let Some(ev) = self.ids.get(id) {
+                if let Some(ev) = self.ids.get(&id) {
                     if ev.pubkey != author {
                         status = SaveEventStatus::Rejected(RejectedReason::InvalidDelete);
                         break;
@@ -302,7 +301,7 @@ impl MemoryStore {
         } else if self.options.process_nip62 && event.kind == Kind::RequestToVanish {
             let is_targeted = event.tags.filter_standardized(TagKind::Relay).any(|tag| {
                 matches!(tag, TagStandard::AllRelays)
-                    || matches!(tag, TagStandard::Relay(relay) if Some(relay) == self.options.relay_url.as_ref())
+                    || matches!(tag, TagStandard::Relay(ref relay) if Some(relay) == self.options.relay_url.as_ref())
             });
 
             if is_targeted {
@@ -419,7 +418,7 @@ impl MemoryStore {
             return SaveEventStatus::Rejected(RejectedReason::Ephemeral);
         }
         let now = Timestamp::now();
-        self.internal_index_event(event, &now)
+        self.internal_index_event(event, now)
     }
 
     /// Query by public key

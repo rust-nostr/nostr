@@ -490,13 +490,9 @@ fn update_relay_per_user(
     Ok(())
 }
 
-fn update_nip65_relays<'a, I>(
-    tx: &Transaction<'_>,
-    public_key_id: i32,
-    iter: I,
-) -> Result<(), Error>
+fn update_nip65_relays<I>(tx: &Transaction<'_>, public_key_id: i32, iter: I) -> Result<(), Error>
 where
-    I: IntoIterator<Item = (&'a RelayUrl, &'a Option<RelayMetadata>)>,
+    I: IntoIterator<Item = (RelayUrl, Option<RelayMetadata>)>,
 {
     // Remove all READ and WRITE flags from the relays of the public key
     remove_flag_from_user_relays(tx, public_key_id, READ_WRITE_FLAGS)?;
@@ -504,7 +500,7 @@ where
     // Extract relay list
     for (relay_url, metadata) in iter {
         // Save relay and get ID
-        let relay_id: i32 = get_or_save_relay_url(tx, relay_url)?;
+        let relay_id: i32 = get_or_save_relay_url(tx, &relay_url)?;
 
         // New bitflag for the relay
         let bitflag: GossipFlags = match metadata {
@@ -529,20 +525,16 @@ where
     Ok(())
 }
 
-fn update_nip17_relays<'a, I>(
-    tx: &Transaction<'_>,
-    public_key_id: i32,
-    iter: I,
-) -> Result<(), Error>
+fn update_nip17_relays<I>(tx: &Transaction<'_>, public_key_id: i32, iter: I) -> Result<(), Error>
 where
-    I: IntoIterator<Item = &'a RelayUrl>,
+    I: IntoIterator<Item = RelayUrl>,
 {
     // Remove all PRIVATE_MESSAGE flag from the relays of the public key
     remove_flag_from_user_relays(tx, public_key_id, GossipFlags::PRIVATE_MESSAGE)?;
 
     // Extract relay list
     for relay_url in iter {
-        let relay_id: i32 = get_or_save_relay_url(tx, relay_url)?;
+        let relay_id: i32 = get_or_save_relay_url(tx, &relay_url)?;
 
         tx.execute(
             r#"
@@ -571,8 +563,8 @@ fn update_hints(tx: &Transaction<'_>, event: &Event) -> Result<(), Error> {
             ..
         } = tag
         {
-            let p_tag_pk_id: i32 = get_or_save_public_key(tx, public_key)?;
-            update_relay_per_user(tx, p_tag_pk_id, relay_url, GossipFlags::HINT)?;
+            let p_tag_pk_id: i32 = get_or_save_public_key(tx, &public_key)?;
+            update_relay_per_user(tx, p_tag_pk_id, &relay_url, GossipFlags::HINT)?;
         }
     }
 

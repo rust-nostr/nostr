@@ -95,7 +95,7 @@ macro_rules! gossip_unit_tests {
 
             let keys = Keys::generate();
             let event = EventBuilder::text_note("test")
-                .tag(Tag::from_standardized_without_cell(
+                .tag(Tag::from_standardized(
                     TagStandard::PublicKey {
                         public_key,
                         relay_url: Some(relay_url.clone()),

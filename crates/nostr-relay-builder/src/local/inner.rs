@@ -541,7 +541,7 @@ impl InnerLocalRelay {
                 // Check mode
                 if let LocalRelayBuilderMode::PublicKey(pk) = self.mode {
                     let authored: bool = event.pubkey == pk;
-                    let tagged: bool = event.tags.public_keys().any(|p| p == &pk);
+                    let tagged: bool = event.tags.public_keys().any(|p| p == pk);
 
                     if !authored && !tagged {
                         return send_msg(
@@ -965,7 +965,7 @@ impl InnerLocalRelay {
         let now = Timestamp::now();
         // Add events
         json_msgs.extend(events.into_iter().filter_map(|event| {
-            if event.is_expired_at(&now) {
+            if event.is_expired_at(now) {
                 return None;
             }
             Some(

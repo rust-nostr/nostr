@@ -126,9 +126,11 @@ impl From<Emojis> for Vec<Tag> {
     fn from(Emojis { emojis, coordinate }: Emojis) -> Self {
         let mut tags = Vec::with_capacity(emojis.len() + coordinate.len());
 
-        tags.extend(emojis.into_iter().map(|(s, url)| {
-            Tag::from_standardized_without_cell(TagStandard::Emoji { shortcode: s, url })
-        }));
+        tags.extend(
+            emojis
+                .into_iter()
+                .map(|(s, url)| Tag::from_standardized(TagStandard::Emoji { shortcode: s, url })),
+        );
         tags.extend(coordinate.into_iter().map(Tag::from));
 
         tags

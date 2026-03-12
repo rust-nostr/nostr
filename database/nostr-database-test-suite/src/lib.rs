@@ -401,7 +401,7 @@ macro_rules! database_unit_tests {
 
             // Create deletion event
             let req = EventDeletionRequest::new()
-                .coordinate(event.coordinate().unwrap().into_owned());
+                .coordinate(event.coordinate().unwrap());
             let deletion =
                 EventBuilder::delete(req)
                     .sign_with_keys(&keys)
@@ -852,7 +852,7 @@ macro_rules! database_unit_tests {
             assert_eq!(event1.created_at, event2.created_at);
             assert_eq!(event1.created_at.as_secs(), 1754066538);
             assert_eq!(event1.tags.identifier(), event2.tags.identifier());
-            assert_eq!(event1.tags.identifier(), Some("article-123"));
+            assert_eq!(event1.tags.identifier(), Some(String::from("article-123")));
 
             // Confirm event1 has the smaller ID (lexicographically first)
             assert!(event1.id.to_string() < event2.id.to_string());

@@ -549,7 +549,7 @@ impl QuoteEvent {
             .map_err(|_| Error::InvalidMintUrl)?;
 
         // Extract NIP-40 expiration from tags if present
-        let expiration: Option<Timestamp> = event.tags.expiration().copied();
+        let expiration: Option<Timestamp> = event.tags.expiration();
 
         Ok(Self {
             quote_id,

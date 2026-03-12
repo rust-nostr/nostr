@@ -44,7 +44,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
                 .limit(1);
             let events: Events = self.query(filter).await?;
             match events.first_owned() {
-                Some(event) => Ok(event.tags.public_keys().copied().collect()),
+                Some(event) => Ok(event.tags.public_keys().collect()),
                 None => Ok(HashSet::new()),
             }
         })
@@ -65,7 +65,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
                 Some(event) => {
                     // Get contacts metadata
                     let filter = Filter::new()
-                        .authors(event.tags.public_keys().copied())
+                        .authors(event.tags.public_keys())
                         .kind(Kind::Metadata);
                     let mut contacts: HashSet<Profile> = self
                         .query(filter)
@@ -79,7 +79,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
                         .collect();
 
                     // Extend with missing public keys
-                    contacts.extend(event.tags.public_keys().copied().map(Profile::from));
+                    contacts.extend(event.tags.public_keys().map(Profile::from));
 
                     Ok(contacts.into_iter().collect())
                 }
@@ -104,8 +104,8 @@ pub trait NostrDatabaseExt: NostrDatabase {
             let events: Events = self.query(filter).await?;
 
             // Extract relay list (NIP65)
-            match events.first_owned() {
-                Some(event) => Ok(nip65::extract_owned_relay_list(event).collect()),
+            match events.first() {
+                Some(event) => Ok(nip65::extract_relay_list(event).collect()),
                 None => Ok(HashMap::new()),
             }
         })
@@ -128,11 +128,8 @@ pub trait NostrDatabaseExt: NostrDatabase {
 
             let mut map = HashMap::with_capacity(events.len());
 
-            for event in events.into_iter() {
-                map.insert(
-                    event.pubkey,
-                    nip65::extract_owned_relay_list(event).collect(),
-                );
+            for event in events.iter() {
+                map.insert(event.pubkey, nip65::extract_relay_list(event).collect());
             }
 
             Ok(map)

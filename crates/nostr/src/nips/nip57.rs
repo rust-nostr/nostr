@@ -226,9 +226,7 @@ impl From<ZapRequestData> for Vec<Tag> {
         let mut tags: Vec<Tag> = vec![Tag::public_key(public_key)];
 
         if !relays.is_empty() {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Relays(
-                relays,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Relays(relays)));
         }
 
         if let Some(event_id) = event_id {
@@ -240,16 +238,14 @@ impl From<ZapRequestData> for Vec<Tag> {
         }
 
         if let Some(amount) = amount {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Amount {
+            tags.push(Tag::from_standardized(TagStandard::Amount {
                 millisats: amount,
                 bolt11: None,
             }));
         }
 
         if let Some(lnurl) = lnurl {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Lnurl(
-                lnurl,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Lnurl(lnurl)));
         }
 
         tags
@@ -262,9 +258,7 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     let keys = Keys::generate();
     let message: String = data.message.clone();
     let mut tags: Vec<Tag> = data.into();
-    tags.push(Tag::from_standardized_without_cell(TagStandard::Anon {
-        msg: None,
-    }));
+    tags.push(Tag::from_standardized(TagStandard::Anon { msg: None }));
     Ok(EventBuilder::new(Kind::ZapRequest, message)
         .tags(tags)
         .sign_with_keys(&keys)?)
@@ -308,9 +302,7 @@ where
 
     // Compose event
     let mut tags: Vec<Tag> = data.into();
-    tags.push(Tag::from_standardized_without_cell(TagStandard::Anon {
-        msg: Some(msg),
-    }));
+    tags.push(Tag::from_standardized(TagStandard::Anon { msg: Some(msg) }));
     let private_zap_keys: Keys = Keys::new_with_ctx(secp, secret_key);
     Ok(EventBuilder::new(Kind::ZapRequest, "")
         .tags(tags)
@@ -360,10 +352,10 @@ where
     Ok(format!("{encrypted_bech32_msg}_{iv_bech32}"))
 }
 
-fn extract_anon_tag_message(event: &Event) -> Result<&String, Error> {
+fn extract_anon_tag_message(event: &Event) -> Result<String, Error> {
     for tag in event.tags.iter() {
-        if let Some(TagStandard::Anon { msg }) = tag.as_standardized() {
-            return msg.as_ref().ok_or(Error::InvalidPrivateZapMessage);
+        if let Some(TagStandard::Anon { msg }) = tag.standardized() {
+            return msg.ok_or(Error::InvalidPrivateZapMessage);
         }
     }
     Err(Error::PrivateZapMessageNotFound)
@@ -395,7 +387,7 @@ pub fn decrypt_received_private_zap_message(
 }
 
 fn decrypt_private_zap_message(key: [u8; 32], private_zap_event: &Event) -> Result<Event, Error> {
-    let msg: &String = extract_anon_tag_message(private_zap_event)?;
+    let msg: String = extract_anon_tag_message(private_zap_event)?;
     let mut splitted = msg.split('_');
 
     let msg: &str = splitted.next().ok_or(Error::InvalidPrivateZapMessage)?;

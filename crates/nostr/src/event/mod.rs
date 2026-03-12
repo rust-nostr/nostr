@@ -32,7 +32,7 @@ pub use self::tag::{Tag, TagKind, TagStandard, Tags};
 pub use self::unsigned::UnsignedEvent;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::nips::nip01::CoordinateBorrow;
+use crate::nips::nip01::Coordinate;
 use crate::nips::nip19::{self, Nip19Event, ToBech32};
 use crate::nips::nip21::ToNostrUri;
 use crate::{JsonUtil, Metadata, PublicKey, Timestamp};
@@ -226,7 +226,7 @@ impl Event {
     #[cfg(feature = "std")]
     pub fn is_expired(&self) -> bool {
         let now: Timestamp = Timestamp::now();
-        self.is_expired_at(&now)
+        self.is_expired_at(now)
     }
 
     /// Returns `true` if the event has an expiration tag that is expired.
@@ -234,7 +234,7 @@ impl Event {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     #[inline]
-    pub fn is_expired_at(&self, now: &Timestamp) -> bool {
+    pub fn is_expired_at(&self, now: Timestamp) -> bool {
         if let Some(timestamp) = self.tags.expiration() {
             return timestamp < now;
         }
@@ -244,12 +244,12 @@ impl Event {
     /// Get the coordinate of this event
     ///
     /// Return a coordinate only if the event kind is `replaceable` or `addressable`.
-    pub fn coordinate(&self) -> Option<CoordinateBorrow<'_>> {
+    pub fn coordinate(&self) -> Option<Coordinate> {
         if self.kind.is_replaceable() || self.kind.is_addressable() {
-            return Some(CoordinateBorrow {
-                kind: &self.kind,
-                public_key: &self.pubkey,
-                identifier: self.tags.identifier(),
+            return Some(Coordinate {
+                kind: self.kind,
+                public_key: self.pubkey,
+                identifier: self.tags.identifier().unwrap_or_default(),
             });
         }
 
@@ -505,13 +505,13 @@ mod tests {
         let event = Event::from_json(json).unwrap();
         assert_eq!(
             event.coordinate(),
-            Some(CoordinateBorrow {
-                kind: &Kind::Metadata,
-                public_key: &PublicKey::from_hex(
+            Some(Coordinate {
+                kind: Kind::Metadata,
+                public_key: PublicKey::from_hex(
                     "2f35aaff0c870f0510a8bed198e1f8c35e95c996148f2d0c0fb1825b05b8dd35"
                 )
                 .unwrap(),
-                identifier: None,
+                identifier: String::new(),
             })
         );
     }

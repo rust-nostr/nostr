@@ -251,7 +251,7 @@ async fn gossip_prepare_urls(
         };
 
         // Get only p tags since the author of a gift wrap is randomized
-        let public_keys: BTreeSet<PublicKey> = event.tags.public_keys().copied().collect();
+        let public_keys: BTreeSet<PublicKey> = event.tags.public_keys().collect();
 
         (public_keys, &[kind])
     } else if is_contact_list {
@@ -262,7 +262,6 @@ async fn gossip_prepare_urls(
         let public_keys: BTreeSet<PublicKey> = event
             .tags
             .public_keys()
-            .copied()
             .chain(iter::once(event.pubkey))
             .collect();
         (public_keys, &[GossipListKind::Nip65])

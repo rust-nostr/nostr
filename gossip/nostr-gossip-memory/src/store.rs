@@ -89,7 +89,7 @@ impl NostrGossipMemory {
                     let mut read_write_mask: GossipFlags = GossipFlags::READ;
                     read_write_mask.add(GossipFlags::WRITE);
 
-                    match pk_data.relays.get_mut(relay_url) {
+                    match pk_data.relays.get_mut(&relay_url) {
                         Some(relay_data) => {
                             // Update the bitflag: remove the previous READ and WRITE values and apply the new bitflag (preserves any other flag)
                             relay_data.bitflags.remove(read_write_mask);
@@ -110,7 +110,7 @@ impl NostrGossipMemory {
                     public_keys.get_or_insert_mut(event.pubkey, PkData::default);
 
                 for relay_url in nip17::extract_relay_list(event).take(MAX_NIP17_SIZE) {
-                    match pk_data.relays.get_mut(relay_url) {
+                    match pk_data.relays.get_mut(&relay_url) {
                         Some(relay_data) => {
                             relay_data.bitflags.add(GossipFlags::PRIVATE_MESSAGE);
                         }
@@ -118,7 +118,7 @@ impl NostrGossipMemory {
                             let mut relay_data = PkRelayData::default();
                             relay_data.bitflags.add(GossipFlags::PRIVATE_MESSAGE);
 
-                            pk_data.relays.insert(relay_url.clone(), relay_data);
+                            pk_data.relays.insert(relay_url, relay_data);
                         }
                     }
                 }
@@ -133,7 +133,7 @@ impl NostrGossipMemory {
                     } = tag
                     {
                         let pk_data: &mut PkData =
-                            public_keys.get_or_insert_mut(*public_key, PkData::default);
+                            public_keys.get_or_insert_mut(public_key, PkData::default);
                         update_relay_per_user(pk_data, relay_url.clone(), GossipFlags::HINT);
                     }
                 }

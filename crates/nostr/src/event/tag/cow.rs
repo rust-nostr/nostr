@@ -59,7 +59,7 @@ impl<'a> CowTag<'a> {
     /// Into owned tag
     pub fn into_owned(self) -> Tag {
         let buf: Vec<String> = self.buf.into_iter().map(|t| t.into_owned()).collect();
-        Tag::new_with_empty_cell(buf)
+        Tag::new(buf)
     }
 
     /// Get inner value

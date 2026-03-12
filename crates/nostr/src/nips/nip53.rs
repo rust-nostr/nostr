@@ -224,27 +224,19 @@ impl From<LiveEvent> for Vec<Tag> {
         tags.push(Tag::identifier(id));
 
         if let Some(title) = title {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Title(
-                title,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Title(title)));
         }
 
         if let Some(summary) = summary {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Summary(
-                summary,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Summary(summary)));
         }
 
         if let Some(streaming) = streaming {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Streaming(
-                streaming,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Streaming(streaming)));
         }
 
         if let Some(status) = status {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::LiveEventStatus(status),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::LiveEventStatus(status)));
         }
 
         if let Some(LiveEventHost {
@@ -253,82 +245,66 @@ impl From<LiveEvent> for Vec<Tag> {
             proof,
         }) = host
         {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::PublicKeyLiveEvent {
-                    public_key,
-                    relay_url,
-                    marker: LiveEventMarker::Host,
-                    proof,
-                },
-            ));
+            tags.push(Tag::from_standardized(TagStandard::PublicKeyLiveEvent {
+                public_key,
+                relay_url,
+                marker: LiveEventMarker::Host,
+                proof,
+            }));
         }
 
         for (public_key, relay_url) in speakers.into_iter() {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::PublicKeyLiveEvent {
-                    public_key,
-                    relay_url,
-                    marker: LiveEventMarker::Speaker,
-                    proof: None,
-                },
-            ));
+            tags.push(Tag::from_standardized(TagStandard::PublicKeyLiveEvent {
+                public_key,
+                relay_url,
+                marker: LiveEventMarker::Speaker,
+                proof: None,
+            }));
         }
 
         for (public_key, relay_url) in participants.into_iter() {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::PublicKeyLiveEvent {
-                    public_key,
-                    relay_url,
-                    marker: LiveEventMarker::Participant,
-                    proof: None,
-                },
-            ));
+            tags.push(Tag::from_standardized(TagStandard::PublicKeyLiveEvent {
+                public_key,
+                relay_url,
+                marker: LiveEventMarker::Participant,
+                proof: None,
+            }));
         }
 
         if let Some((image, dim)) = image {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Image(
-                image, dim,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Image(image, dim)));
         }
 
         for hashtag in hashtags.into_iter() {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Hashtag(
-                hashtag,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Hashtag(hashtag)));
         }
 
         if let Some(recording) = recording {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Recording(
-                recording,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Recording(recording)));
         }
 
         if let Some(starts) = starts {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Starts(
-                starts,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Starts(starts)));
         }
 
         if let Some(ends) = ends {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Ends(ends)));
+            tags.push(Tag::from_standardized(TagStandard::Ends(ends)));
         }
 
         if let Some(current_participants) = current_participants {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::CurrentParticipants(current_participants),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::CurrentParticipants(
+                current_participants,
+            )));
         }
 
         if let Some(total_participants) = total_participants {
-            tags.push(Tag::from_standardized_without_cell(
-                TagStandard::TotalParticipants(total_participants),
-            ));
+            tags.push(Tag::from_standardized(TagStandard::TotalParticipants(
+                total_participants,
+            )));
         }
 
         if !relays.is_empty() {
-            tags.push(Tag::from_standardized_without_cell(TagStandard::Relays(
-                relays,
-            )));
+            tags.push(Tag::from_standardized(TagStandard::Relays(relays)));
         }
 
         tags
@@ -349,7 +325,7 @@ impl TryFrom<Vec<Tag>> for LiveEvent {
         let mut live_event = LiveEvent::new(id);
 
         for tag in tags.into_iter() {
-            let Some(tag) = tag.to_standardized() else {
+            let Some(tag) = tag.standardized() else {
                 continue;
             };
 

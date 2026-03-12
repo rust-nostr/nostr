@@ -51,11 +51,11 @@ pub(crate) fn filter_for_kind(events: Vec<Event>, kind_needed: &Kind) -> Vec<Eve
 }
 
 /// Helper function to extract the awarded public key from an array of PubKey tags
-pub(crate) fn extract_awarded_public_key<'a>(
-    tags: &'a [Tag],
-    awarded_public_key: &PublicKey,
-) -> Option<(&'a PublicKey, &'a Option<RelayUrl>)> {
-    tags.iter().find_map(|t| match t.as_standardized() {
+pub(crate) fn extract_awarded_public_key(
+    tags: &[Tag],
+    awarded_public_key: PublicKey,
+) -> Option<(PublicKey, Option<RelayUrl>)> {
+    tags.iter().find_map(|t| match t.standardized() {
         Some(TagStandard::PublicKey {
             public_key,
             relay_url,

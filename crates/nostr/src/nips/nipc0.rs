@@ -141,7 +141,7 @@ impl CodeSnippet {
 
         let mut add_if_some = |tag: Option<TagStandard>| {
             if let Some(tag) = tag {
-                tags.push(Tag::from_standardized_without_cell(tag));
+                tags.push(Tag::from_standardized(tag));
             }
         };
 

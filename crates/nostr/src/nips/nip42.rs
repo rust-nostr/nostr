@@ -25,7 +25,7 @@ pub fn is_valid_auth_event(event: &Event, relay_url: &RelayUrl, challenge: &str)
     // Check if it has "relay" tag
     match event.tags.find_standardized(TagKind::Relay) {
         Some(TagStandard::Relay(url)) => {
-            if url != relay_url {
+            if &url != relay_url {
                 return false;
             }
         }

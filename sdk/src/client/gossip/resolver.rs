@@ -38,21 +38,21 @@ impl GossipRelayResolver {
         self.sync_counter.fetch_add(1, Ordering::SeqCst)
     }
 
-    pub(in crate::client) async fn get_relays<'a, I>(
+    pub(in crate::client) async fn get_relays<I>(
         &self,
         public_keys: I,
         selection: BestRelaySelection,
         allowed: GossipAllowedRelays,
     ) -> Result<HashSet<RelayUrl>, Error>
     where
-        I: IntoIterator<Item = &'a PublicKey>,
+        I: IntoIterator<Item = PublicKey>,
     {
         let mut urls: HashSet<RelayUrl> = HashSet::new();
 
         for public_key in public_keys.into_iter() {
             let relays: HashSet<RelayUrl> = self
                 .gossip
-                .get_best_relays(public_key, selection, allowed)
+                .get_best_relays(&public_key, selection, allowed)
                 .await?;
             urls.extend(relays);
         }
@@ -259,7 +259,7 @@ impl GossipRelayResolver {
                 // Get map of outbox and inbox relays
                 let mut relays: HashSet<RelayUrl> = self
                     .get_relays(
-                        union.iter(),
+                        union.iter().copied(),
                         BestRelaySelection::All {
                             read: limits.read_relays_per_user,
                             write: limits.write_relays_per_user,
@@ -275,7 +275,7 @@ impl GossipRelayResolver {
                     // Get map of private message relays
                     let nip17_relays = self
                         .get_relays(
-                            union.iter(),
+                            union.iter().copied(),
                             BestRelaySelection::PrivateMessage {
                                 limit: limits.nip17_relays,
                             },

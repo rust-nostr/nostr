@@ -81,30 +81,12 @@ impl FromStr for RelayMetadata {
 #[inline]
 pub fn extract_relay_list(
     event: &Event,
-) -> impl Iterator<Item = (&RelayUrl, &Option<RelayMetadata>)> {
+) -> impl Iterator<Item = (RelayUrl, Option<RelayMetadata>)> + '_ {
     event.tags.iter().filter_map(|tag| {
         if let Some(TagStandard::RelayMetadata {
             relay_url,
             metadata,
-        }) = tag.as_standardized()
-        {
-            Some((relay_url, metadata))
-        } else {
-            None
-        }
-    })
-}
-
-/// Extracts the relay info (url, optional read/write flag) from the event
-#[inline]
-pub fn extract_owned_relay_list(
-    event: Event,
-) -> impl Iterator<Item = (RelayUrl, Option<RelayMetadata>)> {
-    event.tags.into_iter().filter_map(|tag| {
-        if let Some(TagStandard::RelayMetadata {
-            relay_url,
-            metadata,
-        }) = tag.to_standardized()
+        }) = tag.standardized()
         {
             Some((relay_url, metadata))
         } else {

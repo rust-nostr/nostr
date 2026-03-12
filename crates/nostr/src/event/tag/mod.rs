@@ -6,14 +6,10 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::{IntoIter, Vec};
-#[cfg(not(feature = "std"))]
-use core::cell::OnceCell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::{Index, IndexMut};
-#[cfg(feature = "std")]
-use std::sync::OnceLock as OnceCell;
 
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
@@ -42,7 +38,6 @@ use crate::{ImageDimensions, PublicKey, RelayUrl, SingleLetterTag, Timestamp};
 #[derive(Clone)]
 pub struct Tag {
     buf: Vec<String>,
-    standardized: OnceCell<Option<TagStandard>>,
 }
 
 impl fmt::Debug for Tag {
@@ -93,26 +88,12 @@ impl IndexMut<usize> for Tag {
 
 impl Tag {
     #[inline]
-    fn new(buf: Vec<String>, standardized: Option<TagStandard>) -> Self {
-        Self {
-            buf,
-            standardized: OnceCell::from(standardized),
-        }
-    }
+    fn new(buf: Vec<String>) -> Self {
+        // The tag must not be empty!
+        assert!(!buf.is_empty());
 
-    #[inline]
-    fn new_with_empty_cell(buf: Vec<String>) -> Self {
-        Self {
-            buf,
-            standardized: OnceCell::new(),
-        }
-    }
-
-    #[inline]
-    fn erase_standardized(&mut self) {
-        if self.standardized.get().is_some() {
-            self.standardized = OnceCell::new();
-        }
+        // Construct
+        Self { buf }
     }
 
     /// Parse tag
@@ -132,19 +113,13 @@ impl Tag {
         }
 
         // Construct without an empty cell
-        Ok(Self::new_with_empty_cell(tag))
+        Ok(Self::new(tag))
     }
 
     /// Construct from standardized tag
     #[inline]
     pub fn from_standardized(standardized: TagStandard) -> Self {
-        Self::new(standardized.clone().to_vec(), Some(standardized))
-    }
-
-    /// Construct from standardized tag without initialize cell (avoid a clone)
-    #[inline]
-    pub fn from_standardized_without_cell(standardized: TagStandard) -> Self {
-        Self::new_with_empty_cell(standardized.to_vec())
+        Self::new(standardized.to_vec())
     }
 
     /// Get tag kind
@@ -161,7 +136,7 @@ impl Tag {
         self.buf.get(1).map(|s| s.as_str())
     }
 
-    /// Get [SingleLetterTag]
+    /// Get [`SingleLetterTag`]
     #[inline]
     pub fn single_letter_tag(&self) -> Option<SingleLetterTag> {
         match self.kind() {
@@ -170,24 +145,15 @@ impl Tag {
         }
     }
 
-    /// Get reference of standardized tag
+    /// Attempt to parse as a standardized tag
     #[inline]
-    pub fn as_standardized(&self) -> Option<&TagStandard> {
-        self.standardized
-            .get_or_init(|| TagStandard::parse(self.as_slice()).ok())
-            .as_ref()
-    }
-
-    /// Consume tag and get standardized tag
-    #[inline]
-    pub fn to_standardized(self) -> Option<TagStandard> {
-        match self.standardized.into_inner() {
-            Some(inner) => inner,
-            None => TagStandard::parse(&self.buf).ok(),
-        }
+    pub fn standardized(&self) -> Option<TagStandard> {
+        TagStandard::parse(self.as_slice()).ok()
     }
 
     /// Get tag len
+    ///
+    /// This will never return zero.
     #[inline]
     #[allow(clippy::len_without_is_empty)]
     pub fn len(&self) -> usize {
@@ -197,16 +163,11 @@ impl Tag {
     /// Appends a value to the back of the [`Tag`].
     ///
     /// Check [`Vec::push`] doc to learn more.
-    ///
-    /// This erases the [`TagStandard`] cell, if any.
+    #[inline]
     pub fn push<S>(&mut self, value: S)
     where
         S: Into<String>,
     {
-        // Erase indexes
-        self.erase_standardized();
-
-        // Append
         self.buf.push(value.into());
     }
 
@@ -214,16 +175,12 @@ impl Tag {
     /// If the [`Tag`] has only **one** value, returns `None`, since it can't be empty.
     ///
     /// Check [`Vec::pop`] doc to learn more.
-    ///
-    /// This erases the [`TagStandard`] cell, if any.
+    #[inline]
     pub fn pop(&mut self) -> Option<String> {
         // The tag must have at least one value!
         if self.buf.len() <= 1 {
             return None;
         }
-
-        // Erase indexes
-        self.erase_standardized();
 
         // Pop last item
         self.buf.pop()
@@ -239,8 +196,6 @@ impl Tag {
     /// Returns `false` if `index > len`.
     ///
     /// Check [`Vec::insert`] doc to learn more.
-    ///
-    /// This erases the [`TagStandard`] cell, if any.
     pub fn insert<S>(&mut self, index: usize, value: S) -> bool
     where
         S: Into<String>,
@@ -257,9 +212,6 @@ impl Tag {
             return false;
         }
 
-        // Erase indexes
-        self.erase_standardized();
-
         // Insert at position
         self.buf.insert(index, value);
 
@@ -270,17 +222,12 @@ impl Tag {
     /// Extends the collection.
     ///
     /// Check [`Vec::extend`] doc to learn more.
-    ///
-    /// This erases the [`TagStandard`] cell, if any.
+    #[inline]
     pub fn extend<I, S>(&mut self, iter: I)
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        // Erase standardized tag
-        self.erase_standardized();
-
-        // Extend list
         self.buf.extend(iter.into_iter().map(|v| v.into()));
     }
 
@@ -301,7 +248,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn event(event_id: EventId) -> Self {
-        Self::from_standardized_without_cell(TagStandard::event(event_id))
+        Self::from_standardized(TagStandard::event(event_id))
     }
 
     /// Compose `["p", "<public-key>"]` tag
@@ -309,7 +256,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn public_key(public_key: PublicKey) -> Self {
-        Self::from_standardized_without_cell(TagStandard::public_key(public_key))
+        Self::from_standardized(TagStandard::public_key(public_key))
     }
 
     /// Compose `["d", "<identifier>"]` tag
@@ -320,7 +267,7 @@ impl Tag {
     where
         T: Into<String>,
     {
-        Self::from_standardized_without_cell(TagStandard::Identifier(identifier.into()))
+        Self::from_standardized(TagStandard::Identifier(identifier.into()))
     }
 
     /// Compose `["a", "<coordinate>", "<optional-relay-url>"]` tag
@@ -328,7 +275,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn coordinate(coordinate: Coordinate, relay_url: Option<RelayUrl>) -> Self {
-        Self::from_standardized_without_cell(TagStandard::Coordinate {
+        Self::from_standardized(TagStandard::Coordinate {
             coordinate,
             relay_url,
             uppercase: false,
@@ -340,7 +287,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     #[inline]
     pub fn pow(nonce: u128, difficulty: u8) -> Self {
-        Self::from_standardized_without_cell(TagStandard::POW { nonce, difficulty })
+        Self::from_standardized(TagStandard::POW { nonce, difficulty })
     }
 
     /// Construct `["client", "<name>"]` tag
@@ -350,7 +297,7 @@ impl Tag {
     where
         S: Into<String>,
     {
-        Self::from_standardized_without_cell(TagStandard::Client {
+        Self::from_standardized(TagStandard::Client {
             name: name.into(),
             address: None,
         })
@@ -361,7 +308,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     #[inline]
     pub fn expiration(timestamp: Timestamp) -> Self {
-        Self::from_standardized_without_cell(TagStandard::Expiration(timestamp))
+        Self::from_standardized(TagStandard::Expiration(timestamp))
     }
 
     /// Compose `["e", "<event-id>", "<report>"]` tag
@@ -369,7 +316,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     #[inline]
     pub fn event_report(event_id: EventId, report: Report) -> Self {
-        Self::from_standardized_without_cell(TagStandard::EventReport(event_id, report))
+        Self::from_standardized(TagStandard::EventReport(event_id, report))
     }
 
     /// Compose `["p", "<public-key>", "<report>"]` tag
@@ -377,7 +324,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     #[inline]
     pub fn public_key_report(public_key: PublicKey, report: Report) -> Self {
-        Self::from_standardized_without_cell(TagStandard::PublicKeyReport(public_key, report))
+        Self::from_standardized(TagStandard::PublicKeyReport(public_key, report))
     }
 
     /// Compose `["r", "<relay-url>", "<metadata>"]` tag
@@ -385,7 +332,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
     #[inline]
     pub fn relay_metadata(relay_url: RelayUrl, metadata: Option<RelayMetadata>) -> Self {
-        Self::from_standardized_without_cell(TagStandard::RelayMetadata {
+        Self::from_standardized(TagStandard::RelayMetadata {
             relay_url,
             metadata,
         })
@@ -396,7 +343,7 @@ impl Tag {
     /// JSON: `["relay", "<relay-url>"]`
     #[inline]
     pub fn relay(url: RelayUrl) -> Self {
-        Self::from_standardized_without_cell(TagStandard::Relay(url))
+        Self::from_standardized(TagStandard::Relay(url))
     }
 
     /// Relay URLs
@@ -407,7 +354,7 @@ impl Tag {
     where
         I: IntoIterator<Item = RelayUrl>,
     {
-        Self::from_standardized_without_cell(TagStandard::Relays(urls.into_iter().collect()))
+        Self::from_standardized(TagStandard::Relays(urls.into_iter().collect()))
     }
 
     /// All relays
@@ -417,7 +364,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
     #[inline]
     pub fn all_relays() -> Self {
-        Self::from_standardized_without_cell(TagStandard::AllRelays)
+        Self::from_standardized(TagStandard::AllRelays)
     }
 
     /// Repository head
@@ -430,7 +377,7 @@ impl Tag {
     where
         S: Into<String>,
     {
-        Self::from_standardized_without_cell(TagStandard::GitHead(branch_name.into()))
+        Self::from_standardized(TagStandard::GitHead(branch_name.into()))
     }
 
     /// Compose `["t", "<hashtag>"]` tag
@@ -441,7 +388,7 @@ impl Tag {
     where
         T: AsRef<str>,
     {
-        Self::from_standardized_without_cell(TagStandard::Hashtag(hashtag.as_ref().to_lowercase()))
+        Self::from_standardized(TagStandard::Hashtag(hashtag.as_ref().to_lowercase()))
     }
 
     /// Compose `["r", "<value>"]` tag
@@ -450,7 +397,7 @@ impl Tag {
     where
         T: Into<String>,
     {
-        Self::from_standardized_without_cell(TagStandard::Reference(reference.into()))
+        Self::from_standardized(TagStandard::Reference(reference.into()))
     }
 
     /// Compose `["title", "<title>"]` tag
@@ -459,13 +406,13 @@ impl Tag {
     where
         T: Into<String>,
     {
-        Self::from_standardized_without_cell(TagStandard::Title(title.into()))
+        Self::from_standardized(TagStandard::Title(title.into()))
     }
 
     /// Compose image tag
     #[inline]
     pub fn image(url: Url, dimensions: Option<ImageDimensions>) -> Self {
-        Self::from_standardized_without_cell(TagStandard::Image(url, dimensions))
+        Self::from_standardized(TagStandard::Image(url, dimensions))
     }
 
     /// Compose `["description", "<description>"]` tag
@@ -474,7 +421,7 @@ impl Tag {
     where
         T: Into<String>,
     {
-        Self::from_standardized_without_cell(TagStandard::Description(description.into()))
+        Self::from_standardized(TagStandard::Description(description.into()))
     }
 
     /// Protected event
@@ -482,7 +429,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     #[inline]
     pub fn protected() -> Self {
-        Self::from_standardized_without_cell(TagStandard::Protected)
+        Self::from_standardized(TagStandard::Protected)
     }
 
     /// A short human-readable plaintext summary of what that event is about
@@ -495,7 +442,7 @@ impl Tag {
     where
         T: Into<String>,
     {
-        Self::from_standardized_without_cell(TagStandard::Alt(summary.into()))
+        Self::from_standardized(TagStandard::Alt(summary.into()))
     }
 
     /// Compose custom tag
@@ -511,14 +458,13 @@ impl Tag {
         buf.push(kind.to_string());
         buf.extend(values.into_iter().map(|v| v.into()));
 
-        // NOT USE `Self::new`!
-        Self::new_with_empty_cell(buf)
+        Self::new(buf)
     }
 
     /// Check if is a standard event tag with `root` marker
     pub fn is_root(&self) -> bool {
         matches!(
-            self.as_standardized(),
+            self.standardized(),
             Some(TagStandard::Event {
                 marker: Some(Marker::Root),
                 ..
@@ -529,7 +475,7 @@ impl Tag {
     /// Check if is a standard event tag with `reply` marker
     pub fn is_reply(&self) -> bool {
         matches!(
-            self.as_standardized(),
+            self.standardized(),
             Some(TagStandard::Event {
                 marker: Some(Marker::Reply),
                 ..
@@ -542,7 +488,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     #[inline]
     pub fn is_protected(&self) -> bool {
-        matches!(self.as_standardized(), Some(TagStandard::Protected))
+        matches!(self.standardized(), Some(TagStandard::Protected))
     }
 }
 
@@ -582,7 +528,7 @@ impl<'de> Deserialize<'de> for Tag {
 
 impl From<TagStandard> for Tag {
     fn from(standard: TagStandard) -> Self {
-        Self::from_standardized_without_cell(standard)
+        Self::from_standardized(standard)
     }
 }
 
@@ -607,13 +553,13 @@ mod tests {
     fn test_tag_match_standardized() {
         let tag: Tag = Tag::parse(["d", "bravery"]).unwrap();
         assert_eq!(
-            tag.as_standardized(),
-            Some(&TagStandard::Identifier(String::from("bravery")))
+            tag.standardized(),
+            Some(TagStandard::Identifier(String::from("bravery")))
         );
 
         let tag: Tag = Tag::parse(["d", "test"]).unwrap();
         assert_eq!(
-            tag.to_standardized(),
+            tag.standardized(),
             Some(TagStandard::Identifier(String::from("test")))
         );
     }

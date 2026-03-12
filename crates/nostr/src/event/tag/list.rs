@@ -383,8 +383,8 @@ impl Tags {
 
     /// Get the first tag that match [`TagKind`] and that is standardized.
     #[inline]
-    pub fn find_standardized(&self, kind: TagKind) -> Option<&TagStandard> {
-        self.find(kind).and_then(|t| t.as_standardized())
+    pub fn find_standardized(&self, kind: TagKind) -> Option<TagStandard> {
+        self.find(kind).and_then(|t| t.standardized())
     }
 
     /// Filter tags that match [`TagKind`].
@@ -398,8 +398,8 @@ impl Tags {
     pub fn filter_standardized<'a>(
         &'a self,
         kind: TagKind<'a>,
-    ) -> impl Iterator<Item = &'a TagStandard> {
-        self.filter(kind).filter_map(|t| t.as_standardized())
+    ) -> impl Iterator<Item = TagStandard> + 'a {
+        self.filter(kind).filter_map(|t| t.standardized())
     }
 
     /// Get as slice of tags
@@ -416,7 +416,7 @@ impl Tags {
 
     /// Extract identifier (`d` tag), if exists.
     #[inline]
-    pub fn identifier(&self) -> Option<&str> {
+    pub fn identifier(&self) -> Option<String> {
         match self.find_standardized(TagKind::d())? {
             TagStandard::Identifier(identifier) => Some(identifier),
             _ => None,
@@ -426,7 +426,7 @@ impl Tags {
     /// Get [`Timestamp`] expiration, if exists.
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
-    pub fn expiration(&self) -> Option<&Timestamp> {
+    pub fn expiration(&self) -> Option<Timestamp> {
         match self.find_standardized(TagKind::Expiration)? {
             TagStandard::Expiration(timestamp) => Some(timestamp),
             _ => None,
@@ -435,7 +435,7 @@ impl Tags {
 
     /// Extract NIP42 challenge, if exists.
     #[inline]
-    pub fn challenge(&self) -> Option<&str> {
+    pub fn challenge(&self) -> Option<String> {
         match self.find_standardized(TagKind::Challenge)? {
             TagStandard::Challenge(challenge) => Some(challenge),
             _ => None,
@@ -446,7 +446,7 @@ impl Tags {
     ///
     /// This method extract only [`TagStandard::PublicKey`], [`TagStandard::PublicKeyReport`] and [`TagStandard::PublicKeyLiveEvent`] variants.
     #[inline]
-    pub fn public_keys(&self) -> impl Iterator<Item = &PublicKey> {
+    pub fn public_keys(&self) -> impl Iterator<Item = PublicKey> + '_ {
         self.filter_standardized(TagKind::p())
             .filter_map(|t| match t {
                 TagStandard::PublicKey { public_key, .. } => Some(public_key),
@@ -460,7 +460,7 @@ impl Tags {
     ///
     /// This method extract only [`TagStandard::Event`] and [`TagStandard::EventReport`] variants.
     #[inline]
-    pub fn event_ids(&self) -> impl Iterator<Item = &EventId> {
+    pub fn event_ids(&self) -> impl Iterator<Item = EventId> + '_ {
         self.filter_standardized(TagKind::e())
             .filter_map(|t| match t {
                 TagStandard::Event { event_id, .. } => Some(event_id),
@@ -473,7 +473,7 @@ impl Tags {
     ///
     /// This method extract only [`TagStandard::Coordinate`] variant.
     #[inline]
-    pub fn coordinates(&self) -> impl Iterator<Item = &Coordinate> {
+    pub fn coordinates(&self) -> impl Iterator<Item = Coordinate> + '_ {
         self.filter_standardized(TagKind::a())
             .filter_map(|t| match t {
                 TagStandard::Coordinate { coordinate, .. } => Some(coordinate),
@@ -485,10 +485,10 @@ impl Tags {
     ///
     /// This method extract only [`TagStandard::Hashtag`] variant.
     #[inline]
-    pub fn hashtags(&self) -> impl Iterator<Item = &str> {
+    pub fn hashtags(&self) -> impl Iterator<Item = String> + '_ {
         self.filter_standardized(TagKind::t())
             .filter_map(|t| match t {
-                TagStandard::Hashtag(hashtag) => Some(hashtag.as_ref()),
+                TagStandard::Hashtag(hashtag) => Some(hashtag),
                 _ => None,
             })
     }
@@ -588,14 +588,14 @@ mod tests {
             .filter(|t| t.content() == Some("3"))
             .collect();
         assert_eq!(tags.len(), 1);
-        assert_eq!(tags.identifier(), Some("3"));
+        assert_eq!(tags.identifier(), Some(String::from("3")));
     }
 
     #[test]
     fn test_extract_d_tag() {
         let json = r#"{"id":"3dfdbb371de782f51812dc4809ea1104d80e143cec1091a4be07f518ef09e3d7","pubkey":"b8aef32a5421205c1f89ad09e2d93873df68a8611b247f62af005655eadc0efb","created_at":1728728536,"kind":30000,"sig":"0395c41fd95d52b534eaa29c82cd9437130cf63e67117b1587914375fdfb878137287a1d15653161f91ea919afb06358784217409a9ff0323261f683b2936829","content":"older_param_replaceable","tags":[["d","1"]]}"#;
         let event = Event::from_json(json).unwrap();
-        assert_eq!(event.tags.identifier(), Some("1"));
+        assert_eq!(event.tags.identifier(), Some(String::from("1")));
     }
 
     #[test]
@@ -614,14 +614,14 @@ mod tests {
             EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
                 .unwrap();
 
-        let long_p_tag_1 = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+        let long_p_tag_1 = Tag::from_standardized(TagStandard::PublicKey {
             public_key: pubkey1,
             relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
             uppercase: false,
             alias: None,
         });
 
-        let long_e_tag_2 = Tag::from_standardized_without_cell(TagStandard::Event {
+        let long_e_tag_2 = Tag::from_standardized(TagStandard::Event {
             event_id: event2,
             relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
             marker: None,
@@ -707,7 +707,7 @@ mod benches {
 
         for pk in pubkeys.into_iter() {
             // Push long p tag
-            let long_p_tag = Tag::from_standardized_without_cell(TagStandard::PublicKey {
+            let long_p_tag = Tag::from_standardized(TagStandard::PublicKey {
                 public_key: pk,
                 relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
                 uppercase: false,
