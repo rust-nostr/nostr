@@ -15,12 +15,14 @@ use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
+mod codec;
 pub mod cow;
 mod error;
 pub mod kind;
 pub mod list;
 pub mod standard;
 
+pub use self::codec::*;
 pub use self::cow::CowTag;
 pub use self::error::Error;
 pub use self::kind::TagKind;
