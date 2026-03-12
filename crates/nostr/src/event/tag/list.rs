@@ -24,8 +24,8 @@ use std::sync::OnceLock as OnceCell;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{Error, Tag};
-use crate::nips::nip01::Coordinate;
+use super::{Error, Tag, TagCodec};
+use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
 
 /// Tags Indexes
@@ -417,8 +417,10 @@ impl Tags {
     /// Extract identifier (`d` tag), if exists.
     #[inline]
     pub fn identifier(&self) -> Option<String> {
-        match self.find_standardized(TagKind::d())? {
-            TagStandard::Identifier(identifier) => Some(identifier),
+        let tag: &Tag = self.find(TagKind::d())?;
+
+        match Nip01Tag::try_from(tag) {
+            Ok(Nip01Tag::Identifier(identifier)) => Some(identifier),
             _ => None,
         }
     }
@@ -443,42 +445,30 @@ impl Tags {
     }
 
     /// Extract public keys from `p` tags.
-    ///
-    /// This method extract only [`TagStandard::PublicKey`], [`TagStandard::PublicKeyReport`] and [`TagStandard::PublicKeyLiveEvent`] variants.
     #[inline]
     pub fn public_keys(&self) -> impl Iterator<Item = PublicKey> + '_ {
-        self.filter_standardized(TagKind::p())
-            .filter_map(|t| match t {
-                TagStandard::PublicKey { public_key, .. } => Some(public_key),
-                TagStandard::PublicKeyReport(public_key, ..) => Some(public_key),
-                TagStandard::PublicKeyLiveEvent { public_key, .. } => Some(public_key),
-                _ => None,
-            })
+        self.filter(TagKind::p()).filter_map(|t| {
+            let content = t.content()?;
+            PublicKey::from_hex(content).ok()
+        })
     }
 
     /// Extract event IDs from `e` tags.
-    ///
-    /// This method extract only [`TagStandard::Event`] and [`TagStandard::EventReport`] variants.
     #[inline]
     pub fn event_ids(&self) -> impl Iterator<Item = EventId> + '_ {
-        self.filter_standardized(TagKind::e())
-            .filter_map(|t| match t {
-                TagStandard::Event { event_id, .. } => Some(event_id),
-                TagStandard::EventReport(event_id, ..) => Some(event_id),
-                _ => None,
-            })
+        self.filter(TagKind::e()).filter_map(|t| {
+            let content = t.content()?;
+            EventId::from_hex(content).ok()
+        })
     }
 
     /// Extract coordinates from `a` tags.
-    ///
-    /// This method extract only [`TagStandard::Coordinate`] variant.
     #[inline]
     pub fn coordinates(&self) -> impl Iterator<Item = Coordinate> + '_ {
-        self.filter_standardized(TagKind::a())
-            .filter_map(|t| match t {
-                TagStandard::Coordinate { coordinate, .. } => Some(coordinate),
-                _ => None,
-            })
+        self.filter(TagKind::a()).filter_map(|t| {
+            let content = t.content()?;
+            Coordinate::from_kpi_format(content).ok()
+        })
     }
 
     /// Extract hashtags from `t` tags.
@@ -707,12 +697,11 @@ mod benches {
 
         for pk in pubkeys.into_iter() {
             // Push long p tag
-            let long_p_tag = Tag::from_standardized(TagStandard::PublicKey {
+            let long_p_tag = Nip01Tag::PublicKey {
                 public_key: pk,
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                uppercase: false,
-                alias: None,
-            });
+                relay_hint: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            }
+            .to_tag();
             tags.push(long_p_tag)
         }
 

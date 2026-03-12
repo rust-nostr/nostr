@@ -1030,8 +1030,8 @@ impl EventBuilder {
         let badge_id = badge_definition
             .tags
             .iter()
-            .find_map(|t| match t.standardized() {
-                Some(TagStandard::Identifier(id)) => Some(id),
+            .find_map(|t| match t.try_into() {
+                Ok(Nip01Tag::Identifier(id)) => Some(id),
                 _ => None,
             })
             .ok_or(Error::NIP58(nip58::Error::IdentifierTagNotFound))?;

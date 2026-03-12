@@ -29,7 +29,7 @@ pub use self::kind::TagKind;
 pub use self::list::Tags;
 pub use self::standard::TagStandard;
 use super::id::EventId;
-use crate::nips::nip01::Coordinate;
+use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip10::Marker;
 use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
@@ -90,7 +90,7 @@ impl IndexMut<usize> for Tag {
 
 impl Tag {
     #[inline]
-    fn new(buf: Vec<String>) -> Self {
+    pub(crate) fn new(buf: Vec<String>) -> Self {
         // The tag must not be empty!
         assert!(!buf.is_empty());
 
@@ -249,8 +249,13 @@ impl Tag {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
-    pub fn event(event_id: EventId) -> Self {
-        Self::from_standardized(TagStandard::event(event_id))
+    pub fn event(id: EventId) -> Self {
+        Nip01Tag::Event {
+            id,
+            relay_hint: None,
+            public_key: None,
+        }
+        .to_tag()
     }
 
     /// Compose `["p", "<public-key>"]` tag
@@ -258,7 +263,11 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn public_key(public_key: PublicKey) -> Self {
-        Self::from_standardized(TagStandard::public_key(public_key))
+        Nip01Tag::PublicKey {
+            public_key,
+            relay_hint: None,
+        }
+        .to_tag()
     }
 
     /// Compose `["d", "<identifier>"]` tag
@@ -269,7 +278,7 @@ impl Tag {
     where
         T: Into<String>,
     {
-        Self::from_standardized(TagStandard::Identifier(identifier.into()))
+        Nip01Tag::Identifier(identifier.into()).to_tag()
     }
 
     /// Compose `["a", "<coordinate>", "<optional-relay-url>"]` tag
@@ -277,11 +286,11 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
     #[inline]
     pub fn coordinate(coordinate: Coordinate, relay_url: Option<RelayUrl>) -> Self {
-        Self::from_standardized(TagStandard::Coordinate {
+        Nip01Tag::Coordinate {
             coordinate,
-            relay_url,
-            uppercase: false,
-        })
+            relay_hint: relay_url,
+        }
+        .to_tag()
     }
 
     /// Compose `["nonce", "<nonce>", "<difficulty>"]` tag
@@ -548,21 +557,6 @@ mod tests {
         assert_eq!(
             Tag::parse::<Vec<_>, String>(vec![]).unwrap_err(),
             Error::EmptyTag
-        );
-    }
-
-    #[test]
-    fn test_tag_match_standardized() {
-        let tag: Tag = Tag::parse(["d", "bravery"]).unwrap();
-        assert_eq!(
-            tag.standardized(),
-            Some(TagStandard::Identifier(String::from("bravery")))
-        );
-
-        let tag: Tag = Tag::parse(["d", "test"]).unwrap();
-        assert_eq!(
-            tag.standardized(),
-            Some(TagStandard::Identifier(String::from("test")))
         );
     }
 

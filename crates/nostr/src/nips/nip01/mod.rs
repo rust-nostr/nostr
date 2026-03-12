@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP01: Basic protocol flow description
+//! NIP-01: Basic protocol flow description
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/01.md>
 
@@ -17,18 +17,28 @@ use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+mod tags;
+
+pub use self::tags::*;
 use super::nip19::{self, FromBech32, Nip19Coordinate, ToBech32};
 use super::nip21::{FromNostrUri, ToNostrUri};
-use crate::types::Url;
-use crate::{Filter, JsonUtil, Kind, PublicKey, Tag, key};
+use crate::event::tag::TagCodecError;
+use crate::types::url::{self, Url};
+use crate::{Filter, JsonUtil, Kind, PublicKey, Tag, event, key};
 
-/// Raw Event error
+/// NIP-01 error
 #[derive(Debug, PartialEq)]
 pub enum Error {
     /// Keys error
     Keys(key::Error),
+    /// Event error
+    Event(event::Error),
+    /// Url error
+    Url(url::Error),
     /// Parse Int error
     ParseInt(ParseIntError),
+    /// Codec error
+    Codec(TagCodecError),
     /// Invalid coordinate
     InvalidCoordinate,
 }
@@ -39,7 +49,10 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Keys(e) => e.fmt(f),
+            Self::Event(e) => e.fmt(f),
+            Self::Url(e) => e.fmt(f),
             Self::ParseInt(e) => e.fmt(f),
+            Self::Codec(e) => e.fmt(f),
             Self::InvalidCoordinate => f.write_str("Invalid coordinate"),
         }
     }
@@ -51,9 +64,27 @@ impl From<key::Error> for Error {
     }
 }
 
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::Url(e)
+    }
+}
+
 impl From<ParseIntError> for Error {
     fn from(e: ParseIntError) -> Self {
         Self::ParseInt(e)
+    }
+}
+
+impl From<TagCodecError> for Error {
+    fn from(e: TagCodecError) -> Self {
+        Self::Codec(e)
     }
 }
 

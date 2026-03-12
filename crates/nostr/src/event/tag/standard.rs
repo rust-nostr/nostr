@@ -131,7 +131,6 @@ pub enum TagStandard {
     },
     Hashtag(String),
     Geohash(String),
-    Identifier(String),
     /// External Content ID
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/73.md>
@@ -438,10 +437,6 @@ impl TagStandard {
                     uppercase: false,
                 }) => Ok(Self::Geohash(tag_1.to_string())),
                 TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::D,
-                    uppercase: false,
-                }) => Ok(Self::Identifier(tag_1.to_string())),
-                TagKind::SingleLetter(SingleLetterTag {
                     character: Alphabet::M,
                     uppercase: false,
                 }) => Ok(Self::MimeType(tag_1.to_string())),
@@ -652,10 +647,6 @@ impl TagStandard {
             }),
             Self::Geohash(..) => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::G,
-                uppercase: false,
-            }),
-            Self::Identifier(..) => TagKind::SingleLetter(SingleLetterTag {
-                character: Alphabet::D,
                 uppercase: false,
             }),
             Self::ExternalContent { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
@@ -900,7 +891,6 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::Hashtag(t) => vec![tag_kind, t],
             TagStandard::Geohash(g) => vec![tag_kind, g],
-            TagStandard::Identifier(d) => vec![tag_kind, d],
             TagStandard::Coordinate {
                 coordinate,
                 relay_url,
@@ -1797,11 +1787,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec!["d", "test"],
-            TagStandard::Identifier(String::from("test")).to_vec()
-        );
-
-        assert_eq!(
             vec![
                 "p",
                 "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
@@ -2435,11 +2420,6 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["subject", "textnote with subject"]).unwrap(),
             TagStandard::Subject(String::from("textnote with subject"))
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["d", "test"]).unwrap(),
-            TagStandard::Identifier(String::from("test"))
         );
 
         assert_eq!(
