@@ -756,8 +756,8 @@ impl EventBuilder {
         S: Into<String>,
     {
         Self::new(Kind::Authentication, "").tags([
-            Tag::from_standardized(TagStandard::Challenge(challenge.into())),
-            Tag::from_standardized(TagStandard::Relay(relay)),
+            Nip42Tag::Challenge(challenge.into()).into(),
+            Nip42Tag::Relay(relay).into(),
         ])
     }
 

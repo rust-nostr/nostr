@@ -24,9 +24,10 @@ use std::sync::OnceLock as OnceCell;
 use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use super::{Error, Tag, TagCodec};
+use super::{Error, Tag};
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip40::Nip40Tag;
+use crate::nips::nip42::Nip42Tag;
 use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
 
 /// Tags Indexes
@@ -441,8 +442,10 @@ impl Tags {
     /// Extract NIP42 challenge, if exists.
     #[inline]
     pub fn challenge(&self) -> Option<String> {
-        match self.find_standardized(TagKind::Challenge)? {
-            TagStandard::Challenge(challenge) => Some(challenge),
+        let tag: &Tag = self.find(TagKind::Challenge)?;
+
+        match Nip42Tag::try_from(tag) {
+            Ok(Nip42Tag::Challenge(challenge)) => Some(challenge),
             _ => None,
         }
     }
@@ -566,6 +569,7 @@ impl<'de> Deserialize<'de> for Tags {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::event::tag::TagCodec;
     use crate::{Event, JsonUtil, RelayUrl};
 
     #[test]
