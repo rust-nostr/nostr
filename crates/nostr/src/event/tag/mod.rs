@@ -33,7 +33,6 @@ use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip10::Marker;
 use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip56::Report;
-use crate::nips::nip65::RelayMetadata;
 use crate::types::Url;
 use crate::{ImageDimensions, PublicKey, RelayUrl, SingleLetterTag, Timestamp};
 
@@ -337,17 +336,6 @@ impl Tag {
     #[inline]
     pub fn public_key_report(public_key: PublicKey, report: Report) -> Self {
         Self::from_standardized(TagStandard::PublicKeyReport(public_key, report))
-    }
-
-    /// Compose `["r", "<relay-url>", "<metadata>"]` tag
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    #[inline]
-    pub fn relay_metadata(relay_url: RelayUrl, metadata: Option<RelayMetadata>) -> Self {
-        Self::from_standardized(TagStandard::RelayMetadata {
-            relay_url,
-            metadata,
-        })
     }
 
     /// Relay url

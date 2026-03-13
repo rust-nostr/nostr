@@ -22,7 +22,6 @@ use crate::nips::nip39::Identity;
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
 use crate::nips::nip56::Report;
-use crate::nips::nip65::RelayMetadata;
 use crate::nips::nip73::{ExternalContentId, Nip73Kind};
 use crate::nips::nip88::{self, PollOption, PollType};
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -121,13 +120,6 @@ pub enum TagStandard {
         proof: Option<Signature>,
     },
     Reference(String),
-    /// Relay Metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    RelayMetadata {
-        relay_url: RelayUrl,
-        metadata: Option<RelayMetadata>,
-    },
     Hashtag(String),
     Geohash(String),
     /// External Content ID
@@ -631,12 +623,10 @@ impl TagStandard {
                     uppercase: false,
                 })
             }
-            Self::Reference(..) | Self::RelayMetadata { .. } => {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::R,
-                    uppercase: false,
-                })
-            }
+            Self::Reference(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::R,
+                uppercase: false,
+            }),
             Self::Hashtag(..) => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::T,
                 uppercase: false,
@@ -869,16 +859,6 @@ impl From<TagStandard> for Vec<String> {
                 tag
             }
             TagStandard::Reference(r) => vec![tag_kind, r],
-            TagStandard::RelayMetadata {
-                relay_url,
-                metadata,
-            } => {
-                let mut tag = vec![tag_kind, relay_url.to_string()];
-                if let Some(metadata) = metadata {
-                    tag.push(metadata.to_string());
-                }
-                tag
-            }
             TagStandard::Hashtag(t) => vec![tag_kind, t],
             TagStandard::Geohash(g) => vec![tag_kind, g],
             TagStandard::Coordinate {
@@ -1307,12 +1287,7 @@ where
         let tag_1: &str = tag[1].as_ref();
         let tag_2: &str = tag[2].as_ref();
 
-        return if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
-            Ok(TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse(tag_1)?,
-                metadata: Some(RelayMetadata::from_str(tag_2)?),
-            })
-        } else if tag_2 == EUC {
+        return if tag_2 == EUC {
             // ["r", "<commit-id>", "euc"]
             let commit: Sha1Hash = Sha1Hash::from_str(tag_1)?;
             Ok(TagStandard::GitEarliestUniqueCommitId(commit))
@@ -1324,14 +1299,7 @@ where
     if tag.len() >= 2 && !uppercase {
         let tag_1: &str = tag[1].as_ref();
 
-        return if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
-            Ok(TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse(tag_1)?,
-                metadata: None,
-            })
-        } else {
-            Ok(TagStandard::Reference(tag_1.to_string()))
-        };
+        return Ok(TagStandard::Reference(tag_1.to_string()));
     }
 
     Err(Error::UnknownStandardizedTag)
@@ -2144,33 +2112,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec!["r", "wss://atlas.nostr.land/"],
-            TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land/").unwrap(),
-                metadata: None
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec!["r", "wss://atlas.nostr.land/", "read"],
-            TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land/").unwrap(),
-                metadata: Some(RelayMetadata::Read)
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec!["r", "wss://atlas.nostr.land", "write"],
-            TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
-                metadata: Some(RelayMetadata::Write)
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
             vec!["r", "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2", "euc"],
             TagStandard::GitEarliestUniqueCommitId(
                 Sha1Hash::from_str("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2").unwrap()
@@ -2664,30 +2605,6 @@ mod tests {
                 .identifier("ipsum"),
                 relay_url: Some(RelayUrl::parse("wss://relay.nostr.org").unwrap()),
                 uppercase: true,
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["r", "wss://atlas.nostr.land/"]).unwrap(),
-            TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land/").unwrap(),
-                metadata: None
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["r", "wss://atlas.nostr.land", "read"]).unwrap(),
-            TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
-                metadata: Some(RelayMetadata::Read)
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["r", "wss://atlas.nostr.land", "write"]).unwrap(),
-            TagStandard::RelayMetadata {
-                relay_url: RelayUrl::parse("wss://atlas.nostr.land").unwrap(),
-                metadata: Some(RelayMetadata::Write)
             }
         );
 

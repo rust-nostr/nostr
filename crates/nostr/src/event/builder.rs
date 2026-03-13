@@ -370,9 +370,13 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = (RelayUrl, Option<RelayMetadata>)>,
     {
-        let tags = iter
-            .into_iter()
-            .map(|(url, metadata)| Tag::relay_metadata(url, metadata));
+        let tags = iter.into_iter().map(|(relay_url, metadata)| {
+            Nip65Tag::RelayMetadata {
+                relay_url,
+                metadata,
+            }
+            .to_tag()
+        });
         Self::new(Kind::RelayList, "").tags(tags)
     }
 
