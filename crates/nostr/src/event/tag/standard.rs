@@ -201,7 +201,6 @@ pub enum TagStandard {
     ContentWarning {
         reason: Option<String>,
     },
-    Expiration(Timestamp),
     Subject(String),
     Challenge(String),
     Title(String),
@@ -455,7 +454,6 @@ impl TagStandard {
                         Ok(Self::Relay(RelayUrl::parse(tag_1)?))
                     }
                 }
-                TagKind::Expiration => Ok(Self::Expiration(Timestamp::from_str(tag_1)?)),
                 TagKind::Extension => Ok(Self::Extension(tag_1.to_string())),
                 TagKind::License => Ok(Self::License(tag_1.to_string())),
                 // TODO: depending on the event kind, handle the tag in the right way.
@@ -673,7 +671,6 @@ impl TagStandard {
             Self::POW { .. } => TagKind::Nonce,
             Self::Client { .. } => TagKind::Client,
             Self::ContentWarning { .. } => TagKind::ContentWarning,
-            Self::Expiration(..) => TagKind::Expiration,
             Self::Subject(..) => TagKind::Subject,
             Self::Challenge(..) => TagKind::Challenge,
             Self::Title(..) => TagKind::Title,
@@ -941,9 +938,6 @@ impl From<TagStandard> for Vec<String> {
                     tag.push(reason);
                 }
                 tag
-            }
-            TagStandard::Expiration(timestamp) => {
-                vec![tag_kind, timestamp.to_string()]
             }
             TagStandard::Subject(sub) => vec![tag_kind, sub],
             TagStandard::Challenge(challenge) => vec![tag_kind, challenge],
@@ -1752,11 +1746,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec!["expiration", "1600000000"],
-            TagStandard::Expiration(Timestamp::from(1600000000)).to_vec()
-        );
-
-        assert_eq!(
             vec!["content-warning", "reason"],
             TagStandard::ContentWarning {
                 reason: Some(String::from("reason"))
@@ -2366,11 +2355,6 @@ mod tests {
                 coordinate: Coordinate::from_str("30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7").unwrap(),
                 relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
             }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["expiration", "1600000000"]).unwrap(),
-            TagStandard::Expiration(Timestamp::from(1600000000))
         );
 
         assert_eq!(

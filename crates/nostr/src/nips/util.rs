@@ -1,9 +1,12 @@
 use alloc::string::{String, ToString};
+use core::num::ParseIntError;
+use core::str::FromStr;
 
 use super::nip01::{self, Coordinate};
 use crate::event::tag::TagCodecError;
 use crate::event::{self, EventId};
 use crate::key::{self, PublicKey};
+use crate::types::time::Timestamp;
 use crate::types::url::{self, RelayUrl};
 
 #[inline]
@@ -128,4 +131,15 @@ where
     let relay_url: S = iter.next().ok_or(TagCodecError::Missing("relay URL"))?;
     let relay_url: RelayUrl = RelayUrl::parse(relay_url.as_ref())?;
     Ok(relay_url)
+}
+
+pub(super) fn take_timestamp<T, S, E>(iter: &mut T) -> Result<Timestamp, E>
+where
+    T: Iterator<Item = S>,
+    S: AsRef<str>,
+    E: From<ParseIntError> + From<TagCodecError>,
+{
+    let timestamp: S = iter.next().ok_or(TagCodecError::Missing("timestamp"))?;
+    let timestamp: Timestamp = Timestamp::from_str(timestamp.as_ref())?;
+    Ok(timestamp)
 }

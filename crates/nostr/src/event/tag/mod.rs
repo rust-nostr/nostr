@@ -31,6 +31,7 @@ pub use self::standard::TagStandard;
 use super::id::EventId;
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip10::Marker;
+use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip56::Report;
 use crate::nips::nip65::RelayMetadata;
 use crate::types::Url;
@@ -319,7 +320,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     #[inline]
     pub fn expiration(timestamp: Timestamp) -> Self {
-        Self::from_standardized(TagStandard::Expiration(timestamp))
+        Nip40Tag::Expiration(timestamp).to_tag()
     }
 
     /// Compose `["e", "<event-id>", "<report>"]` tag
