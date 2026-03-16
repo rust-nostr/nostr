@@ -64,7 +64,7 @@ impl AtomicDestroyer for InnerLocalRelay {
 }
 
 impl InnerLocalRelay {
-    pub fn new(builder: LocalRelayBuilder) -> Result<Self, Error> {
+    pub fn new(builder: LocalRelayBuilder) -> Self {
         // Get IP
         let ip: IpAddr = builder.addr.unwrap_or(IpAddr::V4(Ipv4Addr::LOCALHOST));
 
@@ -85,7 +85,7 @@ impl InnerLocalRelay {
         });
 
         // Compose relay
-        Ok(Self {
+        Self {
             ip,
             addr,
             database,
@@ -104,7 +104,7 @@ impl InnerLocalRelay {
             nip42: builder.nip42,
             test: builder.test,
             running: Arc::new(AtomicBool::new(false)),
-        })
+        }
     }
 
     async fn addr(&self) -> &SocketAddr {

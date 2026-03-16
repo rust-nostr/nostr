@@ -12,7 +12,6 @@ use std::time::Duration;
 
 use nostr_database::prelude::*;
 
-use crate::error::Error;
 use crate::local::LocalRelay;
 
 /// Rate limit
@@ -407,7 +406,7 @@ impl LocalRelayBuilder {
 
     /// Build local relay
     #[inline]
-    pub fn build(self) -> Result<LocalRelay, Error> {
+    pub fn build(self) -> LocalRelay {
         LocalRelay::from_builder(self)
     }
 }
