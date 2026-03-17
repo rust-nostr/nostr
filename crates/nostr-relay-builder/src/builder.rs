@@ -90,6 +90,18 @@ impl WritePolicyResult {
             prefix,
         }
     }
+
+    /// Check if is [WritePolicyResult::Accept]
+    #[inline]
+    pub fn is_accept(&self) -> bool {
+        matches!(self, Self::Accept)
+    }
+
+    /// Check if is [WritePolicyResult::Reject]
+    #[inline]
+    pub fn is_reject(&self) -> bool {
+        matches!(self, Self::Reject { .. })
+    }
 }
 
 /// Query policy result
@@ -116,6 +128,18 @@ impl QueryPolicyResult {
             prefix,
             message: msg.into(),
         }
+    }
+
+    /// Check if is [QueryPolicyResult::Accept]
+    #[inline]
+    pub fn is_accept(&self) -> bool {
+        matches!(self, Self::Accept)
+    }
+
+    /// Check if is [QueryPolicyResult::Reject]
+    #[inline]
+    pub fn is_reject(&self) -> bool {
+        matches!(self, Self::Reject { .. })
     }
 }
 
