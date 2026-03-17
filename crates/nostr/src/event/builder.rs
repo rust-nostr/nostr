@@ -1856,17 +1856,18 @@ impl EventBuilder {
         S: Into<String>,
     {
         let tags = vec![
-            Tag::from_standardized(TagStandard::Event {
-                event_id: reply_to.id,
-                relay_url,
-                marker: None,
+            Nip22Tag::Event {
+                id: reply_to.id,
+                relay_hint: relay_url,
                 public_key: Some(reply_to.pubkey),
                 uppercase: true,
-            }),
-            Tag::from_standardized(TagStandard::Kind {
+            }
+            .to_tag(),
+            Nip22Tag::Kind {
                 kind: Kind::Thread,
                 uppercase: true,
-            }),
+            }
+            .to_tag(),
         ];
 
         Self::new(Kind::Comment, content).tags(tags)

@@ -90,67 +90,28 @@ impl TagCodec for Nip01Tag {
             Self::Coordinate {
                 coordinate,
                 relay_hint,
-            } => {
-                let mut tag: Vec<String> = Vec::with_capacity(2 + relay_hint.is_some() as usize);
-
-                tag.push(String::from("a"));
-                tag.push(coordinate.to_string());
-
-                if let Some(relay_hint) = relay_hint {
-                    tag.push(relay_hint.to_string());
-                }
-
-                Tag::new(tag)
-            }
+            } => serialize_a_tag(coordinate, relay_hint.as_ref()),
             Self::Event {
                 id,
                 relay_hint,
                 public_key,
-            } => {
-                let mut tag: Vec<String> = Vec::with_capacity(
-                    2 + relay_hint.is_some() as usize + public_key.is_some() as usize,
-                );
-
-                tag.push(String::from("e"));
-                tag.push(id.to_hex());
-
-                if let Some(relay_hint) = relay_hint {
-                    tag.push(relay_hint.to_string());
-                } else if public_key.is_some() {
-                    tag.push(String::new());
-                }
-
-                if let Some(public_key) = public_key {
-                    tag.push(public_key.to_string());
-                }
-
-                Tag::new(tag)
-            }
+            } => serialize_e_tag(id, relay_hint.as_ref(), public_key.as_ref()),
             Self::Identifier(identifier) => {
                 Tag::new(vec![String::from("d"), identifier.to_string()])
             }
             Self::PublicKey {
                 public_key,
                 relay_hint,
-            } => {
-                let mut tag: Vec<String> = Vec::with_capacity(2 + relay_hint.is_some() as usize);
-
-                tag.push(String::from("p"));
-                tag.push(public_key.to_hex());
-
-                if let Some(relay_hint) = relay_hint {
-                    tag.push(relay_hint.to_string());
-                }
-
-                Tag::new(tag)
-            }
+            } => serialize_p_tag(public_key, relay_hint.as_ref()),
         }
     }
 }
 
 impl_tag_codec_conversions!(Nip01Tag);
 
-fn parse_a_tag<T, S>(mut iter: T) -> Result<(Coordinate, Option<RelayUrl>), Error>
+pub(in super::super) fn parse_a_tag<T, S>(
+    mut iter: T,
+) -> Result<(Coordinate, Option<RelayUrl>), Error>
 where
     T: Iterator<Item = S>,
     S: AsRef<str>,
@@ -161,7 +122,25 @@ where
     Ok((coordinate, relay_hint))
 }
 
-fn parse_e_tag<T, S>(mut iter: T) -> Result<(EventId, Option<RelayUrl>, Option<PublicKey>), Error>
+pub(in super::super) fn serialize_a_tag(
+    coordinate: &Coordinate,
+    relay_hint: Option<&RelayUrl>,
+) -> Tag {
+    let mut tag: Vec<String> = Vec::with_capacity(2 + relay_hint.is_some() as usize);
+
+    tag.push(String::from("a"));
+    tag.push(coordinate.to_string());
+
+    if let Some(relay_hint) = relay_hint {
+        tag.push(relay_hint.to_string());
+    }
+
+    Tag::new(tag)
+}
+
+pub(in super::super) fn parse_e_tag<T, S>(
+    mut iter: T,
+) -> Result<(EventId, Option<RelayUrl>, Option<PublicKey>), Error>
 where
     T: Iterator<Item = S>,
     S: AsRef<str>,
@@ -173,7 +152,33 @@ where
     Ok((id, relay_hint, public_key))
 }
 
-fn parse_p_tag<T, S>(mut iter: T) -> Result<(PublicKey, Option<RelayUrl>), Error>
+pub(in super::super) fn serialize_e_tag(
+    id: &EventId,
+    relay_hint: Option<&RelayUrl>,
+    public_key: Option<&PublicKey>,
+) -> Tag {
+    let mut tag: Vec<String> =
+        Vec::with_capacity(2 + relay_hint.is_some() as usize + public_key.is_some() as usize);
+
+    tag.push(String::from("e"));
+    tag.push(id.to_hex());
+
+    if let Some(relay_hint) = relay_hint {
+        tag.push(relay_hint.to_string());
+    } else if public_key.is_some() {
+        tag.push(String::new());
+    }
+
+    if let Some(public_key) = public_key {
+        tag.push(public_key.to_string());
+    }
+
+    Tag::new(tag)
+}
+
+pub(in super::super) fn parse_p_tag<T, S>(
+    mut iter: T,
+) -> Result<(PublicKey, Option<RelayUrl>), Error>
 where
     T: Iterator<Item = S>,
     S: AsRef<str>,
@@ -182,6 +187,22 @@ where
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
 
     Ok((public_key, relay_hint))
+}
+
+pub(in super::super) fn serialize_p_tag(
+    public_key: &PublicKey,
+    relay_hint: Option<&RelayUrl>,
+) -> Tag {
+    let mut tag: Vec<String> = Vec::with_capacity(2 + relay_hint.is_some() as usize);
+
+    tag.push(String::from("p"));
+    tag.push(public_key.to_hex());
+
+    if let Some(relay_hint) = relay_hint {
+        tag.push(relay_hint.to_string());
+    }
+
+    Tag::new(tag)
 }
 
 #[cfg(test)]
