@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::future::IntoFuture;
 
 use nostr::{ClientMessage, Filter, SubscriptionId};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 use crate::future::BoxedFuture;
 use crate::relay::{Error, Relay, SubscribeAutoCloseOptions, SubscriptionActivity};
@@ -48,6 +48,7 @@ pub(super) async fn subscribe_auto_closing(
     filters: Vec<Filter>,
     opts: SubscribeAutoCloseOptions,
     activity: Option<mpsc::Sender<SubscriptionActivity>>,
+    cancel: Option<oneshot::Receiver<()>>,
 ) -> Result<(), Error> {
     // Check if filters are empty
     if filters.is_empty() {
@@ -81,7 +82,7 @@ pub(super) async fn subscribe_auto_closing(
     // Spawn auto-closing handler
     relay
         .inner
-        .spawn_auto_closing_handler(id, filters, opts, notifications, activity);
+        .spawn_auto_closing_handler(id, filters, opts, notifications, activity, cancel);
 
     // Return
     Ok(())
@@ -125,7 +126,8 @@ impl<'relay> IntoFuture for Subscribe<'relay> {
             // Check if the auto-close condition is set
             match self.auto_close {
                 Some(opts) => {
-                    subscribe_auto_closing(self.relay, id.clone(), self.filters, opts, None).await?
+                    subscribe_auto_closing(self.relay, id.clone(), self.filters, opts, None, None)
+                        .await?
                 }
                 None => subscribe_long_lived(self.relay, id.clone(), self.filters).await?,
             }

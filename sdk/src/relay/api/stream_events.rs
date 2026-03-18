@@ -5,7 +5,7 @@ use std::time::Duration;
 
 use futures::Stream;
 use nostr::{Event, Filter, SubscriptionId};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, oneshot};
 
 use super::subscribe::subscribe_auto_closing;
 use crate::future::BoxedFuture;
@@ -86,9 +86,18 @@ impl<'relay> IntoFuture for StreamEvents<'relay> {
             let id: SubscriptionId = self.id.unwrap_or_else(SubscriptionId::generate);
 
             // Subscribe
-            subscribe_auto_closing(self.relay, id, self.filters, opts, Some(tx)).await?;
+            let (cancel_tx, cancel_rx) = oneshot::channel();
+            subscribe_auto_closing(
+                self.relay,
+                id,
+                self.filters,
+                opts,
+                Some(tx),
+                Some(cancel_rx),
+            )
+            .await?;
 
-            Ok(Box::pin(SubscriptionActivityEventStream::new(rx)) as EventStream)
+            Ok(Box::pin(SubscriptionActivityEventStream::new(rx, cancel_tx)) as EventStream)
         })
     }
 }
@@ -96,11 +105,24 @@ impl<'relay> IntoFuture for StreamEvents<'relay> {
 struct SubscriptionActivityEventStream {
     rx: mpsc::Receiver<SubscriptionActivity>,
     done: bool,
+    cancel: Option<oneshot::Sender<()>>,
 }
 
 impl SubscriptionActivityEventStream {
-    fn new(rx: mpsc::Receiver<SubscriptionActivity>) -> Self {
-        Self { rx, done: false }
+    fn new(rx: mpsc::Receiver<SubscriptionActivity>, cancel: oneshot::Sender<()>) -> Self {
+        Self {
+            rx,
+            done: false,
+            cancel: Some(cancel),
+        }
+    }
+}
+
+impl Drop for SubscriptionActivityEventStream {
+    fn drop(&mut self) {
+        if let Some(cancel) = self.cancel.take() {
+            let _ = cancel.send(());
+        }
     }
 }
 
@@ -133,5 +155,54 @@ impl Stream for SubscriptionActivityEventStream {
             Poll::Ready(None) => Poll::Ready(None),
             Poll::Pending => Poll::Pending,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use nostr::{Filter, Kind, SubscriptionId};
+    use nostr_relay_builder::MockRelay;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_stream_terminates_on_drop() {
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let relay = Relay::new(url);
+
+        relay
+            .try_connect()
+            .timeout(Duration::from_secs(3))
+            .await
+            .unwrap();
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+        let id = SubscriptionId::generate();
+
+        let stream = relay
+            .stream_events(filter)
+            .with_id(id.clone())
+            .policy(ReqExitPolicy::WaitForEvents(1))
+            .await
+            .unwrap();
+
+        // Check if relay has the stream subscription
+        let exists: bool = relay.subscription(&id).await.is_some();
+        assert!(exists);
+
+        // Drop the stream
+        // This must terminate the stream and close the subscription
+        drop(stream);
+
+        // Wait a bit
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        // Now the subscription must not exist anymore
+        let exists: bool = relay.subscription(&id).await.is_some();
+        assert!(!exists);
     }
 }

@@ -86,3 +86,50 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use nostr::{Filter, Kind, SubscriptionId};
+    use nostr_relay_builder::MockRelay;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_stream_terminates_on_drop() {
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let client = Client::default();
+
+        client.add_relay(&url).and_connect().await.unwrap();
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+        let id = SubscriptionId::generate();
+
+        let stream = client
+            .stream_events(filter)
+            .with_id(id.clone())
+            .policy(ReqExitPolicy::WaitForEvents(1))
+            .await
+            .unwrap();
+
+        let relay = client.relay(&url).await.unwrap().unwrap();
+
+        // Check if relay has the stream subscription
+        let exists: bool = relay.subscription(&id).await.is_some();
+        assert!(exists);
+
+        // Drop the stream
+        // This must terminate the stream and close the subscription
+        drop(stream);
+
+        // Wait a bit
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        // Now the subscription must not exist anymore
+        let exists: bool = relay.subscription(&id).await.is_some();
+        assert!(!exists);
+    }
+}

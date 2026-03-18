@@ -803,23 +803,35 @@ impl RelayPool {
 
                         Box::pin(async move {
                             // Start handling stream items
-                            while let Some(res) = stream.next().await {
-                                match res {
-                                    Ok(event) => {
-                                        let mut ids = ids.lock().await;
+                            loop {
+                                tokio::select! {
+                                    // The received dropped, we should terminate the stream
+                                    _ = tx.closed() => break,
+                                    // Handle stream item
+                                    res = stream.next() => {
+                                        match res {
+                                            Some(Ok(event)) => {
+                                                let mut ids = ids.lock().await;
 
-                                        // Check if ID was already seen or insert into set.
-                                        if ids.insert(event.id) {
-                                            // Immediately drop the set
-                                            drop(ids);
+                                                // Check if ID was already seen or insert into set.
+                                                if ids.insert(event.id) {
+                                                    // Immediately drop the set
+                                                    drop(ids);
 
-                                            // Send event
-                                            let _ = tx.send((url.clone(), Ok(event))).await;
+                                                    // Send event
+                                                    if tx.send((url.clone(), Ok(event))).await.is_err() {
+                                                        break;
+                                                    }
+                                                }
+                                            }
+                                            Some(Err(e)) => {
+                                                // Send error
+                                                if tx.send((url.clone(), Err(e))).await.is_err() {
+                                                    break;
+                                                }
+                                            }
+                                            None => break,
                                         }
-                                    }
-                                    Err(e) => {
-                                        // Send error
-                                        let _ = tx.send((url.clone(), Err(e))).await;
                                     }
                                 }
                             }

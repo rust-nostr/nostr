@@ -1448,14 +1448,32 @@ impl InnerRelay {
         opts: SubscribeAutoCloseOptions,
         notifications: broadcast::Receiver<RelayNotification>,
         activity: Option<Sender<SubscriptionActivity>>,
+        cancel_rx: Option<oneshot::Receiver<()>>,
     ) {
         let relay = self.clone(); // <-- FULL RELAY CLONE HERE
         task::spawn(async move {
+            // Create a handle auto-closing future
+            let handle_fut =
+                relay.handle_auto_closing(&id, &filters, opts, notifications, &activity);
+
+            let result: Option<HandleAutoClosing> = match cancel_rx {
+                // We have a cancel receiver
+                Some(cancel_rx) => {
+                    // What that one of the futures terminates
+                    tokio::select! {
+                        res = handle_fut => res,
+                        _ = cancel_rx => Some(HandleAutoClosing {
+                            to_close: true,
+                            reason: None,
+                        }),
+                    }
+                }
+                // No cancel receiver, await directly the handle auto-closing future
+                None => handle_fut.await,
+            };
+
             // Check if CLOSE needed
-            let to_close: bool = match relay
-                .handle_auto_closing(&id, &filters, opts, notifications, &activity)
-                .await
-            {
+            let to_close: bool = match result {
                 Some(HandleAutoClosing { to_close, reason }) => {
                     // Send activity
                     if let Some(reason) = reason {
