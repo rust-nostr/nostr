@@ -9,7 +9,7 @@ use nostr_sdk::relay::RelayOptions;
 use crate::NostrWalletConnect;
 
 /// Default timeout
-const DEFAULT_TIMEOUT: Duration = Duration::from_secs(60);
+const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 
 /// Nostr Wallet Connect builder
 #[derive(Debug, Clone)]
@@ -37,7 +37,7 @@ impl NostrWalletConnectBuilder {
         }
     }
 
-    /// Set requests timeout (default: 60 secs)
+    /// Set default requests timeout (default: 10 secs)
     #[inline]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = timeout;
