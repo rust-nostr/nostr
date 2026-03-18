@@ -34,7 +34,7 @@ async fn main() -> Result<()> {
     let nwc = NostrWalletConnect::builder(uri).monitor(monitor).build();
 
     // Get balance
-    let balance = nwc.get_balance().await?;
+    let GetBalanceResponse { balance } = nwc.get_balance().await?;
     println!("Balance: {balance} msat");
 
     let request: PayInvoiceRequest = PayInvoiceRequest::new("<invoice>");

@@ -18,8 +18,8 @@ pub enum Error {
     Client(client::Error),
     /// Relay error
     Relay(relay::Error),
-    /// Premature exit
-    PrematureExit,
+    /// Response not received
+    ResponseNotReceived,
     /// Request timeout
     Timeout,
     /// Handler error
@@ -34,7 +34,7 @@ impl fmt::Display for Error {
             Self::NIP47(e) => e.fmt(f),
             Self::Client(e) => e.fmt(f),
             Self::Relay(e) => e.fmt(f),
-            Self::PrematureExit => f.write_str("premature exit"),
+            Self::ResponseNotReceived => f.write_str("response not received"),
             Self::Timeout => f.write_str("timeout"),
             Self::Handler(e) => f.write_str(e),
         }

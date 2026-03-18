@@ -36,6 +36,7 @@
 - Rename `NWC` to `NostrWalletConnect`
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 - Change default timeout to 10 secs
+- Redesign `get_balance`, `get_info`, `list_transactions`, `lookup_invoice`, `make_invoice`, `pay_invoice` and `pay_keysend` APIs
 
 ### Added
 

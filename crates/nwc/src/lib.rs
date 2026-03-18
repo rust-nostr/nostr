@@ -21,10 +21,12 @@ pub extern crate nostr;
 use nostr::nips::nip47::{Notification, Request, Response};
 use nostr_sdk::prelude::*;
 
+mod api;
 pub mod builder;
 pub mod error;
 pub mod prelude;
 
+pub use self::api::*;
 use self::builder::NostrWalletConnectBuilder;
 #[doc(hidden)]
 pub use self::error::Error;
@@ -124,7 +126,7 @@ impl NostrWalletConnect {
         Ok(())
     }
 
-    async fn send_request(&self, req: Request) -> Result<Response, Error> {
+    async fn send_request(&self, req: Request, timeout: Duration) -> Result<Response, Error> {
         // Bootstrap
         self.bootstrap().await?;
 
@@ -143,7 +145,7 @@ impl NostrWalletConnect {
         let mut stream = self
             .client
             .stream_events(filter)
-            .timeout(self.timeout)
+            .timeout(timeout)
             .policy(ReqExitPolicy::WaitForEvents(1))
             .await?;
 
@@ -151,7 +153,7 @@ impl NostrWalletConnect {
         self.client.send_event(&event).await?;
 
         // Wait for the response
-        let (_, res) = stream.next().await.ok_or(Error::PrematureExit)?;
+        let (_, res) = stream.next().await.ok_or(Error::ResponseNotReceived)?;
 
         // Unwrap event
         let received_event: Event = res?;
@@ -164,68 +166,45 @@ impl NostrWalletConnect {
     }
 
     /// Pay invoice
-    pub async fn pay_invoice(
-        &self,
-        request: PayInvoiceRequest,
-    ) -> Result<PayInvoiceResponse, Error> {
-        let req = Request::pay_invoice(request);
-        let res: Response = self.send_request(req).await?;
-        Ok(res.to_pay_invoice()?)
+    #[inline]
+    pub fn pay_invoice(&self, request: PayInvoiceRequest) -> PayInvoice {
+        PayInvoice::new(self, request)
     }
 
     /// Pay keysend
-    pub async fn pay_keysend(
-        &self,
-        request: PayKeysendRequest,
-    ) -> Result<PayKeysendResponse, Error> {
-        let req = Request::pay_keysend(request);
-        let res: Response = self.send_request(req).await?;
-        Ok(res.to_pay_keysend()?)
+    #[inline]
+    pub fn pay_keysend(&self, request: PayKeysendRequest) -> PayKeysend {
+        PayKeysend::new(self, request)
     }
 
     /// Create invoice
-    pub async fn make_invoice(
-        &self,
-        request: MakeInvoiceRequest,
-    ) -> Result<MakeInvoiceResponse, Error> {
-        let req: Request = Request::make_invoice(request);
-        let res: Response = self.send_request(req).await?;
-        Ok(res.to_make_invoice()?)
+    #[inline]
+    pub fn make_invoice(&self, request: MakeInvoiceRequest) -> MakeInvoice {
+        MakeInvoice::new(self, request)
     }
 
     /// Lookup invoice
-    pub async fn lookup_invoice(
-        &self,
-        request: LookupInvoiceRequest,
-    ) -> Result<LookupInvoiceResponse, Error> {
-        let req = Request::lookup_invoice(request);
-        let res: Response = self.send_request(req).await?;
-        Ok(res.to_lookup_invoice()?)
+    #[inline]
+    pub fn lookup_invoice(&self, request: LookupInvoiceRequest) -> LookupInvoice {
+        LookupInvoice::new(self, request)
     }
 
     /// List transactions
-    pub async fn list_transactions(
-        &self,
-        params: ListTransactionsRequest,
-    ) -> Result<Vec<LookupInvoiceResponse>, Error> {
-        let req = Request::list_transactions(params);
-        let res: Response = self.send_request(req).await?;
-        Ok(res.to_list_transactions()?)
+    #[inline]
+    pub fn list_transactions(&self, params: ListTransactionsRequest) -> ListTransactions {
+        ListTransactions::new(self, params)
     }
 
     /// Get balance (msat)
-    pub async fn get_balance(&self) -> Result<u64, Error> {
-        let req = Request::get_balance();
-        let res: Response = self.send_request(req).await?;
-        let GetBalanceResponse { balance } = res.to_get_balance()?;
-        Ok(balance)
+    #[inline]
+    pub fn get_balance(&self) -> GetBalance {
+        GetBalance::new(self)
     }
 
     /// Get info
-    pub async fn get_info(&self) -> Result<GetInfoResponse, Error> {
-        let req = Request::get_info();
-        let res: Response = self.send_request(req).await?;
-        Ok(res.to_get_info()?)
+    #[inline]
+    pub fn get_info(&self) -> GetInfo {
+        GetInfo::new(self)
     }
 
     /// Subscribe to wallet notifications
@@ -264,6 +243,7 @@ impl NostrWalletConnect {
         Ok(())
     }
 
+    // TODO: remove this and add a notifications stream, like the Client::notifications
     /// Handle incoming notifications with a callback function
     pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
     where
