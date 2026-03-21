@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::fmt::Debug;
 use std::ops::{Deref, DerefMut};
 
@@ -18,8 +18,8 @@ where
 {
     /// Value
     pub val: T,
-    /// Set of relays that success
-    pub success: HashSet<RelayUrl>,
+    /// Set of relays that success, with success messages
+    pub success: HashMap<RelayUrl, Option<String>>,
     /// Map of relays that failed, with related errors.
     pub failed: HashMap<RelayUrl, String>,
 }
@@ -53,7 +53,7 @@ where
     pub fn new(val: T) -> Self {
         Self {
             val,
-            success: HashSet::new(),
+            success: HashMap::new(),
             failed: HashMap::new(),
         }
     }

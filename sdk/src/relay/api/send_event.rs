@@ -107,7 +107,7 @@ impl<'relay, 'event> IntoFuture for SendEvent<'relay, 'event>
 where
     'event: 'relay,
 {
-    type Output = Result<EventId, Error>;
+    type Output = Result<(EventId, Option<String>), Error>;
     type IntoFuture = BoxedFuture<'relay, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
@@ -122,7 +122,7 @@ where
 
             // Check status
             if status {
-                return Ok(self.event.id);
+                return Ok((self.event.id, Some(message).filter(|s| !s.is_empty())));
             }
 
             // If auth required, wait for authentication adn resend it
@@ -145,7 +145,7 @@ where
 
                     // Check status
                     return if status {
-                        Ok(self.event.id)
+                        Ok((self.event.id, Some(message).filter(|s| !s.is_empty())))
                     } else {
                         Err(Error::RelayMessage(message))
                     };
