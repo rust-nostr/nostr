@@ -129,7 +129,7 @@ impl<'client, 'url> AddRelay<'client, 'url> {
 
     /// Connect to the relay after adding it to the client
     #[inline]
-    pub fn and_connect(mut self) -> Self {
+    pub fn connect(mut self) -> Self {
         self.connect = true;
         self
     }

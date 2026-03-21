@@ -301,7 +301,7 @@ async fn gossip_prepare_urls(
             client
                 .add_relay(url)
                 .capabilities(RelayCapabilities::GOSSIP)
-                .and_connect()
+                .connect()
                 .await?;
         }
 
@@ -354,7 +354,7 @@ async fn gossip_prepare_urls(
             client
                 .add_relay(url)
                 .capabilities(RelayCapabilities::GOSSIP)
-                .and_connect()
+                .connect()
                 .await?;
         }
 

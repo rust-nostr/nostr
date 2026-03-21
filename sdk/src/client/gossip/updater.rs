@@ -430,7 +430,7 @@ impl Client {
         for url in filters.keys() {
             self.add_relay(url)
                 .capabilities(RelayCapabilities::GOSSIP)
-                .and_connect()
+                .connect()
                 .await?;
         }
 

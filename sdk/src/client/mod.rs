@@ -1309,7 +1309,7 @@ mod tests {
         let relay: Relay = {
             let client: Client = Client::default();
 
-            client.add_relay(&url).and_connect().await.unwrap();
+            client.add_relay(&url).connect().await.unwrap();
 
             assert!(!client.is_shutdown());
 
@@ -1394,7 +1394,7 @@ mod tests {
 
         let client: Client = Client::default();
 
-        client.add_relay(&url).and_connect().await.unwrap();
+        client.add_relay(&url).connect().await.unwrap();
 
         // Shutdown after some time
         let c = client.clone();

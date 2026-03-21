@@ -103,7 +103,7 @@ mod tests {
 
         let client = Client::default();
 
-        client.add_relay(&url).and_connect().await.unwrap();
+        client.add_relay(&url).connect().await.unwrap();
 
         let filter = Filter::new().kind(Kind::TextNote).limit(1);
         let id = SubscriptionId::generate();
