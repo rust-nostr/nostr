@@ -46,6 +46,18 @@ impl RelayMetadata {
             Self::Write => "write",
         }
     }
+
+    /// Check if is [RelayMetadata::Read]
+    #[inline]
+    pub fn is_read(&self) -> bool {
+        matches!(self, Self::Read)
+    }
+
+    /// Check if is [RelayMetadata::Write]
+    #[inline]
+    pub fn is_write(&self) -> bool {
+        matches!(self, Self::Write)
+    }
 }
 
 impl fmt::Display for RelayMetadata {
