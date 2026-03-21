@@ -81,3 +81,46 @@ impl Output<SubscriptionId> {
         self.deref()
     }
 }
+
+/// Result of sending an event to relays.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SendEventOutput {
+    /// ID of the sent event.
+    pub event_id: EventId,
+    /// Relays that accepted the event, with an optional OK message.
+    pub success: HashMap<RelayUrl, Option<String>>,
+    /// Relays that rejected the event, with related errors.
+    pub failed: HashMap<RelayUrl, String>,
+}
+
+impl SendEventOutput {
+    /// Creates an empty result for the given event ID.
+    #[must_use]
+    pub fn new(event_id: EventId) -> Self {
+        Self {
+            event_id,
+            success: HashMap::new(),
+            failed: HashMap::new(),
+        }
+    }
+
+    /// Returns a reference to the event ID.
+    #[inline]
+    pub fn id(&self) -> &EventId {
+        &self.event_id
+    }
+}
+
+impl Deref for SendEventOutput {
+    type Target = EventId;
+
+    fn deref(&self) -> &Self::Target {
+        &self.event_id
+    }
+}
+
+impl DerefMut for SendEventOutput {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.event_id
+    }
+}
