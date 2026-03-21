@@ -132,6 +132,10 @@ pub enum TagStandard {
     Hashtag(String),
     Geohash(String),
     Identifier(String),
+    /// Location
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+    Location(String),
     /// External Content ID
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/73.md>
@@ -517,6 +521,7 @@ impl TagStandard {
                 TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
                 TagKind::Dim => Ok(Self::Dim(ImageDimensions::from_str(tag_1)?)),
+                TagKind::Location => Ok(Self::Location(tag_1.to_string())),
                 _ => Err(Error::UnknownStandardizedTag),
             };
         }
@@ -658,6 +663,7 @@ impl TagStandard {
                 character: Alphabet::D,
                 uppercase: false,
             }),
+            Self::Location(..) => TagKind::Location,
             Self::ExternalContent { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::I,
                 uppercase: *uppercase,
@@ -901,6 +907,7 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Hashtag(t) => vec![tag_kind, t],
             TagStandard::Geohash(g) => vec![tag_kind, g],
             TagStandard::Identifier(d) => vec![tag_kind, d],
+            TagStandard::Location(loc) => vec![tag_kind, loc],
             TagStandard::Coordinate {
                 coordinate,
                 relay_url,

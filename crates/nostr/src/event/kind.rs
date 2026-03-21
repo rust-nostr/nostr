@@ -175,6 +175,10 @@ kind_variants! {
     ChatMessage => 9, "Chat Message", "<https://github.com/nostr-protocol/nips/blob/master/C7.md>",
     Thread => 11, "Thread", "<https://github.com/nostr-protocol/nips/blob/master/7D.md>",
     WebBookmark => 39701, "Web Bookmark", "<https://github.com/nostr-protocol/nips/blob/master/B0.md>",
+    DateBasedCalendarEvent => 31922, "Date-based Calendar Event", "<https://github.com/nostr-protocol/nips/blob/master/52.md>",
+    TimeBasedCalendarEvent => 31923, "Time-based Calendar Event", "<https://github.com/nostr-protocol/nips/blob/master/52.md>",
+    Calendar => 31924, "Calendar", "<https://github.com/nostr-protocol/nips/blob/master/52.md>",
+    CalendarEventRsvp => 31925, "Calendar Event RSVP", "<https://github.com/nostr-protocol/nips/blob/master/52.md>",
 }
 
 impl PartialEq for Kind {
