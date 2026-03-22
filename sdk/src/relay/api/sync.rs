@@ -348,7 +348,7 @@ pub(super) async fn sync(
 
         match notification {
             RelayNotification::Message { message } => {
-                let is_relevant: bool = match message {
+                let is_relevant: bool = match *message {
                     RelayMessage::NegMsg {
                         subscription_id,
                         message,
@@ -527,7 +527,7 @@ async fn check_negentropy_support(
     time::timeout(Some(opts.initial_timeout), async {
         while let Ok(notification) = temp_notifications.recv().await {
             if let RelayNotification::Message { message } = notification {
-                match message {
+                match *message {
                     RelayMessage::NegMsg {
                         subscription_id, ..
                     } => {

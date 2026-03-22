@@ -30,7 +30,7 @@ pub enum ClientNotification {
         /// The URL of the relay from which the message was received.
         relay_url: RelayUrl,
         /// The received relay message.
-        message: RelayMessage<'static>,
+        message: Box<RelayMessage<'static>>,
     },
     /// Shutdown
     ///

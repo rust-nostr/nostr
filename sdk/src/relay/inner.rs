@@ -1065,7 +1065,12 @@ impl InnerRelay {
                 }
 
                 // Send notification
-                self.send_notification(RelayNotification::Message { message }, true);
+                self.send_notification(
+                    RelayNotification::Message {
+                        message: Box::new(message),
+                    },
+                    true,
+                );
             }
             Ok(None) => (),
             Err(e) => tracing::error!(
@@ -1399,17 +1404,17 @@ impl InnerRelay {
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
                 match notification {
-                    RelayNotification::Message {
-                        message:
-                            RelayMessage::Ok {
-                                event_id,
-                                status,
-                                message,
-                            },
-                    } => {
-                        // Check if it can return
-                        if id == &event_id {
-                            return Ok((status, message.into_owned()));
+                    RelayNotification::Message { message } => {
+                        if let RelayMessage::Ok {
+                            event_id,
+                            status,
+                            message,
+                        } = *message
+                        {
+                            // Check if it can return
+                            if id == &event_id {
+                                return Ok((status, message.into_owned()));
+                            }
                         }
                     }
                     RelayNotification::RelayStatus { status } => {
@@ -1544,7 +1549,7 @@ impl InnerRelay {
                 }
 
                 match notification {
-                    RelayNotification::Message { message, .. } => match message {
+                    RelayNotification::Message { message, .. } => match *message {
                         RelayMessage::Event {
                             subscription_id,
                             event,
@@ -1681,22 +1686,22 @@ impl InnerRelay {
                 time::timeout(Some(duration), async {
                     while let Ok(notification) = notifications.recv().await {
                         match notification {
-                            RelayNotification::Message {
-                                message:
-                                    RelayMessage::Event {
-                                        subscription_id,
-                                        event,
-                                    },
-                            } => {
-                                if subscription_id.as_ref() == id {
-                                    // Send activity
-                                    if let Some(activity) = activity {
-                                        // TODO: handle error?
-                                        let _ = activity
-                                            .send(SubscriptionActivity::ReceivedEvent(
-                                                event.into_owned(),
-                                            ))
-                                            .await;
+                            RelayNotification::Message { message } => {
+                                if let RelayMessage::Event {
+                                    subscription_id,
+                                    event,
+                                } = *message
+                                {
+                                    if subscription_id.as_ref() == id {
+                                        // Send activity
+                                        if let Some(activity) = activity {
+                                            // TODO: handle error?
+                                            let _ = activity
+                                                .send(SubscriptionActivity::ReceivedEvent(
+                                                    event.into_owned(),
+                                                ))
+                                                .await;
+                                        }
                                     }
                                 }
                             }

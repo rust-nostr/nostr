@@ -422,17 +422,16 @@ impl Relay {
         let mut notifications = self.inner.internal_notification_sender.subscribe();
         time::timeout(Some(timeout), async {
             while let Ok(notification) = notifications.recv().await {
-                if let RelayNotification::Message {
-                    message:
-                        RelayMessage::Count {
-                            subscription_id,
-                            count: c,
-                        },
-                } = notification
-                {
-                    if subscription_id.as_ref() == &id {
-                        count = c;
-                        break;
+                if let RelayNotification::Message { message } = notification {
+                    if let RelayMessage::Count {
+                        subscription_id,
+                        count: c,
+                    } = *message
+                    {
+                        if subscription_id.as_ref() == &id {
+                            count = c;
+                            break;
+                        }
                     }
                 }
             }

@@ -15,7 +15,7 @@ pub enum RelayNotification {
     /// Received a [`RelayMessage`]. Includes messages wrapping events that were sent by this client.
     Message {
         /// Relay Message
-        message: RelayMessage<'static>,
+        message: Box<RelayMessage<'static>>,
     },
     /// Relay status changed
     RelayStatus {

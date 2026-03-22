@@ -53,6 +53,7 @@
 - Remove `EventBuilder::build_with_ctx` (https://github.com/rust-nostr/nostr/pull/1266)
 - Remove `Event::is_expired_with_supplier` (https://github.com/rust-nostr/nostr/pull/1266)
 - Remove `Timestamp::now_with_supplier` and `Timestamp::tweaked_with_supplier_and_rng` (https://github.com/rust-nostr/nostr/pull/1266)
+- Box `RelayMessage` in `RelayNotification` and `ClientNotification` (https://github.com/rust-nostr/nostr/pull/1299)
 
 ### Changed
 
