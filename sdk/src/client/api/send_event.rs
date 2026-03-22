@@ -443,7 +443,7 @@ mod tests {
     use nostr_relay_builder::MockRelay;
 
     use super::*;
-    use crate::client::{GossipConfig, GossipRelayLimits};
+    use crate::client::{Error, GossipConfig, GossipRelayLimits};
 
     #[tokio::test]
     async fn test_send_event() {

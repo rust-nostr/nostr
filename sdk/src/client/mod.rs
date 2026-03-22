@@ -1268,7 +1268,7 @@ mod tests {
     use nostr_gossip_memory::prelude::*;
     use nostr_relay_builder::MockRelay;
 
-    use super::*;
+    use super::{Error, *};
     use crate::pool;
     use crate::relay::RelayStatus;
 

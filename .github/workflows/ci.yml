@@ -110,6 +110,27 @@ jobs:
       - name: Check
         run: bash contrib/scripts/check-docs.sh
 
+  check-stable:
+    name: Check stable
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - run: rustup toolchain install stable
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.8
+
+      - name: Install deps
+        run: sudo apt update && sudo apt install -y libdbus-1-dev pkg-config
+
+      - name: Build
+        run: CARGO_BUILD_RUSTFLAGS="-D warnings" cargo +stable build --workspace --all-targets
+
+      - name: Clippy
+        run: cargo +stable clippy --all-targets -- -D warnings
+
   build-no-std:
     name: Build no_std
     runs-on: ubuntu-latest
