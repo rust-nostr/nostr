@@ -115,12 +115,6 @@ impl Timestamp {
         self.0
     }
 
-    /// Get timestamp as [`u64`]
-    #[deprecated(since = "0.44.0", note = "Use `as_secs` instead")]
-    pub fn as_u64(&self) -> u64 {
-        self.as_secs()
-    }
-
     /// Check if timestamp is `0`
     #[inline]
     pub fn is_zero(&self) -> bool {
