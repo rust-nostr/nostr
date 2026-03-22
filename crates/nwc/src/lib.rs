@@ -167,43 +167,43 @@ impl NostrWalletConnect {
 
     /// Pay invoice
     #[inline]
-    pub fn pay_invoice(&self, request: PayInvoiceRequest) -> PayInvoice {
+    pub fn pay_invoice(&self, request: PayInvoiceRequest) -> PayInvoice<'_> {
         PayInvoice::new(self, request)
     }
 
     /// Pay keysend
     #[inline]
-    pub fn pay_keysend(&self, request: PayKeysendRequest) -> PayKeysend {
+    pub fn pay_keysend(&self, request: PayKeysendRequest) -> PayKeysend<'_> {
         PayKeysend::new(self, request)
     }
 
     /// Create invoice
     #[inline]
-    pub fn make_invoice(&self, request: MakeInvoiceRequest) -> MakeInvoice {
+    pub fn make_invoice(&self, request: MakeInvoiceRequest) -> MakeInvoice<'_> {
         MakeInvoice::new(self, request)
     }
 
     /// Lookup invoice
     #[inline]
-    pub fn lookup_invoice(&self, request: LookupInvoiceRequest) -> LookupInvoice {
+    pub fn lookup_invoice(&self, request: LookupInvoiceRequest) -> LookupInvoice<'_> {
         LookupInvoice::new(self, request)
     }
 
     /// List transactions
     #[inline]
-    pub fn list_transactions(&self, params: ListTransactionsRequest) -> ListTransactions {
+    pub fn list_transactions(&self, params: ListTransactionsRequest) -> ListTransactions<'_> {
         ListTransactions::new(self, params)
     }
 
     /// Get balance (msat)
     #[inline]
-    pub fn get_balance(&self) -> GetBalance {
+    pub fn get_balance(&self) -> GetBalance<'_> {
         GetBalance::new(self)
     }
 
     /// Get info
     #[inline]
-    pub fn get_info(&self) -> GetInfo {
+    pub fn get_info(&self) -> GetInfo<'_> {
         GetInfo::new(self)
     }
 
