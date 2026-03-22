@@ -635,7 +635,7 @@ mod tests {
         let database = Arc::new(MemoryDatabase::unbounded());
 
         // Build events to store in the local database
-        let local_events = vec![
+        let local_events = [
             EventBuilder::text_note("Local 1")
                 .sign_with_keys(&Keys::generate())
                 .unwrap(),
@@ -664,7 +664,7 @@ mod tests {
             .unwrap();
 
         // Build events to send to the relay
-        let relays_events = vec![
+        let relays_events = [
             // Event in common with the local database
             local_events[0].clone(),
             EventBuilder::text_note("Test 2")
