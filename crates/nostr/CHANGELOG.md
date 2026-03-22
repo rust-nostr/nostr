@@ -60,6 +60,7 @@
 - Add support for `nevent` parsing in `EventId::from_bech32`
 - Add `MachineReadablePrefix::Custom` variant (https://github.com/rust-nostr/nostr/pull/1258)
 - Add `RelayMetadata::{is_read, is_write}` functions (https://github.com/rust-nostr/nostr/pull/1290)
+- Add the kind number in the kind doc (https://github.com/rust-nostr/nostr/pull/1293)
 
 ### Removed
 

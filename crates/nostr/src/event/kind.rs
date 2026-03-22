@@ -35,7 +35,7 @@ macro_rules! kind_variants {
         #[derive(Debug, Clone, Copy)]
         pub enum Kind {
             $(
-                #[doc = $doc0]
+                #[doc = concat!($doc0, " (kind: ", stringify!($value), ")")]
                 #[doc = ""]
                 #[doc = $doc1]
                 $name,
