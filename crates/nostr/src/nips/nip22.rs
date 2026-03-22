@@ -32,9 +32,6 @@ pub enum CommentTarget<'a> {
         address: Cow<'a, Coordinate>,
         /// Relay hint
         relay_hint: Option<Cow<'a, RelayUrl>>,
-        /// Kind
-        #[deprecated(since = "0.44.0", note = "Use `address.kind` instead")]
-        kind: Option<Kind>,
     },
     /// External content
     External {
@@ -71,8 +68,6 @@ impl<'a> CommentTarget<'a> {
         Self::Coordinate {
             address: coordinate,
             relay_hint,
-            #[allow(deprecated)]
-            kind: None,
         }
     }
 
@@ -98,9 +93,8 @@ impl<'a> CommentTarget<'a> {
                 relay_hint: Some(relay_hint),
             },
             #[allow(deprecated)]
-            Self::Coordinate { address, kind, .. } => Self::Coordinate {
+            Self::Coordinate { address, .. } => Self::Coordinate {
                 address,
-                kind,
                 relay_hint: Some(relay_hint),
             },
             _ => self,
@@ -261,8 +255,6 @@ fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget<'_>> {
         return Some(CommentTarget::Coordinate {
             address: Cow::Borrowed(address),
             relay_hint: relay_hint.map(Cow::Borrowed),
-            #[allow(deprecated)]
-            kind,
         });
     }
 

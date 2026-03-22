@@ -68,6 +68,7 @@
 - Remove `url-fork` dependency (https://github.com/rust-nostr/nostr/pull/1179)
 - Remove nip47 `multi_*` methods following spec cleanup (https://github.com/nostr-protocol/nips/pull/2210)
 - Remove `once_cell` dependency (https://github.com/rust-nostr/nostr/pull/1267)
+- Remove `kind` field in `CommentTarget::Coordinate` variant (https://github.com/rust-nostr/nostr/pull/1294)
 
 ### Fixed
 
