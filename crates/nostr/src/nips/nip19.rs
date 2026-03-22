@@ -410,12 +410,6 @@ impl Nip19Event {
         }
     }
 
-    /// Construct new NIP19 event from [`Event`].
-    #[deprecated(since = "0.44.0", note = "Use `from` instead.")]
-    pub fn from_event(event: &Event) -> Self {
-        Self::from(event)
-    }
-
     /// Add author
     #[inline]
     pub fn author(mut self, author: PublicKey) -> Self {

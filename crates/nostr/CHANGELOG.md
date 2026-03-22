@@ -70,6 +70,7 @@
 - Remove `once_cell` dependency (https://github.com/rust-nostr/nostr/pull/1267)
 - Remove `kind` field in `CommentTarget::Coordinate` variant (https://github.com/rust-nostr/nostr/pull/1294)
 - Remove `Timestamp::as_u64` (https://github.com/rust-nostr/nostr/pull/1295)
+- Remove `Nip19Event::from_event` (https://github.com/rust-nostr/nostr/pull/1296)
 
 ### Fixed
 
