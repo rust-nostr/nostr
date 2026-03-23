@@ -478,9 +478,9 @@ mod tests {
         let output = client.send_event(&event).await.unwrap();
 
         assert_eq!(output.success.len(), 2);
-        assert!(output.success.contains(&url1));
-        assert!(output.success.contains(&url2));
-        assert!(!output.success.contains(&url3));
+        assert!(output.success.keys().any(|url| url == &url1));
+        assert!(output.success.keys().any(|url| url == &url2));
+        assert!(output.success.keys().all(|url| url != &url3));
         assert!(output.failed.is_empty());
         assert_eq!(output.val, event.id);
     }
@@ -506,8 +506,8 @@ mod tests {
         let output = client.send_event(&event).to([&url1]).await.unwrap();
 
         assert_eq!(output.success.len(), 1);
-        assert!(output.success.contains(&url1));
-        assert!(!output.success.contains(&url2));
+        assert!(output.success.keys().any(|url| url == &url1));
+        assert!(output.success.keys().all(|url| url != &url2));
         assert!(output.failed.is_empty());
         assert_eq!(output.val, event.id);
     }
@@ -547,9 +547,9 @@ mod tests {
         let output = client.send_event(&event).broadcast().await.unwrap();
 
         assert_eq!(output.success.len(), 2);
-        assert!(output.success.contains(&url1));
-        assert!(output.success.contains(&url2));
-        assert!(!output.success.contains(&url3));
+        assert!(output.success.keys().any(|url| url == &url1));
+        assert!(output.success.keys().any(|url| url == &url2));
+        assert!(output.success.keys().all(|url| url != &url3));
         assert!(output.failed.is_empty());
         assert_eq!(output.val, event.id);
     }
@@ -628,9 +628,9 @@ mod tests {
 
         // Verify output
         assert_eq!(output.success.len(), 2);
-        assert!(output.success.contains(&outbox_url));
-        assert!(output.success.contains(&public_url));
-        assert!(!output.success.contains(&discovery_url));
+        assert!(output.success.keys().any(|url| url == &outbox_url));
+        assert!(output.success.keys().any(|url| url == &public_url));
+        assert!(output.success.keys().all(|url| url != &discovery_url));
         assert!(output.failed.is_empty());
         assert_eq!(output.val, event.id);
 
@@ -716,9 +716,9 @@ mod tests {
 
         // Should be sent ONLY to Bob's discovered inbox
         assert_eq!(output.success.len(), 1);
-        assert!(output.success.contains(&inbox_url));
-        assert!(!output.success.contains(&public_url));
-        assert!(!output.success.contains(&discovery_url));
+        assert!(output.success.keys().any(|url| url == &inbox_url));
+        assert!(output.success.keys().all(|url| url != &public_url));
+        assert!(output.success.keys().all(|url| url != &discovery_url));
         assert!(output.failed.is_empty());
         assert_eq!(output.val, event.id);
 

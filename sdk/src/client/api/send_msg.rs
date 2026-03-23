@@ -146,9 +146,9 @@ mod tests {
         let output = client.send_msg(msg).await.unwrap();
 
         assert_eq!(output.success.len(), 2);
-        assert!(output.success.contains(&url1));
-        assert!(output.success.contains(&url2));
-        assert!(!output.success.contains(&url3));
+        assert!(output.success.keys().any(|url| url == &url1));
+        assert!(output.success.keys().any(|url| url == &url2));
+        assert!(output.success.keys().all(|url| url != &url3));
         assert!(output.failed.is_empty());
     }
 
@@ -170,8 +170,8 @@ mod tests {
         let output = client.send_msg(msg).to([&url1]).await.unwrap();
 
         assert_eq!(output.success.len(), 1);
-        assert!(output.success.contains(&url1));
-        assert!(!output.success.contains(&url2));
+        assert!(output.success.keys().any(|url| url == &url1));
+        assert!(output.success.keys().all(|url| url != &url2));
         assert!(output.failed.is_empty());
     }
 }
