@@ -1215,7 +1215,7 @@ impl Client {
         &self,
         urls: I,
         event: &Event,
-    ) -> Result<Output<EventId>, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
@@ -1240,7 +1240,7 @@ impl Client {
     pub async fn send_event_builder(
         &self,
         builder: EventBuilder,
-    ) -> Result<Output<EventId>, Error> {
+    ) -> Result<SendEventOutput, Error> {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(&event).await
     }
@@ -1253,7 +1253,7 @@ impl Client {
         &self,
         urls: I,
         builder: EventBuilder,
-    ) -> Result<Output<EventId>, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
