@@ -900,7 +900,7 @@ impl InnerLocalRelay {
 
         // Check query policy
         if let Some(policy) = self.query_policy.as_ref() {
-            for filter in filters.iter() {
+            for filter in filters.iter_mut() {
                 if let QueryPolicyResult::Reject { prefix, message } =
                     policy.admit_query(filter, addr).await
                 {

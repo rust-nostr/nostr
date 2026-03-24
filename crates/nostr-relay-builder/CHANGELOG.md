@@ -31,6 +31,7 @@
 - Allow only a single `write` and `query` policy (https://github.com/rust-nostr/nostr/pull/1165)
 - Replace `PolicyResult` with `WritePolicyResult` and `QueryPolicyResult` (https://github.com/rust-nostr/nostr/pull/1166)
 - Remove `tor` feature (https://github.com/rust-nostr/nostr/pull/1253)
+- Make the filter mutable in `QueryPolicy::admit_query` (https://github.com/rust-nostr/nostr/pull/1302)
 
 ### Changes
 

@@ -40,7 +40,7 @@ struct RejectAuthorLimit {
 impl QueryPolicy for RejectAuthorLimit {
     fn admit_query<'a>(
         &'a self,
-        query: &'a Filter,
+        query: &'a mut Filter,
         _addr: &'a SocketAddr,
     ) -> BoxedFuture<'a, QueryPolicyResult> {
         Box::pin(async move {
