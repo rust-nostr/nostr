@@ -158,7 +158,7 @@ pub trait QueryPolicy: fmt::Debug + Send + Sync {
     /// Check if the policy should accept a query
     fn admit_query<'a>(
         &'a self,
-        query: &'a Filter,
+        query: &'a mut Filter,
         addr: &'a SocketAddr,
     ) -> BoxedFuture<'a, QueryPolicyResult>;
 }
