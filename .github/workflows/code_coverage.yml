@@ -6,8 +6,14 @@ name: Code Coverage
 on:
   push:
     branches: [ master ]
+    paths:
+      - '**/*.rs'
+      - '.github/workflows/code_coverage.yml'
   pull_request:
     branches: [ master ]
+    paths:
+      - '**/*.rs'
+      - '.github/workflows/code_coverage.yml'
 
 permissions:
   contents: read
