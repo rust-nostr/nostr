@@ -1,0 +1,55 @@
+name: Code Coverage
+
+# Generates code coverage reports using cargo-llvm-cov and uploads results to Codecov.
+# Uploads coverage data to Codecov for tracking and produces an HTML report artifact for download.
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  Coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Rust Cache
+        uses: Swatinem/rust-cache@v2.7.8
+
+      - name: Install deps
+        run: sudo apt update && sudo apt install -y libdbus-1-dev pkg-config
+
+      - name: Install stable toolchain
+        run: rustup toolchain install stable
+
+      - name: Install cargo-llvm-cov
+        run: cargo +stable install cargo-llvm-cov
+
+      - name: Generate HTML coverage report
+        run: cargo llvm-cov --all-features --workspace --html
+
+      - name: Generate coverage data
+        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: coverage-report
+          path: target/llvm-cov/html
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          flags: rust
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: true
