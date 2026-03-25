@@ -14,28 +14,39 @@ ci: check-fmt check-crates check-docs
 
 # Format the entire Rust code
 fmt:
-	@bash contrib/scripts/fmt.sh
+    @bash contrib/scripts/fmt.sh
 
 # Check if the Rust code is formatted
 [private]
 check-fmt:
-	@bash contrib/scripts/fmt.sh check
+    @bash contrib/scripts/fmt.sh check
 
 # Check all the crates
 [private]
 check-crates:
-	@bash contrib/scripts/check-crates.sh
+    @bash contrib/scripts/check-crates.sh
 
 # Check Rust docs
 [private]
 check-docs:
-	@bash contrib/scripts/check-docs.sh
+    @bash contrib/scripts/check-docs.sh
 
 # Release rust crates
 [confirm]
 release:
     cargo +stable publish --workspace
 
+# Run code coverage using cargo-llvm-cov.
+#
+# Requires:
+# - cargo-llvm-cov (install via: cargo install cargo-llvm-cov)
+# - llvm-tools-preview component (install via: rustup component add llvm-tools-preview)
+coverage package='none':
+    cargo llvm-cov clean --workspace
+    cargo llvm-cov --html {{ if package == 'none' { '--workspace' } else { '--package ' + package } }}
+    @echo
+    @echo 'open {{ justfile_directory() }}/target/llvm-cov/html/index.html'
+
 # Run benches (unstable)
 bench:
-	RUSTFLAGS='--cfg=bench' cargo +nightly bench
+    RUSTFLAGS='--cfg=bench' cargo +nightly bench
