@@ -22,23 +22,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - run: rustup toolchain install stable
+
       - name: Rust Cache
         uses: Swatinem/rust-cache@v2.7.8
 
       - name: Install deps
         run: sudo apt update && sudo apt install -y libdbus-1-dev pkg-config
 
-      - name: Install stable toolchain
-        run: rustup toolchain install stable
-
       - name: Install cargo-llvm-cov
         run: cargo +stable install cargo-llvm-cov
 
       - name: Generate HTML coverage report
-        run: cargo llvm-cov --all-features --workspace --html
+        run: cargo +stable llvm-cov --all-features --workspace --html
 
       - name: Generate coverage data
-        run: cargo llvm-cov --all-features --workspace --lcov --output-path lcov.info
+        run: cargo +stable llvm-cov --all-features --workspace --lcov --output-path lcov.info
 
       - name: Upload artifact
         uses: actions/upload-artifact@v6
