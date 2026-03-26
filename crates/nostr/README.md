@@ -81,20 +81,6 @@ The following crate feature flags are available:
 | `nip59`            |   No    | Enable NIP-59: Gift Wrap                                      |
 | `nip60`            |   No    | Enable NIP-60: Cashu Wallets                                  |
 
-## Universal Time Provider
-
-On `std` builds, `std::time` is used as the default time provider.
-
-When compiling for `no_std` or `wasm*-unknown-unknown` targets, you may encounter the following linker error:
-```text
-error: undefined reference to '__universal_time_provider'
-```
-
-This error indicates that no time provider has been configured for the current target.
-In such environments, a time source is not available by default and must be supplied manually.
-
-To resolve this, add and initialize a provider using the [universal-time](https://crates.io/crates/universal-time) library.
-
 ## WASM
 
 This crate supports the `wasm32-unknown-unknown` and `wasm32-wasip2` targets. 
