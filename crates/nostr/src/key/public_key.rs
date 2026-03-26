@@ -14,8 +14,8 @@ use secp256k1::{Secp256k1, Signing, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize};
 
 use super::{Error, SecretKey};
-use crate::nips::nip19::FromBech32;
-use crate::nips::nip21::FromNostrUri;
+use crate::nips::nip19::{FromBech32, PREFIX_BECH32_PROFILE, PREFIX_BECH32_PUBLIC_KEY};
+use crate::nips::nip21::{FromNostrUri, SCHEME_WITH_COLON};
 
 /// Public Key
 #[derive(Clone, Copy)]
@@ -81,22 +81,15 @@ impl PublicKey {
 
     /// Parse from `hex`, `bech32` or [NIP21](https://github.com/nostr-protocol/nips/blob/master/21.md) uri
     pub fn parse(public_key: &str) -> Result<Self, Error> {
-        // Try from hex
-        if let Ok(public_key) = Self::from_hex(public_key) {
-            return Ok(public_key);
+        if public_key.starts_with(PREFIX_BECH32_PUBLIC_KEY)
+            || public_key.starts_with(PREFIX_BECH32_PROFILE)
+        {
+            Self::from_bech32(public_key).map_err(|_| Error::InvalidPublicKey)
+        } else if public_key.starts_with(SCHEME_WITH_COLON) {
+            Self::from_nostr_uri(public_key).map_err(|_| Error::InvalidPublicKey)
+        } else {
+            Self::from_hex(public_key).map_err(|_| Error::InvalidPublicKey)
         }
-
-        // Try from bech32
-        if let Ok(public_key) = Self::from_bech32(public_key) {
-            return Ok(public_key);
-        }
-
-        // Try from NIP21 URI
-        if let Ok(public_key) = Self::from_nostr_uri(public_key) {
-            return Ok(public_key);
-        }
-
-        Err(Error::InvalidPublicKey)
     }
 
     /// Parse from hex string
