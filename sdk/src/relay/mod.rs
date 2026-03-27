@@ -18,7 +18,10 @@ mod builder;
 mod capabilities;
 mod constants;
 mod error;
+#[cfg(not(bench))]
 mod inner;
+#[cfg(bench)]
+pub mod inner;
 mod limits;
 mod notification;
 mod options;

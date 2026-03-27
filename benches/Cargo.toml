@@ -1,0 +1,23 @@
+[package]
+name = "benches"
+version = "0.0.0"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+publish = false
+autobins = false
+
+[dependencies]
+criterion = { version = "0.7", features = ["html_reports"] }
+nostr = { workspace = true, features = ["std", "os-rng"] }
+nostr-sdk.workspace = true
+nostr-database = { workspace = true, features = ["flatbuf"] }
+tokio.workspace = true
+
+[[bench]]
+name = "bench_main"
+path = "src/main.rs"
+harness = false
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }

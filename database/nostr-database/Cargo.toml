@@ -23,6 +23,3 @@ flatbuf = ["dep:flatbuffers"]
 btreecap.workspace = true
 flatbuffers = { version = "25.12", optional = true }
 nostr = { workspace = true, features = ["std"] }
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }

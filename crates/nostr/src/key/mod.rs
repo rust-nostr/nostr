@@ -394,18 +394,3 @@ mod tests {
         );
     }
 }
-
-#[cfg(bench)]
-#[cfg(all(feature = "std", feature = "os-rng"))]
-mod benches {
-    use test::{Bencher, black_box};
-
-    use super::*;
-
-    #[bench]
-    pub fn generate_keys(bh: &mut Bencher) {
-        bh.iter(|| {
-            black_box(Keys::generate());
-        });
-    }
-}
