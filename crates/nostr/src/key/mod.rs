@@ -46,7 +46,7 @@ pub enum Error {
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// Hex decode error
-    Hex(hex::FromHexError),
+    Hex(faster_hex::Error),
     /// Invalid secret key
     InvalidSecretKey,
     /// Invalid public key
@@ -73,8 +73,8 @@ impl From<secp256k1::Error> for Error {
     }
 }
 
-impl From<hex::FromHexError> for Error {
-    fn from(e: hex::FromHexError) -> Self {
+impl From<faster_hex::Error> for Error {
+    fn from(e: faster_hex::Error) -> Self {
         Self::Hex(e)
     }
 }

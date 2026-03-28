@@ -4,13 +4,9 @@
 
 //! Messages
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use core::fmt;
 
-#[cfg(feature = "rand")]
-use hashes::Hash;
-#[cfg(feature = "rand")]
-use hashes::sha256::Hash as Sha256Hash;
 #[cfg(feature = "rand")]
 use rand::RngCore;
 #[cfg(all(feature = "std", feature = "os-rng"))]
@@ -76,19 +72,14 @@ impl SubscriptionId {
     }
 
     /// Generate new random [`SubscriptionId`]
+    #[inline]
     #[cfg(feature = "rand")]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
         R: RngCore,
     {
-        // Random bytes
-        let bytes: [u8; 32] = util::random_32_bytes(rng);
-
-        // Hash random bytes
-        let hash: [u8; 32] = Sha256Hash::hash(&bytes).to_byte_array();
-
         // Cut the hash and encode to hex
-        Self::new(hex::encode(&hash[..16]))
+        Self::new(util::random_hex_string::<R, 16>(rng))
     }
 
     /// Get as `&str`
@@ -109,7 +100,7 @@ impl Serialize for SubscriptionId {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&self.to_string())
+        serializer.serialize_str(self.as_str())
     }
 }
 
@@ -120,5 +111,18 @@ impl<'de> Deserialize<'de> for SubscriptionId {
     {
         let id: String = String::deserialize(deserializer)?;
         Ok(Self::new(id))
+    }
+}
+
+#[cfg(test)]
+#[cfg(all(feature = "std", feature = "os-rng"))]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_generate_subscription_id() {
+        let id = SubscriptionId::generate();
+        assert_eq!(id.as_str().len(), 32);
+        assert!(id.as_str().chars().all(|c| c.is_ascii_hexdigit()));
     }
 }

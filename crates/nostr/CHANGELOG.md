@@ -47,6 +47,7 @@
 - Make `Kind::from_u16` and `Kind::as_u16` const (https://github.com/rust-nostr/nostr/pull/1136)
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 - `RelayUrl::is_local_addr` now works on `no_std` builds (https://github.com/rust-nostr/nostr/pull/1267)
+- Replace `hex` dependency with `faster-hex` (https://github.com/rust-nostr/nostr/pull/1319)
 
 ### Added
 
@@ -86,6 +87,7 @@
 ### Performance
 
 - Optimize NIP-21 URI parsing in `PublicKey::parse` (https://github.com/rust-nostr/nostr/pull/1308)
+- Optimize event serialization by ~73% (https://github.com/rust-nostr/nostr/pull/1319)
 
 ## v0.44.2 - 2025/12/04
 

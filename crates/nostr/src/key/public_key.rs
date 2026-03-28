@@ -8,7 +8,7 @@ use alloc::string::String;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::str::FromStr;
+use core::str::{self, FromStr};
 
 use secp256k1::{Secp256k1, Signing, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize};
@@ -95,7 +95,7 @@ impl PublicKey {
     /// Parse from hex string
     pub fn from_hex(hex: &str) -> Result<Self, Error> {
         let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
-        hex::decode_to_slice(hex, &mut bytes)?;
+        faster_hex::hex_decode(hex.as_bytes(), &mut bytes)?;
         Ok(Self::from_byte_array(bytes))
     }
 
@@ -124,12 +124,6 @@ impl PublicKey {
         Self::from(xonly)
     }
 
-    /// Get public key as `hex` string
-    #[inline]
-    pub fn to_hex(&self) -> String {
-        hex::encode(self.as_bytes())
-    }
-
     /// Get as bytes
     #[inline]
     pub fn as_bytes(&self) -> &[u8; Self::LEN] {
@@ -140,6 +134,21 @@ impl PublicKey {
     #[inline]
     pub fn to_bytes(self) -> [u8; Self::LEN] {
         self.buf
+    }
+
+    /// Get public key as `hex` string
+    #[inline]
+    pub fn to_hex(&self) -> String {
+        // SAFETY: hex is a valid UTF-8
+        unsafe { String::from_utf8_unchecked(self.to_hex_byte_array().to_vec()) }
+    }
+
+    /// Get hex 64-byte array
+    #[inline]
+    pub fn to_hex_byte_array(&self) -> [u8; Self::LEN * 2] {
+        let mut buf = [0u8; Self::LEN * 2];
+        faster_hex::hex_encode(self.as_bytes(), &mut buf).expect("Buffer size is correct");
+        buf
     }
 
     /// Get the x-only public key
@@ -171,7 +180,10 @@ impl Serialize for PublicKey {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.to_hex())
+        let bytes: [u8; Self::LEN * 2] = self.to_hex_byte_array();
+        // SAFETY: hex is a valid UTF-8
+        let encoded: &str = unsafe { str::from_utf8_unchecked(&bytes) };
+        serializer.serialize_str(encoded)
     }
 }
 
