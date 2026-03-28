@@ -121,7 +121,16 @@ impl EventId {
     /// Get as hex string
     #[inline]
     pub fn to_hex(&self) -> String {
-        hex::encode(self.as_bytes())
+        // SAFETY: hex is a valid UTF-8
+        alloc::string::String::from_utf8(self.to_hex_slice().to_vec()).unwrap()
+    }
+
+    /// Get as hex slice
+    #[inline]
+    pub fn to_hex_slice(&self) -> [u8; Self::LEN * 2] {
+        let mut buf = [0u8; Self::LEN * 2];
+        faster_hex::hex_encode(&self.0, &mut buf).expect("Buffer size is correct");
+        buf
     }
 
     /// Check POW

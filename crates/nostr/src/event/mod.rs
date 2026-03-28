@@ -11,6 +11,7 @@ use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 
+use secp256k1::constants::SCHNORR_SIGNATURE_SIZE;
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, Secp256k1, Verification};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -300,15 +301,37 @@ impl TryFrom<&Event> for Metadata {
     }
 }
 
+#[inline]
+fn serialize_event_id<S: Serializer>(event_id: &EventId, s: S) -> Result<S::Ok, S::Error> {
+    s.serialize_str(core::str::from_utf8(&event_id.to_hex_slice()).unwrap())
+}
+
+#[inline]
+fn serialize_pubkey<S: Serializer>(pubkey: &PublicKey, s: S) -> Result<S::Ok, S::Error> {
+    s.serialize_str(core::str::from_utf8(&pubkey.to_hex_slice()).unwrap())
+}
+
+#[inline]
+fn serialize_sig<S: Serializer>(sig: &Signature, s: S) -> Result<S::Ok, S::Error> {
+    let mut hex_buf = [0u8; SCHNORR_SIGNATURE_SIZE * 2];
+    let hex_str = faster_hex::hex_encode(&Signature::serialize(sig), &mut hex_buf)
+        .expect("Buffer size is correct");
+
+    s.serialize_str(hex_str)
+}
+
 /// Struct used for de/serialization of [`Event`]
 #[derive(Serialize, Deserialize)]
 struct EventIntermediate<'a> {
+    #[serde(serialize_with = "serialize_event_id")]
     pub id: Cow<'a, EventId>,
+    #[serde(serialize_with = "serialize_pubkey")]
     pub pubkey: Cow<'a, PublicKey>,
     pub created_at: Cow<'a, Timestamp>,
     pub kind: Cow<'a, Kind>,
     pub tags: Cow<'a, Tags>,
     pub content: Cow<'a, str>,
+    #[serde(serialize_with = "serialize_sig")]
     pub sig: Cow<'a, Signature>,
 }
 

@@ -71,6 +71,7 @@ tokio = { version = ">=1.37", default-features = false }
 tracing = { version = "0.1", default-features = false }
 tracing-subscriber = "0.3"
 universal-time = { version = "0.3", default-features = false }
+faster-hex = { version = "0.10.0", default-features = false }
 
 [profile.release]
 lto = true
