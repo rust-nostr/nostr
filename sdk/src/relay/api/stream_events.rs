@@ -136,7 +136,7 @@ impl Stream for SubscriptionActivityEventStream {
 
         match Pin::new(&mut self.rx).poll_recv(cx) {
             Poll::Ready(Some(activity)) => match activity {
-                SubscriptionActivity::ReceivedEvent(event) => Poll::Ready(Some(Ok(event))),
+                SubscriptionActivity::ReceivedEvent(event) => Poll::Ready(Some(Ok(*event))),
                 SubscriptionActivity::Closed(reason) => match reason {
                     SubscriptionAutoClosedReason::AuthenticationFailed => {
                         self.done = true;

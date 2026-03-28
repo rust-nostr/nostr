@@ -93,7 +93,7 @@ impl NostrDatabase for NdbDatabase {
         Box::pin(async move {
             let msg = RelayMessage::Event {
                 subscription_id: Cow::Owned(SubscriptionId::new("ndb")),
-                event: Cow::Borrowed(event),
+                event: Box::new(Cow::Borrowed(event)),
             };
             let json: String = msg.as_json();
             self.db

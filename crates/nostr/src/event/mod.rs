@@ -5,14 +5,17 @@
 
 //! Event
 
-use alloc::borrow::Cow;
-use alloc::string::String;
+use alloc::borrow::{Cow, ToOwned};
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 use secp256k1::{Message, Secp256k1, Verification};
+use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod borrow;
@@ -62,6 +65,9 @@ pub struct Event {
     pub content: String,
     /// Signature
     pub sig: Signature,
+    pub(crate) hex_id: Option<[u8; 64]>,
+    pub(crate) hex_pubkey: Option<[u8; 64]>,
+    pub(crate) hex_sig: Option<[u8; 128]>,
 }
 
 impl fmt::Debug for Event {
@@ -147,6 +153,9 @@ impl Event {
             tags: Tags::from_list(tags.into_iter().collect()),
             content: content.into(),
             sig,
+            hex_id: None,
+            hex_pubkey: None,
+            hex_sig: None,
         }
     }
 
@@ -300,8 +309,21 @@ impl TryFrom<&Event> for Metadata {
     }
 }
 
+/// Raw event to capture the incoming hex strings
+#[derive(Deserialize)]
+struct EventRaw<'a> {
+    pub id: Cow<'a, str>,
+    pub pubkey: Cow<'a, str>,
+    pub created_at: u64,
+    pub kind: u16,
+    pub tags: Vec<Vec<String>>,
+    pub content: Cow<'a, str>,
+    pub sig: Cow<'a, str>,
+}
+
 /// Struct used for de/serialization of [`Event`]
-#[derive(Serialize, Deserialize)]
+#[derive(Clone, Deserialize)]
+#[serde(from = "EventRaw<'a>", bound(deserialize = "'de: 'a"))]
 struct EventIntermediate<'a> {
     pub id: Cow<'a, EventId>,
     pub pubkey: Cow<'a, PublicKey>,
@@ -310,6 +332,82 @@ struct EventIntermediate<'a> {
     pub tags: Cow<'a, Tags>,
     pub content: Cow<'a, str>,
     pub sig: Cow<'a, Signature>,
+    #[serde(skip)]
+    pub hex_id: Option<[u8; 64]>,
+    #[serde(skip)]
+    pub hex_pubkey: Option<[u8; 64]>,
+    #[serde(skip)]
+    pub hex_sig: Option<[u8; 128]>,
+}
+
+impl<'a> From<EventRaw<'a>> for EventIntermediate<'a> {
+    fn from(raw: EventRaw<'a>) -> Self {
+        let mut hex_id = [0u8; 64];
+        let mut hex_pubkey = [0u8; 64];
+        let mut hex_sig = [0u8; 128];
+
+        hex_id.copy_from_slice(raw.id.as_bytes());
+        hex_pubkey.copy_from_slice(raw.pubkey.as_bytes());
+        hex_sig.copy_from_slice(raw.sig.as_bytes());
+
+        Self {
+            // Deserialize/Convert types here
+            id: Cow::Owned(EventId::from_hex(&raw.id).unwrap()),
+            pubkey: Cow::Owned(PublicKey::from_hex(&raw.pubkey).unwrap()),
+            created_at: Cow::Owned(Timestamp::from(raw.created_at)),
+            kind: Cow::Owned(Kind::from(raw.kind)),
+            tags: Cow::Owned(Tags::parse(&raw.tags).unwrap()),
+            content: raw.content,
+            sig: Cow::Owned(Signature::from_str(&raw.sig).unwrap()),
+            hex_id: Some(hex_id),
+            hex_pubkey: Some(hex_pubkey),
+            hex_sig: Some(hex_sig),
+        }
+    }
+}
+
+impl Serialize for EventIntermediate<'_> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("Event", 7)?;
+
+        // 1. Serialize the hex fields as strings directly from our buffers
+        // We convert the [u8] hex bytes to a &str.
+        // This is safe because we only need the reference during this function call.
+        state.serialize_field(
+            "id",
+            &self
+                .hex_id
+                .map(|s| core::str::from_utf8(&s).unwrap().to_owned())
+                .unwrap_or_else(|| self.id.to_hex()),
+        )?;
+        state.serialize_field(
+            "pubkey",
+            &self
+                .hex_pubkey
+                .map(|s| core::str::from_utf8(&s).unwrap().to_owned())
+                .unwrap_or_else(|| self.pubkey.to_hex()),
+        )?;
+
+        // 2. Serialize the other fields normally
+        state.serialize_field("created_at", &self.created_at)?;
+        state.serialize_field("kind", &self.kind)?;
+        state.serialize_field("tags", &self.tags)?;
+        state.serialize_field("content", &self.content)?;
+
+        // 3. Serialize the signature hex
+        state.serialize_field(
+            "sig",
+            &self
+                .hex_sig
+                .map(|s| core::str::from_utf8(&s).unwrap().to_owned())
+                .unwrap_or_else(|| self.sig.to_string()),
+        )?;
+
+        state.end()
+    }
 }
 
 impl<'a> From<&'a Event> for EventIntermediate<'a> {
@@ -322,6 +420,9 @@ impl<'a> From<&'a Event> for EventIntermediate<'a> {
             tags: Cow::Borrowed(&e.tags),
             content: Cow::Borrowed(&e.content),
             sig: Cow::Borrowed(&e.sig),
+            hex_id: e.hex_id,
+            hex_pubkey: e.hex_pubkey,
+            hex_sig: e.hex_sig,
         }
     }
 }
@@ -351,6 +452,9 @@ impl<'de> Deserialize<'de> for Event {
             tags: inter.tags.into_owned(),
             content: inter.content.into_owned(),
             sig: inter.sig.into_owned(),
+            hex_id: inter.hex_id,
+            hex_pubkey: inter.hex_pubkey,
+            hex_sig: inter.hex_sig,
         })
     }
 }

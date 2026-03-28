@@ -54,7 +54,7 @@ enum SubscriptionAutoClosedReason {
 #[derive(Debug)]
 enum SubscriptionActivity {
     /// Received an event
-    ReceivedEvent(Event),
+    ReceivedEvent(Box<Event>),
     /// Subscription closed
     Closed(SubscriptionAutoClosedReason),
 }

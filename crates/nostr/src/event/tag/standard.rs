@@ -5,6 +5,7 @@
 //! Standardized tags
 
 use alloc::borrow::Cow;
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
@@ -257,7 +258,7 @@ pub enum TagStandard {
         url: Url,
     },
     Encrypted,
-    Request(Event),
+    Request(Box<Event>),
     DataVendingMachineStatus {
         status: DataVendingMachineStatus,
         extra_info: Option<String>,
@@ -513,7 +514,7 @@ impl TagStandard {
                 #[cfg(feature = "nip98")]
                 TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
                 TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
-                TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
+                TagKind::Request => Ok(Self::Request(Box::new(Event::from_json(tag_1)?))),
                 TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
                 TagKind::Dim => Ok(Self::Dim(ImageDimensions::from_str(tag_1)?)),

@@ -6,6 +6,7 @@
 //! Relay messages
 
 use alloc::borrow::{Cow, ToOwned};
+use alloc::boxed::Box;
 use alloc::string::String;
 use alloc::vec::IntoIter;
 use core::fmt;
@@ -153,7 +154,7 @@ pub enum RelayMessage<'a> {
         /// Subscription ID
         subscription_id: Cow<'a, SubscriptionId>,
         /// Event
-        event: Cow<'a, Event>,
+        event: Box<Cow<'a, Event>>,
     },
     /// Ok
     ///
@@ -241,7 +242,7 @@ impl RelayMessage<'_> {
     pub fn event(subscription_id: SubscriptionId, event: Event) -> Self {
         Self::Event {
             subscription_id: Cow::Owned(subscription_id),
-            event: Cow::Owned(event),
+            event: Box::new(Cow::Owned(event)),
         }
     }
 

@@ -95,7 +95,7 @@ enum IngesterOperation {
         tx: Option<oneshot::Sender<Result<(), Error>>>,
     },
     SaveEvent {
-        event: Event,
+        event: Box<Event>,
         tx: Option<oneshot::Sender<Result<SaveEventStatus, Error>>>,
     },
     Delete {
@@ -152,7 +152,7 @@ impl IngesterItem {
         let (tx, rx) = oneshot::channel();
         let item: Self = Self {
             operation: IngesterOperation::SaveEvent {
-                event,
+                event: Box::new(event),
                 tx: Some(tx),
             },
         };

@@ -1267,7 +1267,7 @@ impl InnerRelay {
 
         Ok(Some(RelayMessage::Event {
             subscription_id: Cow::Owned(subscription_id),
-            event: Cow::Owned(event),
+            event: Box::new(Cow::Owned(event)),
         }))
     }
 
@@ -1559,9 +1559,9 @@ impl InnerRelay {
                                 if let Some(activity) = activity {
                                     // TODO: handle error?
                                     let _ = activity
-                                        .send(SubscriptionActivity::ReceivedEvent(
+                                        .send(SubscriptionActivity::ReceivedEvent(Box::new(
                                             event.into_owned(),
-                                        ))
+                                        )))
                                         .await;
                                 }
 
@@ -1698,7 +1698,7 @@ impl InnerRelay {
                                             // TODO: handle error?
                                             let _ = activity
                                                 .send(SubscriptionActivity::ReceivedEvent(
-                                                    event.into_owned(),
+                                                    Box::new(event.into_owned()),
                                                 ))
                                                 .await;
                                         }

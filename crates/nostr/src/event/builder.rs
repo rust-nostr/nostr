@@ -4,6 +4,7 @@
 
 //! Event builder
 
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
@@ -1354,7 +1355,7 @@ impl EventBuilder {
         tags.extend_from_slice(&[
             Tag::event(job_request.id),
             Tag::public_key(job_request.pubkey),
-            Tag::from_standardized_without_cell(TagStandard::Request(job_request)),
+            Tag::from_standardized_without_cell(TagStandard::Request(Box::new(job_request))),
             Tag::from_standardized_without_cell(TagStandard::Amount { millisats, bolt11 }),
         ]);
 

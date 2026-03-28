@@ -332,7 +332,7 @@ impl InnerLocalRelay {
                                 if filter.match_event(&event, MatchEventOptions::new()) {
                                     send_msg(&mut tx, RelayMessage::Event{
                                         subscription_id: Cow::Borrowed(subscription_id),
-                                        event: Cow::Borrowed(&event)
+                                        event: Box::new(Cow::Borrowed(&event))
                                     }).await?;
 
                                     // Found a match, stop iterating the filters and continue with the next subscription
@@ -959,7 +959,7 @@ impl InnerLocalRelay {
             Some(
                 RelayMessage::Event {
                     subscription_id: Cow::Borrowed(subscription_id.as_ref()),
-                    event: Cow::Owned(event),
+                    event: Box::new(Cow::Owned(event)),
                 }
                 .as_json(),
             )
