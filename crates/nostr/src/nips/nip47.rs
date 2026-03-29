@@ -622,12 +622,13 @@ impl Request {
 
     /// Create request [Event]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    pub fn to_event(self, uri: &NostrWalletConnectUri) -> Result<Event, Error> {
+    pub async fn to_event(self, uri: &NostrWalletConnectUri) -> Result<Event, Error> {
         let encrypted = nip04::encrypt(&uri.secret, &uri.public_key, self.as_json())?;
         let keys: Keys = Keys::new(uri.secret.clone());
         Ok(EventBuilder::new(Kind::WalletConnectRequest, encrypted)
             .tag(Tag::public_key(uri.public_key))
-            .sign_with_keys(&keys)?)
+            .sign_with_keys(&keys)
+            .await?)
     }
 }
 

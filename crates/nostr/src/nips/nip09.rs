@@ -98,8 +98,8 @@ mod tests {
     use super::*;
     use crate::{Event, Keys, Tags};
 
-    #[test]
-    fn test_event_deletion_request() {
+    #[tokio::test]
+    async fn test_event_deletion_request() {
         let keys = Keys::generate();
 
         let event_id =
@@ -116,7 +116,11 @@ mod tests {
             .coordinate(coordinate)
             .reason("these posts were published by accident");
 
-        let event: Event = request.to_event_builder().sign_with_keys(&keys).unwrap();
+        let event: Event = request
+            .to_event_builder()
+            .sign_with_keys(&keys)
+            .await
+            .unwrap();
 
         assert_eq!(event.kind, Kind::EventDeletion);
         assert_eq!(event.content, "these posts were published by accident");
@@ -137,7 +141,11 @@ mod tests {
         // Event ID without reason
         let request = EventDeletionRequest::new().id(event_id);
 
-        let event: Event = request.to_event_builder().sign_with_keys(&keys).unwrap();
+        let event: Event = request
+            .to_event_builder()
+            .sign_with_keys(&keys)
+            .await
+            .unwrap();
 
         assert_eq!(event.kind, Kind::EventDeletion);
         assert!(event.content.is_empty());

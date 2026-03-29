@@ -225,7 +225,8 @@ impl NostrConnect {
         let req_id = msg.id().to_string();
         let event: Event =
             EventBuilder::nostr_connect(&self.client_keys, remote_signer_public_key, msg)?
-                .sign_with_keys(&self.client_keys)?;
+                .sign_with_keys(&self.client_keys)
+                .await?;
 
         let mut notifications = self.client.notifications();
 

@@ -133,7 +133,7 @@ impl NostrWalletConnect {
         tracing::debug!("Sending request '{}'", req.as_json());
 
         // Convert request to event
-        let event: Event = req.to_event(&self.uri)?;
+        let event: Event = req.to_event(&self.uri).await?;
 
         // Construct the filter to wait for the response
         let filter = Filter::new()

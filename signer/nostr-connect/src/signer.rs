@@ -113,7 +113,8 @@ impl NostrConnectRemoteSigner {
 
         let msg: NostrConnectMessage = NostrConnectMessage::request(&req);
         let event: Event = EventBuilder::nostr_connect(&self.keys.signer, public_key, msg)?
-            .sign_with_keys(&self.keys.signer)?;
+            .sign_with_keys(&self.keys.signer)
+            .await?;
         self.client.send_event(&event).await?;
         Ok(())
     }
@@ -317,7 +318,8 @@ impl NostrConnectRemoteSigner {
                                     event.pubkey,
                                     msg,
                                 )?
-                                .sign_with_keys(&self.keys.signer)?;
+                                .sign_with_keys(&self.keys.signer)
+                                .await?;
                                 self.client.send_event(&event).await?;
                             }
                         }

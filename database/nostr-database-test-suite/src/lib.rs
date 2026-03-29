@@ -39,8 +39,8 @@ macro_rules! database_unit_tests {
                 .collect()
         }
 
-        fn build_event(keys: &Keys, builder: EventBuilder) -> Event {
-            builder.sign_with_keys(keys).expect("Failed to build and sign event")
+        async fn build_event(keys: &Keys, builder: EventBuilder) -> Event {
+            builder.sign_with_keys(keys).await.expect("Failed to build and sign event")
         }
 
         // Return the number of added events
@@ -49,18 +49,18 @@ macro_rules! database_unit_tests {
             let keys_b = Keys::generate();
 
             let events = vec![
-                build_event(&keys_a, EventBuilder::text_note("Text Note A")),
-                build_event(&keys_b, EventBuilder::text_note("Text Note B")),
+                build_event(&keys_a, EventBuilder::text_note("Text Note A")).await,
+                build_event(&keys_b, EventBuilder::text_note("Text Note B")).await,
                 build_event(&keys_a, EventBuilder::metadata(
                     &Metadata::new().name("account-a").display_name("Account A"),
-                )),
+                )).await,
                 build_event(&keys_b, EventBuilder::metadata(
                     &Metadata::new().name("account-b").display_name("Account B"),
-                )),
+                )).await,
                 build_event(&keys_a, EventBuilder::new(Kind::Custom(33_333), "")
-                    .tag(Tag::identifier("my-id-a"))),
+                    .tag(Tag::identifier("my-id-a"))).await,
                 build_event(&keys_b, EventBuilder::new(Kind::Custom(33_333), "")
-                    .tag(Tag::identifier("my-id-b"))),
+                    .tag(Tag::identifier("my-id-b"))).await,
             ];
 
             // Store
@@ -82,7 +82,7 @@ macro_rules! database_unit_tests {
             builder: EventBuilder,
             keys: &Keys,
         ) -> (Event, SaveEventStatus) {
-            let event = builder.sign_with_keys(keys).expect("Failed to sign event");
+            let event = builder.sign_with_keys(keys).await.expect("Failed to sign event");
             let status = store.save_event(&event).await.expect("Failed to save event");
             (event, status)
         }
@@ -227,7 +227,7 @@ macro_rules! database_unit_tests {
             let event1 = EventBuilder::metadata(&metadata1)
                 .custom_created_at(Timestamp::from_secs(1000))
                 .sign_with_keys(&keys)
-                .expect("Failed to sign");
+                .await.expect("Failed to sign");
 
             store.save_event(&event1).await.expect("Failed to save event");
 
@@ -236,7 +236,7 @@ macro_rules! database_unit_tests {
             let event2 = EventBuilder::metadata(&metadata2)
                 .custom_created_at(Timestamp::from_secs(2000))
                 .sign_with_keys(&keys)
-                .expect("Failed to sign");
+                .await.expect("Failed to sign");
 
             store.save_event(&event2).await.expect("Failed to save event");
 
@@ -261,7 +261,7 @@ macro_rules! database_unit_tests {
                 .tag(Tag::identifier("test-id"))
                 .custom_created_at(Timestamp::from_secs(1000))
                 .sign_with_keys(&keys)
-                .expect("Failed to sign");
+                .await.expect("Failed to sign");
 
             store.save_event(&event1).await.expect("Failed to save event");
 
@@ -270,7 +270,7 @@ macro_rules! database_unit_tests {
                 .tag(Tag::identifier("test-id"))
                 .custom_created_at(Timestamp::from_secs(2000))
                 .sign_with_keys(&keys)
-                .expect("Failed to sign");
+                .await.expect("Failed to sign");
 
             store.save_event(&event2).await.expect("Failed to save event");
 
@@ -295,10 +295,10 @@ macro_rules! database_unit_tests {
             // Create events to delete
             let event1 = EventBuilder::text_note("To be deleted 1")
                 .sign_with_keys(&keys)
-                .expect("Failed to sign");
+                .await.expect("Failed to sign");
             let event2 = EventBuilder::text_note("To be deleted 2")
                 .sign_with_keys(&keys)
-                .expect("Failed to sign");
+                .await.expect("Failed to sign");
 
             store.save_event(&event1).await.expect("Failed to save event");
             store.save_event(&event2).await.expect("Failed to save event");
@@ -307,7 +307,7 @@ macro_rules! database_unit_tests {
             let deletion =
                 EventBuilder::delete(EventDeletionRequest::new().id(event1.id).id(event2.id))
                     .sign_with_keys(&keys)
-                    .expect("Failed to sign");
+                    .await.expect("Failed to sign");
 
             store.save_event(&deletion)
                 .await
@@ -340,7 +340,7 @@ macro_rules! database_unit_tests {
             // Create events to delete
             let event = EventBuilder::new(Kind::Custom(11_111), "To be deleted 1")
                 .sign_with_keys(&keys)
-                .expect("Failed to sign");
+                .await.expect("Failed to sign");
 
             let status = store.save_event(&event).await.expect("Failed to save event");
 
@@ -352,7 +352,7 @@ macro_rules! database_unit_tests {
             let deletion =
                 EventBuilder::delete(req)
                     .sign_with_keys(&keys)
-                    .expect("Failed to sign");
+                    .await.expect("Failed to sign");
 
             store.save_event(&deletion)
                 .await
@@ -632,7 +632,7 @@ macro_rules! database_unit_tests {
             let keys = Keys::generate();
 
             // Create and save an event
-            let event = build_event(&keys, EventBuilder::text_note("Test event"));
+            let event = build_event(&keys, EventBuilder::text_note("Test event")).await;
 
             let status = store.save_event(&event).await.expect("Failed to save event");
             assert_eq!(status, SaveEventStatus::Success);
@@ -656,7 +656,7 @@ macro_rules! database_unit_tests {
 
             // Create and save a Kind 5 deletion event
             let deletion_event = build_event(&keys, EventBuilder::new(Kind::EventDeletion, "")
-                .tag(Tag::event(event.id)));
+                .tag(Tag::event(event.id))).await;
 
             let del_status = store
                 .save_event(&deletion_event)
@@ -892,24 +892,24 @@ macro_rules! database_unit_tests {
 
             let event1 = EventBuilder::text_note("Hi 1")
                 .sign_with_keys(&to_vanish)
-                .unwrap();
+                .await.unwrap();
             let event2 = EventBuilder::text_note("Hi 2")
                 .sign_with_keys(&to_vanish)
-                .unwrap();
+                .await.unwrap();
             let replaceable = EventBuilder::contact_list([
                 Contact::new(Keys::generate().public_key),
                 Contact::new(Keys::generate().public_key),
             ])
             .sign_with_keys(&to_vanish)
-            .unwrap();
+            .await.unwrap();
             let addresable = EventBuilder::long_form_text_note("LONG")
                 .tag(Tag::identifier("lorem-ipsum".to_string()))
                 .sign_with_keys(&to_vanish)
-                .unwrap();
+                .await.unwrap();
             let dummy_gift_wrap = EventBuilder::new(Kind::GiftWrap, ":)")
                 .tag(Tag::public_key(to_vanish.public_key))
                 .sign_with_keys(&helper)
-                .unwrap();
+                .await.unwrap();
 
             store.save_event(&event1).await.unwrap();
             store.save_event(&event2).await.unwrap();
@@ -941,6 +941,7 @@ macro_rules! database_unit_tests {
             let request_to_vanish = EventBuilder::request_vanish(VanishTarget::AllRelays)
                 .unwrap()
                 .sign_with_keys(&to_vanish)
+                .await
                 .unwrap();
             store.save_event(&request_to_vanish).await.unwrap();
 

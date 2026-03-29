@@ -104,7 +104,7 @@ macro_rules! gossip_unit_tests {
                     },
                 ))
                 .sign_with_keys(&keys)
-                .unwrap();
+                .await.unwrap();
 
             store.process(&event, None).await.unwrap();
 
@@ -131,7 +131,7 @@ macro_rules! gossip_unit_tests {
             for i in 0..5 {
                 let event = EventBuilder::text_note(format!("Test {i}"))
                     .sign_with_keys(&keys)
-                    .unwrap();
+                    .await.unwrap();
 
                 store.process(&event, Some(&relay_url)).await.unwrap();
             }

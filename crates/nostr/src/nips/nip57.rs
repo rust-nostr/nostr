@@ -259,7 +259,7 @@ impl From<ZapRequestData> for Vec<Tag> {
 
 /// Create **anonymous** zap request
 #[cfg(all(feature = "std", feature = "os-rng"))]
-pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
+pub async fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     let keys = Keys::generate();
     let message: String = data.message.clone();
     let mut tags: Vec<Tag> = data.into();
@@ -268,19 +268,20 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     }));
     Ok(EventBuilder::new(Kind::ZapRequest, message)
         .tags(tags)
-        .sign_with_keys(&keys)?)
+        .sign_with_keys(&keys)
+        .await?)
 }
 
 /// Create **private** zap request
 #[inline]
 #[cfg(all(feature = "std", feature = "os-rng"))]
-pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
-    private_zap_request_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), data, keys)
+pub async fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
+    private_zap_request_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), data, keys).await
 }
 
 /// Create **private** zap request
 #[cfg(feature = "rand")]
-pub fn private_zap_request_with_ctx<C, R>(
+pub async fn private_zap_request_with_ctx<C, R>(
     secp: &Secp256k1<C>,
     rng: &mut R,
     data: ZapRequestData,
@@ -303,7 +304,8 @@ where
     }
     let msg: String = EventBuilder::new(Kind::ZapPrivateMessage, &data.message)
         .tags(tags)
-        .sign_with_ctx(secp, rng, keys)?
+        .sign_with_ctx(secp, rng, keys)
+        .await?
         .as_json();
     let msg: String = encrypt_private_zap_message(rng, &secret_key, &data.public_key, msg)?;
 
@@ -316,7 +318,8 @@ where
     Ok(EventBuilder::new(Kind::ZapRequest, "")
         .tags(tags)
         .custom_created_at(created_at)
-        .sign_with_ctx(secp, rng, &private_zap_keys)?)
+        .sign_with_ctx(secp, rng, &private_zap_keys)
+        .await?)
 }
 
 /// Create NIP57 encryption key for **private** zap
@@ -429,15 +432,15 @@ fn decrypt_private_zap_message(key: [u8; 32], private_zap_event: &Event) -> Resu
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_encrypt_decrypt_private_zap_message() {
+    #[tokio::test]
+    async fn test_encrypt_decrypt_private_zap_message() {
         let alice_keys = Keys::generate();
         let bob_keys = Keys::generate();
 
         let relays = [RelayUrl::parse("wss://relay.damus.io").unwrap()];
         let msg = "Private Zap message!";
         let data = ZapRequestData::new(bob_keys.public_key(), relays).message(msg);
-        let private_zap = private_zap_request(data, &alice_keys).unwrap();
+        let private_zap = private_zap_request(data, &alice_keys).await.unwrap();
 
         let private_zap_msg = decrypt_sent_private_zap_message(
             alice_keys.secret_key(),

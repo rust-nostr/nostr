@@ -32,6 +32,12 @@
 - Add `os-rng` feature (https://github.com/rust-nostr/nostr/pull/1171)
 - Replace `TryIntoUrl` trait with `RelayUrlArg` enum (https://github.com/rust-nostr/nostr/pull/1217)
 - Remove `Copy` trait from `MachineReadablePrefix` enum (https://github.com/rust-nostr/nostr/pull/1258)
+- Make `EventBuilder::build` async to support asynchronous PoW computation (https://github.com/rust-nostr/nostr/pull/1314)
+- Propagate `async` to the following functions to accommodate the `EventBuilder::build` refactor (https://github.com/rust-nostr/nostr/pull/1314):
+  - `sign_with_keys` and `sign_with_ctx`
+  - `gift_wrap_from_seal`
+  - `nip47::Request::to_event`
+  - `anonymous_zap_request`, `private_zap_request`, and `private_zap_request_with_ctx`
 
 ### Changed
 
@@ -43,6 +49,7 @@
 - Make `Kind::from_u16` and `Kind::as_u16` const (https://github.com/rust-nostr/nostr/pull/1136)
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 - `RelayUrl::is_local_addr` now works on `no_std` builds (https://github.com/rust-nostr/nostr/pull/1267)
+- Refactor NIP-13 PoW mining logic to utilize the new adapter pattern (https://github.com/rust-nostr/nostr/pull/1314)
 
 ### Added
 
@@ -61,6 +68,11 @@
 - Add `MachineReadablePrefix::Custom` variant (https://github.com/rust-nostr/nostr/pull/1258)
 - Add `RelayMetadata::{is_read, is_write}` functions (https://github.com/rust-nostr/nostr/pull/1290)
 - Add the kind number in the kind doc (https://github.com/rust-nostr/nostr/pull/1293)
+- Add `PowAdapter` trait for custom Proof of Work computation (https://github.com/rust-nostr/nostr/pull/1314)
+- Add `SingleThreadPow` and `MultiThreadPow` structs (https://github.com/rust-nostr/nostr/pull/1314)
+- Add `EventBuilder::pow_adapter` to set a custom PoW adapter (https://github.com/rust-nostr/nostr/pull/1314)
+- Expose `EventId::compute_id` as public API for mining (https://github.com/rust-nostr/nostr/pull/1314)
+- Impl `Index<usize>` and `IndexMut<usize>` for `Tags` (https://github.com/rust-nostr/nostr/pull/1314)
 
 ### Removed
 
@@ -71,6 +83,7 @@
 - Remove `kind` field in `CommentTarget::Coordinate` variant (https://github.com/rust-nostr/nostr/pull/1294)
 - Remove `Timestamp::as_u64` (https://github.com/rust-nostr/nostr/pull/1295)
 - Remove `Nip19Event::from_event` (https://github.com/rust-nostr/nostr/pull/1296)
+- Remove `Clone`, `Eq`, `PartialEq`, and `Hash` impls from `EventBuilder` (https://github.com/rust-nostr/nostr/pull/1314)
 
 ### Fixed
 

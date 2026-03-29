@@ -892,6 +892,7 @@ mod tests {
             .tag(Tag::parse(["name", "delta-token"]).unwrap())
             .tag(Tag::identifier("epsilon-token"))
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         assert!(db.save_event(&event).await.unwrap().is_success());

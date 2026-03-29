@@ -638,12 +638,15 @@ mod tests {
         let local_events = [
             EventBuilder::text_note("Local 1")
                 .sign_with_keys(&Keys::generate())
+                .await
                 .unwrap(),
             EventBuilder::text_note("Local 2")
                 .sign_with_keys(&Keys::generate())
+                .await
                 .unwrap(),
             EventBuilder::new(Kind::Custom(123), "Local 123")
                 .sign_with_keys(&Keys::generate())
+                .await
                 .unwrap(),
         ];
 
@@ -669,12 +672,15 @@ mod tests {
             local_events[0].clone(),
             EventBuilder::text_note("Test 2")
                 .sign_with_keys(&Keys::generate())
+                .await
                 .unwrap(),
             EventBuilder::text_note("Test 3")
                 .sign_with_keys(&Keys::generate())
+                .await
                 .unwrap(),
             EventBuilder::new(Kind::Custom(123), "Test 4")
                 .sign_with_keys(&Keys::generate())
+                .await
                 .unwrap(),
         ];
 

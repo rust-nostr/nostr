@@ -7,8 +7,19 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/13.md>
 
+use alloc::boxed::Box;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
+use core::fmt;
+#[cfg(feature = "pow-multi-thread")]
+use std::{
+    sync::atomic::{AtomicBool, Ordering},
+    thread::{self, JoinHandle},
+};
+
+use crate::util::BoxedFuture;
+use crate::{Tag, Timestamp, UnsignedEvent};
 
 /// Gets the number of leading zero bits. Result is between 0 and 255.
 #[inline]
@@ -57,13 +68,199 @@ pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
     r
 }
 
+/// A trait for custom Proof of Work computation.
+pub trait PowAdapter: fmt::Debug + Send + Sync {
+    /// Computes Proof of Work for an unsigned event to meet the target
+    /// difficulty.
+    fn compute(
+        &self,
+        unsigned_event: UnsignedEvent,
+        target_difficulty: u8,
+        custom_created_at: Option<Timestamp>,
+    ) -> BoxedFuture<'_, UnsignedEvent>;
+}
+
+impl<T> PowAdapter for Arc<T>
+where
+    T: PowAdapter,
+{
+    fn compute(
+        &self,
+        unsigned_event: UnsignedEvent,
+        target_difficulty: u8,
+        custom_created_at: Option<Timestamp>,
+    ) -> BoxedFuture<'_, UnsignedEvent> {
+        self.as_ref()
+            .compute(unsigned_event, target_difficulty, custom_created_at)
+    }
+}
+
+/// A single-threaded PoW miner implementation
+#[derive(Debug)]
+pub struct SingleThreadPow;
+
+impl PowAdapter for SingleThreadPow {
+    fn compute(
+        &self,
+        mut unsigned_event: UnsignedEvent,
+        target_difficulty: u8,
+        custom_created_at: Option<Timestamp>,
+    ) -> BoxedFuture<'_, UnsignedEvent> {
+        Box::pin(async move {
+            let mut nonce: u128 = 0;
+            unsigned_event.tags.push(Tag::pow(0, target_difficulty));
+            let pow_tag_index = unsigned_event.tags.len() - 1;
+
+            loop {
+                nonce += 1;
+
+                if nonce % 1024 == 0 {
+                    unsigned_event.created_at = custom_created_at.unwrap_or_else(Timestamp::now);
+                    // TODO: yield to not block the async runtime
+                    // REF: https://github.com/rust-nostr/nostr/issues/921
+                }
+
+                unsigned_event.tags[pow_tag_index] = Tag::pow(nonce, target_difficulty);
+
+                let event_id = unsigned_event.compute_id();
+                if get_leading_zero_bits(event_id.as_bytes()) == target_difficulty {
+                    unsigned_event.id = Some(event_id);
+                    return unsigned_event;
+                }
+            }
+        })
+    }
+}
+
+/// A multi-threaded Proof-of-Work miner.
+///
+/// Fallback to [`SingleThreadPow`] if:
+/// - the number of threads is `1`;
+/// - thread spawning or coordination fails;
+/// - no valid solution is found by any thread (rare edge case)
+#[derive(Debug)]
+#[cfg(feature = "pow-multi-thread")]
+pub struct MultiThreadPow;
+
+#[cfg(feature = "pow-multi-thread")]
+impl PowAdapter for MultiThreadPow {
+    fn compute(
+        &self,
+        unsigned_event: UnsignedEvent,
+        target_difficulty: u8,
+        custom_created_at: Option<Timestamp>,
+    ) -> BoxedFuture<'_, UnsignedEvent> {
+        Box::pin(async move {
+            // Get the number of available CPU cores
+
+            let num_threads = thread::available_parallelism()
+                .map(|n| n.get())
+                .unwrap_or(1);
+
+            // Single thread fallback
+            if num_threads == 1 {
+                return SingleThreadPow
+                    .compute(unsigned_event, target_difficulty, custom_created_at)
+                    .await;
+            }
+
+            let found: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+            let mut handles: Vec<JoinHandle<Option<UnsignedEvent>>> =
+                Vec::with_capacity(num_threads);
+
+            // Spawn threads
+            for thread_id in 0..num_threads {
+                let found: Arc<AtomicBool> = found.clone();
+                let mut unsigned_event = unsigned_event.clone();
+
+                let handle: JoinHandle<Option<UnsignedEvent>> = thread::spawn(move || {
+                    let mut nonce: u128 = thread_id as u128;
+                    unsigned_event.tags.push(Tag::pow(0, target_difficulty));
+                    let pow_tag_index = unsigned_event.tags.len() - 1;
+
+                    loop {
+                        nonce += num_threads as u128;
+
+                        // FIXME: "Division is the most expensive integer
+                        // operation you can ask of your CPU"
+                        // https://research.swtch.com/divmult
+                        if (nonce / num_threads as u128) % 1024 == 0 {
+                            // Check if another thread found the solution
+                            if found.load(Ordering::Relaxed) {
+                                break;
+                            }
+                            unsigned_event.created_at =
+                                custom_created_at.unwrap_or_else(Timestamp::now);
+                        }
+
+                        unsigned_event.tags[pow_tag_index] = Tag::pow(nonce, target_difficulty);
+
+                        let event_id = unsigned_event.compute_id();
+                        if get_leading_zero_bits(event_id.as_bytes()) == target_difficulty {
+                            found.store(true, Ordering::Relaxed);
+                            unsigned_event.id = Some(event_id);
+                            return Some(unsigned_event);
+                        }
+                    }
+
+                    None
+                });
+
+                handles.push(handle);
+            }
+
+            // Wait for all threads to finish (non-blocking)
+            loop {
+                // TODO: yield to not block the async runtime
+                // REF: https://github.com/rust-nostr/nostr/issues/921
+                if found.load(Ordering::Relaxed) {
+                    break;
+                }
+            }
+
+            // Find result
+            for handle in handles.into_iter() {
+                // NOTE: this shouldn't block the current thread,
+                // since above we've checked if the solution has been found
+                // (so all threads should be terminated).
+                if let Ok(Some(unsigned)) = handle.join() {
+                    return unsigned;
+                }
+            }
+
+            // Single thread fallback
+            SingleThreadPow
+                .compute(unsigned_event, target_difficulty, custom_created_at)
+                .await
+        })
+    }
+}
+
+/// Returns the default single-threaded Proof-of-Work adapter.
+#[cfg(not(feature = "pow-multi-thread"))]
+#[inline]
+pub(crate) fn default_adapter() -> SingleThreadPow {
+    SingleThreadPow
+}
+
+/// Returns the default multi-threaded Proof-of-Work adapter.
+#[cfg(feature = "pow-multi-thread")]
+#[inline]
+pub(crate) fn default_adapter() -> MultiThreadPow {
+    MultiThreadPow
+}
+
 #[cfg(test)]
 pub mod tests {
     use core::str::FromStr;
+    #[cfg(feature = "std")]
+    use std::sync::Arc;
 
     use hashes::sha256::Hash as Sha256Hash;
 
     use super::*;
+    #[cfg(feature = "std")]
+    use crate::{EventBuilder, PublicKey, Tag, TagKind};
 
     #[test]
     fn check_get_leading_zeroes() {
@@ -434,5 +631,83 @@ pub mod tests {
                 "0000000000000000000000000000000000000000000000000000000000000001"
             ]
         );
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "std")]
+    async fn custom_adapter() {
+        #[derive(Debug)]
+        struct TestAdapter;
+
+        impl PowAdapter for TestAdapter {
+            fn compute(
+                &self,
+                mut unsigned_event: UnsignedEvent,
+                target_difficulty: u8,
+                _custom_created_at: Option<Timestamp>,
+            ) -> BoxedFuture<'_, UnsignedEvent> {
+                Box::pin(async move {
+                    unsigned_event.tags.push(Tag::pow(3490, target_difficulty));
+                    unsigned_event.ensure_id();
+
+                    unsigned_event
+                })
+            }
+        }
+
+        let pow_adapter = Arc::new(TestAdapter);
+
+        let unsigned = EventBuilder::text_note(
+            "Why must I find leading zero bits? Is there no beauty in the ones?",
+        )
+        .pow_adapter(pow_adapter.clone())
+        .pow(2)
+        .build(PublicKey::from_slice(&[0; 32]).unwrap())
+        .await;
+
+        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+            panic!("nonce tag should be exist")
+        };
+
+        assert_eq!(nonce_tag.as_slice()[1], "3490");
+        assert_eq!(nonce_tag.as_slice()[2], "2");
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "std")]
+    async fn single_adapter() {
+        let unsigned = EventBuilder::text_note(
+            "Proof of Work: The only workout my CPU gets since I stopped gaming",
+        )
+        .pow_adapter(Arc::new(SingleThreadPow))
+        .pow(2)
+        .build(PublicKey::from_slice(&[0; 32]).unwrap())
+        .await;
+
+        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+            panic!("nonce tag should be exist")
+        };
+
+        assert!(unsigned.id.is_some());
+        assert_eq!(nonce_tag.as_slice()[2], "2");
+        assert_eq!(get_leading_zero_bits(unsigned.id.unwrap()), 2)
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "pow-multi-thread")]
+    async fn threaded_adapter() {
+        let unsigned = EventBuilder::text_note("Wait, you guys are getting paid to find nonces? I'm just doing it for the leading zeros")
+            .pow_adapter(Arc::new(MultiThreadPow))
+            .pow(2)
+            .build(PublicKey::from_slice(&[0; 32]).unwrap())
+            .await;
+
+        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+            panic!("nonce tag should be exist")
+        };
+
+        assert!(unsigned.id.is_some());
+        assert_eq!(nonce_tag.as_slice()[2], "2");
+        assert_eq!(get_leading_zero_bits(unsigned.id.unwrap()), 2)
     }
 }
