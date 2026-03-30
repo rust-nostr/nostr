@@ -40,6 +40,7 @@
 - Add `NostrLmdb::reindex` (https://github.com/rust-nostr/nostr/pull/1143)
 - Support NIP-62 `RequestToVanish` event kind (https://github.com/rust-nostr/nostr/pull/1210)
 - Options to enable and disable NIP-09 and NIP-62 (https://github.com/rust-nostr/nostr/pull/1268)
+- Relay specific request to vanish (NIP-62) (https://github.com/rust-nostr/nostr/pull/1316)
 
 ## v0.44.1 - 2026/01/29
 
