@@ -50,6 +50,7 @@ impl MemoryDatabase {
         let options = MemoryOptions {
             process_nip09: builder.process_nip09,
             process_nip62: builder.process_nip62,
+            relay_url: builder.relay_url,
         };
 
         Self {
