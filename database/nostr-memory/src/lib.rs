@@ -178,7 +178,17 @@ mod tests {
                 inner: MemoryDatabase::unbounded(),
             }
         }
+
+        async fn new_with_relay_url(url: RelayUrl) -> Self {
+            Self {
+                inner: MemoryDatabase::builder().relay_url(url).build(),
+            }
+        }
     }
 
-    database_unit_tests!(TestDatabase, TestDatabase::new);
+    database_unit_tests!(
+        TestDatabase,
+        TestDatabase::new,
+        TestDatabase::new_with_relay_url
+    );
 }

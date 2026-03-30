@@ -279,7 +279,23 @@ mod tests {
                 _temp: path,
             }
         }
+
+        async fn new_with_relay_url(url: RelayUrl) -> Self {
+            let path = tempfile::tempdir().unwrap();
+            Self {
+                db: NostrLmdb::builder(&path)
+                    .relay_url(url)
+                    .build()
+                    .await
+                    .unwrap(),
+                _temp: path,
+            }
+        }
     }
 
-    database_unit_tests!(TempDatabase, TempDatabase::new);
+    database_unit_tests!(
+        TempDatabase,
+        TempDatabase::new,
+        TempDatabase::new_with_relay_url
+    );
 }

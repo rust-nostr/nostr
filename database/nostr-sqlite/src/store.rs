@@ -870,9 +870,23 @@ mod tests {
                 db: NostrSqliteBuilder::default().build().await.unwrap(),
             }
         }
+
+        async fn new_with_relay_url(url: RelayUrl) -> Self {
+            Self {
+                db: NostrSqliteBuilder::default()
+                    .relay_url(url)
+                    .build()
+                    .await
+                    .unwrap(),
+            }
+        }
     }
 
-    database_unit_tests!(TempDatabase, TempDatabase::new);
+    database_unit_tests!(
+        TempDatabase,
+        TempDatabase::new,
+        TempDatabase::new_with_relay_url
+    );
 
     #[tokio::test]
     async fn test_full_text_search_matches_selected_tags_only() {
