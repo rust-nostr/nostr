@@ -1784,7 +1784,7 @@ dependencies = [
  "async-wsocket",
  "atomic-destructor",
  "base64 0.22.1",
- "hex",
+ "faster-hex",
  "hyper",
  "hyper-util",
  "negentropy",
