@@ -25,7 +25,7 @@ pub enum Error {
     /// Event Builder error
     EventBuilder(builder::Error),
     /// Hex error
-    Hex(hex::FromHexError),
+    Hex(faster_hex::Error),
     /// Negentropy error
     Negentropy(negentropy::Error),
     /// Oneshot recv error
@@ -232,8 +232,8 @@ impl From<builder::Error> for Error {
     }
 }
 
-impl From<hex::FromHexError> for Error {
-    fn from(e: hex::FromHexError) -> Self {
+impl From<faster_hex::Error> for Error {
+    fn from(e: faster_hex::Error) -> Self {
         Self::Hex(e)
     }
 }

@@ -142,7 +142,10 @@ where
     }
 
     match msg {
-        Some(query) => send_neg_msg(relay, subscription_id, &hex::encode(query)).await,
+        Some(query) => {
+            let message: String = faster_hex::hex_string(&query);
+            send_neg_msg(relay, subscription_id, &message).await
+        }
         None => {
             // Mark sync as done
             *sync_done = true;
@@ -325,7 +328,7 @@ pub(super) async fn sync(
         subscription_id: Cow::Borrowed(&sub_id),
         filter: Cow::Borrowed(filter),
         id_size: None,
-        initial_message: Cow::Owned(hex::encode(initial_message)),
+        initial_message: Cow::Owned(faster_hex::hex_string(&initial_message)),
     };
     relay.send_msg(open_msg).await?;
 
@@ -357,30 +360,38 @@ pub(super) async fn sync(
                             let mut curr_have_ids: Vec<Id> = Vec::new();
                             let mut curr_need_ids: Vec<Id> = Vec::new();
 
-                            // Parse message
-                            let query: Vec<u8> = hex::decode(message.as_ref())?;
+                            match message.len().checked_div(2) {
+                                Some(size) => {
+                                    // Parse message
+                                    let mut query: Vec<u8> = vec![0; size];
+                                    faster_hex::hex_decode(message.as_bytes(), &mut query)?;
 
-                            // Reconcile
-                            let msg: Option<Vec<u8>> = negentropy.reconcile_with_ids(
-                                &query,
-                                &mut curr_have_ids,
-                                &mut curr_need_ids,
-                            )?;
+                                    // Reconcile
+                                    let msg: Option<Vec<u8>> = negentropy.reconcile_with_ids(
+                                        &query,
+                                        &mut curr_have_ids,
+                                        &mut curr_need_ids,
+                                    )?;
 
-                            // Handle the message
-                            handle_neg_msg(
-                                relay,
-                                &subscription_id,
-                                msg,
-                                curr_have_ids.into_iter().map(neg_id_to_event_id),
-                                curr_need_ids.into_iter().map(neg_id_to_event_id),
-                                opts,
-                                output,
-                                &mut have_ids,
-                                &mut need_ids,
-                                &mut sync_done,
-                            )
-                            .await?;
+                                    // Handle the message
+                                    handle_neg_msg(
+                                        relay,
+                                        &subscription_id,
+                                        msg,
+                                        curr_have_ids.into_iter().map(neg_id_to_event_id),
+                                        curr_need_ids.into_iter().map(neg_id_to_event_id),
+                                        opts,
+                                        output,
+                                        &mut have_ids,
+                                        &mut need_ids,
+                                        &mut sync_done,
+                                    )
+                                    .await?;
+                                }
+                                None => {
+                                    tracing::warn!("Can't divide negentropy message.")
+                                }
+                            }
 
                             // Relevant to this sync
                             true
