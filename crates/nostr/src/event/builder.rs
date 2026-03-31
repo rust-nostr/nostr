@@ -2360,19 +2360,3 @@ mod tests {
         );
     }
 }
-
-#[cfg(bench)]
-#[cfg(all(feature = "std", feature = "os-rng"))]
-mod benches {
-    use test::{Bencher, black_box};
-
-    use super::*;
-
-    #[bench]
-    pub fn builder_to_event(bh: &mut Bencher) {
-        let keys = Keys::generate();
-        bh.iter(|| {
-            black_box(EventBuilder::text_note("hello").sign_with_keys(&keys)).unwrap();
-        });
-    }
-}

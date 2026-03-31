@@ -138,6 +138,3 @@ required-features = ["std", "rand", "os-rng", "nip98"]
 [[example]]
 name = "parser"
 required-features = ["std"]
-
-[lints.rust]
-unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }
