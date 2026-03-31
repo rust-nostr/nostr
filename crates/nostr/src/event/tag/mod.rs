@@ -323,6 +323,7 @@ impl Tag {
     /// Compose `["nonce", "<nonce>", "<difficulty>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+    #[doc(alias = "nonce")]
     #[inline]
     pub fn pow(nonce: u128, difficulty: u8) -> Self {
         Self::from_standardized_without_cell(TagStandard::POW { nonce, difficulty })

@@ -5,15 +5,10 @@
 //! Event builder
 
 use alloc::string::{String, ToString};
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 use core::fmt;
 use core::ops::Range;
-#[cfg(feature = "pow-multi-thread")]
-use std::sync::Arc;
-#[cfg(feature = "pow-multi-thread")]
-use std::sync::atomic::{AtomicBool, Ordering};
-#[cfg(feature = "pow-multi-thread")]
-use std::thread::{self, JoinHandle};
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
@@ -165,7 +160,7 @@ impl From<nip59::Error> for Error {
 }
 
 /// Event builder
-#[derive(Debug, Clone, Eq, PartialEq, Hash)]
+#[derive(Debug)]
 pub struct EventBuilder {
     // Not expose the kind, tags and content.
     // These if changed may break the previously constructed events
@@ -173,6 +168,7 @@ pub struct EventBuilder {
     kind: Kind,
     tags: Tags,
     content: String,
+    pow_adapter: Option<Arc<dyn PowAdapter>>,
     /// Custom timestamp
     pub custom_created_at: Option<Timestamp>,
     /// POW difficulty
@@ -198,6 +194,7 @@ impl EventBuilder {
             kind,
             tags: Tags::new(),
             content: content.into(),
+            pow_adapter: None,
             custom_created_at: None,
             pow: None,
             allow_self_tagging: false,
@@ -250,6 +247,13 @@ impl EventBuilder {
         self
     }
 
+    /// Set a custom PoW adapter
+    #[inline]
+    pub fn pow_adapter(mut self, adapter: Arc<dyn PowAdapter>) -> Self {
+        self.pow_adapter = Some(adapter);
+        self
+    }
+
     /// Allow self-tagging
     ///
     /// When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
@@ -266,153 +270,11 @@ impl EventBuilder {
         self
     }
 
-    /// Returns the [`EventId`] if the POW difficulty is satisfied.
-    fn check_nonce(
-        &mut self,
-        public_key: &PublicKey,
-        created_at: &Timestamp,
-        nonce: u128,
-        difficulty: u8,
-    ) -> Option<EventId> {
-        // Push POW tag
-        self.tags.push(Tag::pow(nonce, difficulty));
-
-        // Compute event ID
-        let id: EventId = EventId::new(
-            public_key,
-            created_at,
-            &self.kind,
-            &self.tags,
-            &self.content,
-        );
-
-        // Check POW difficulty
-        if id.check_pow(difficulty) {
-            Some(id)
-        } else {
-            // Remove tag if the nonce doesn't satisfy the difficulty requirement
-            self.tags.pop();
-            None
-        }
-    }
-
-    /// Mine PoW using single thread (fallback method)
-    fn mine_pow_single_thread(mut self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
-        let mut nonce: u128 = 0;
-
-        loop {
-            nonce += 1;
-
-            let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
-
-            // Check if the nonce satisfies the difficulty requirement
-            if let Some(id) = self.check_nonce(&public_key, &created_at, nonce, difficulty) {
-                return UnsignedEvent {
-                    id: Some(id),
-                    pubkey: public_key,
-                    created_at,
-                    kind: self.kind,
-                    tags: self.tags,
-                    content: self.content,
-                };
-            }
-        }
-    }
-
-    /// Mine PoW using multiple threads with std::thread
-    ///
-    /// Fallback to [`Self::mine_pow_single_thread`] if:
-    /// - the number of threads is `1`;
-    /// - thread spawning or coordination fails;
-    /// - no valid solution is found by any thread (rare edge case)
-    #[cfg(feature = "pow-multi-thread")]
-    fn mine_pow_multi_thread(self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
-        // Get the number of available CPU cores
-        let num_threads = thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1);
-
-        // Single thread fallback
-        if num_threads == 1 {
-            return self.mine_pow_single_thread(public_key, difficulty);
-        }
-
-        let found: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-
-        let mut handles: Vec<JoinHandle<Option<UnsignedEvent>>> = Vec::with_capacity(num_threads);
-
-        // Spawn threads
-        for thread_id in 0..num_threads {
-            let found: Arc<AtomicBool> = found.clone();
-
-            let mut builder: Self = self.clone();
-
-            // Create a timestamp
-            // TODO: move this into the thread loop
-            let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
-
-            let handle: JoinHandle<Option<UnsignedEvent>> = thread::spawn(move || {
-                let mut nonce: u128 = thread_id as u128;
-
-                loop {
-                    // Check if another thread found the solution
-                    if found.load(Ordering::Relaxed) {
-                        break;
-                    }
-
-                    nonce += num_threads as u128;
-
-                    // Check if the nonce satisfies the difficulty requirement
-                    if let Some(id) =
-                        builder.check_nonce(&public_key, &created_at, nonce, difficulty)
-                    {
-                        // We found a valid nonce, signal other threads to stop and store the result
-                        found.store(true, Ordering::Relaxed);
-
-                        // Return the unsigned event
-                        return Some(UnsignedEvent {
-                            id: Some(id),
-                            pubkey: public_key,
-                            created_at,
-                            kind: builder.kind,
-                            tags: builder.tags,
-                            content: builder.content,
-                        });
-                    }
-                }
-
-                None
-            });
-
-            handles.push(handle);
-        }
-
-        // Wait for all threads to finish (non-blocking)
-        loop {
-            if found.load(Ordering::Relaxed) {
-                break;
-            }
-        }
-
-        // Find result
-        for handle in handles.into_iter() {
-            // NOTE: this shouldn't block the current thread,
-            // since above we've checked if the solution has been found
-            // (so all threads should be terminated).
-            if let Ok(Some(unsigned)) = handle.join() {
-                return unsigned;
-            }
-        }
-
-        // Single thread fallback
-        self.mine_pow_single_thread(public_key, difficulty)
-    }
-
     /// Build an unsigned event
     ///
     /// By default, this method removes any `p` tags that match the author's public key.
     /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
-    pub fn build(mut self, public_key: PublicKey) -> UnsignedEvent {
+    pub async fn build(mut self, public_key: PublicKey) -> UnsignedEvent {
         // If self-tagging isn't allowed, discard all `p` tags that match the event author.
         if !self.allow_self_tagging {
             let public_key_hex: String = public_key.to_hex();
@@ -434,32 +296,39 @@ impl EventBuilder {
             self.tags.dedup();
         }
 
-        // Check if should be POW
-        match self.pow {
-            Some(difficulty) if difficulty > 0 => {
-                #[cfg(not(feature = "pow-multi-thread"))]
-                {
-                    self.mine_pow_single_thread(public_key, difficulty)
-                }
-                #[cfg(feature = "pow-multi-thread")]
-                {
-                    self.mine_pow_multi_thread(public_key, difficulty)
-                }
+        let mut unsigned: UnsignedEvent = UnsignedEvent {
+            id: None,
+            pubkey: public_key,
+            created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
+            kind: self.kind,
+            tags: self.tags,
+            content: self.content,
+        };
+
+        // Check if should be PoW
+        if let Some(pow) = self.pow.filter(|pow| pow != &0) {
+            // size = 0
+            let default_adapter = nip13::default_adapter();
+
+            unsigned = self
+                .pow_adapter
+                .as_deref()
+                .unwrap_or(&default_adapter)
+                .compute(unsigned, pow, self.custom_created_at)
+                .await;
+
+            #[cfg(debug_assertions)]
+            {
+                let nonce_tag = unsigned.tags.find(TagKind::Nonce);
+                assert!(unsigned.id.is_some());
+                assert!(nonce_tag.is_some());
+                assert!(nonce_tag.is_some_and(|t| t.as_slice()[2] == pow.to_string()));
             }
-            // No POW difficulty set OR difficulty == 0
-            _ => {
-                let mut unsigned: UnsignedEvent = UnsignedEvent {
-                    id: None,
-                    pubkey: public_key,
-                    created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
-                    kind: self.kind,
-                    tags: self.tags,
-                    content: self.content,
-                };
-                unsigned.ensure_id();
-                unsigned
-            }
+        } else {
+            unsigned.ensure_id();
         }
+
+        unsigned
     }
 
     /// Build, sign and return [`Event`]
@@ -474,7 +343,7 @@ impl EventBuilder {
         T: NostrSigner,
     {
         let public_key: PublicKey = signer.get_public_key().await?;
-        Ok(self.build(public_key).sign(signer).await?)
+        Ok(self.build(public_key).await.sign(signer).await?)
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer
@@ -482,15 +351,16 @@ impl EventBuilder {
     /// Check [`EventBuilder::sign_with_ctx`] to learn more.
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
+    pub async fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
         self.sign_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), keys)
+            .await
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer
     ///
     /// Check [`EventBuilder::build`] to learn more.
     #[cfg(feature = "rand")]
-    pub fn sign_with_ctx<C, R>(
+    pub async fn sign_with_ctx<C, R>(
         self,
         secp: &Secp256k1<C>,
         rng: &mut R,
@@ -501,7 +371,7 @@ impl EventBuilder {
         R: RngCore + CryptoRng,
     {
         let pubkey: PublicKey = keys.public_key();
-        Ok(self.build(pubkey).sign_with_ctx(secp, rng, keys)?)
+        Ok(self.build(pubkey).await.sign_with_ctx(secp, rng, keys)?)
     }
 
     /// Profile metadata
@@ -998,7 +868,8 @@ impl EventBuilder {
     /// use nostr::prelude::*;
     ///
     /// # #[cfg(all(feature = "std", feature = "os-rng", feature = "nip57"))]
-    /// # fn main() {
+    /// # #[tokio::main]
+    /// # async fn main() {
     /// # let keys = Keys::generate();
     /// # let public_key = PublicKey::from_bech32(
     /// # "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
@@ -1006,10 +877,10 @@ impl EventBuilder {
     /// # let relays = [RelayUrl::parse("wss://relay.damus.io").unwrap()];
     /// let data = ZapRequestData::new(public_key, relays).message("Zap!");
     ///
-    /// let anon_zap: Event = nip57::anonymous_zap_request(data.clone()).unwrap();
+    /// let anon_zap: Event = nip57::anonymous_zap_request(data.clone()).await.unwrap();
     /// println!("Anonymous zap request: {anon_zap:#?}");
     ///
-    /// let private_zap: Event = nip57::private_zap_request(data, &keys).unwrap();
+    /// let private_zap: Event = nip57::private_zap_request(data, &keys).await.unwrap();
     /// println!("Private zap request: {private_zap:#?}");
     /// # }
     ///
@@ -1448,7 +1319,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub fn gift_wrap_from_seal<I>(
+    pub async fn gift_wrap_from_seal<I>(
         receiver: &PublicKey,
         seal: &Event,
         extra_tags: I,
@@ -1481,6 +1352,7 @@ impl EventBuilder {
             .tags(tags)
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
             .sign_with_keys(&keys)
+            .await
     }
 
     /// Gift Wrap
@@ -1502,7 +1374,7 @@ impl EventBuilder {
             .await?
             .sign(signer)
             .await?;
-        Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
+        Self::gift_wrap_from_seal(receiver, &seal, extra_tags).await
     }
 
     /// Private direct message relay list
@@ -1553,7 +1425,8 @@ impl EventBuilder {
         let public_key: PublicKey = signer.get_public_key().await?;
         let rumor: UnsignedEvent = Self::private_msg_rumor(receiver, message)
             .tags(rumor_extra_tags)
-            .build(public_key);
+            .build(public_key)
+            .await;
         Self::gift_wrap(signer, &receiver, rumor, []).await
     }
 
@@ -2009,9 +1882,9 @@ mod tests {
     #[cfg(all(feature = "std", feature = "os-rng"))]
     use crate::SecretKey;
 
-    #[test]
+    #[tokio::test]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    fn round_trip() {
+    async fn round_trip() {
         let keys = Keys::new(
             SecretKey::from_str("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap(),
@@ -2019,6 +1892,7 @@ mod tests {
 
         let event = EventBuilder::text_note("hello")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         let serialized = event.as_json();
@@ -2027,9 +1901,9 @@ mod tests {
         assert_eq!(event, deserialized);
     }
 
-    #[test]
+    #[tokio::test]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    fn test_self_tagging() {
+    async fn test_self_tagging() {
         let keys = Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
             .unwrap();
 
@@ -2037,6 +1911,7 @@ mod tests {
         let event = EventBuilder::text_note("hello")
             .tag(Tag::public_key(keys.public_key()))
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         assert!(event.tags.is_empty());
 
@@ -2045,6 +1920,7 @@ mod tests {
         let event = EventBuilder::text_note("hello 2")
             .tag(Tag::public_key(other.public_key()))
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         assert_eq!(event.tags.len(), 1);
     }
@@ -2131,9 +2007,9 @@ mod tests {
         assert_eq!(Kind::BadgeDefinition, event_builder.kind);
     }
 
-    #[test]
+    #[tokio::test]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    fn test_badge_award_event_builder() {
+    async fn test_badge_award_event_builder() {
         let keys = Keys::generate();
         let pub_key = keys.public_key();
 
@@ -2187,6 +2063,7 @@ mod tests {
             EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
                 .unwrap()
                 .sign_with_keys(&keys)
+                .await
                 .unwrap();
 
         assert_eq!(event_builder.kind, Kind::BadgeAward);
@@ -2194,9 +2071,9 @@ mod tests {
         assert_eq!(event_builder.tags, example_event.tags);
     }
 
-    #[test]
+    #[tokio::test]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    fn test_profile_badges() {
+    async fn test_profile_badges() {
         // The pubkey used for profile badges event
         let keys = Keys::generate();
         let pub_key = keys.public_key();
@@ -2213,11 +2090,13 @@ mod tests {
         let bravery_badge_event =
             EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
                 .sign_with_keys(&badge_one_keys)
+                .await
                 .unwrap();
         let bravery_badge_award =
             EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())
                 .unwrap()
                 .sign_with_keys(&badge_one_keys)
+                .await
                 .unwrap();
 
         // Badge 2
@@ -2227,11 +2106,13 @@ mod tests {
         let honor_badge_event =
             EventBuilder::define_badge("honor", None, None, None, None, Vec::new())
                 .sign_with_keys(&badge_two_keys)
+                .await
                 .unwrap();
         let honor_badge_award =
             EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())
                 .unwrap()
                 .sign_with_keys(&badge_two_keys)
+                .await
                 .unwrap();
 
         let example_event_json = format!(
@@ -2260,15 +2141,16 @@ mod tests {
             EventBuilder::profile_badges(badge_definitions, badge_awards, &pub_key)
                 .unwrap()
                 .sign_with_keys(&keys)
+                .await
                 .unwrap();
 
         assert_eq!(profile_badges.kind, Kind::ProfileBadges);
         assert_eq!(profile_badges.tags, example_event.tags);
     }
 
-    #[test]
+    #[tokio::test]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    fn test_text_note_reply() {
+    async fn test_text_note_reply() {
         let json: &str = r###"{"kind":1,"created_at":1732718325,"content":"## rust-nostr v0.37 is out! 🦀\n\n### Summary\n\nAdd support to NIP17 relay list in SDK (when `gossip` option is enabled), add NIP22 and NIP73 support, \nfix Swift Package, many performance improvements and bug fixes and more!\n\nFrom this release all the rust features are be disabled by default (except `std` feature in `nostr` crate).\n\nFull changelog: https://rust-nostr.org/changelog\n\n### Contributors\n\nThanks to all contributors!\n\n* nostr:npub1zuuajd7u3sx8xu92yav9jwxpr839cs0kc3q6t56vd5u9q033xmhsk6c2uc \n* nostr:npub1q0uulk2ga9dwkp8hsquzx38hc88uqggdntelgqrtkm29r3ass6fq8y9py9 \n* nostr:npub1zfss807aer0j26mwp2la0ume0jqde3823rmu97ra6sgyyg956e0s6xw445 \n* nostr:npub1zwnx29tj2lnem8wvjcx7avm8l4unswlz6zatk0vxzeu62uqagcash7fhrf \n* nostr:npub1acxjpdrlk2vw320dxcy3prl87g5kh4c73wp0knullrmp7c4mc7nq88gj3j \n\n### Links\n\nhttps://rust-nostr.org\nhttps://rust-nostr.org/donate\n\n#rustnostr #nostr #rustlang #programming #rust #python #javascript #kotlin #swift #flutter","tags":[["t","rustnostr"],["t","nostr"],["t","rustlang"],["t","programming"],["t","rust"],["t","python"],["t","javascript"],["t","kotlin"],["t","swift"],["t","flutter"],["p","1739d937dc8c0c7370aa27585938c119e25c41f6c441a5d34c6d38503e3136ef","","mention"],["p","03f9cfd948e95aeb04f780382344f7c1cfc0210d9af3f4006bb6d451c7b08692","","mention"],["p","126103bfddc8df256b6e0abfd7f3797c80dcc4ea88f7c2f87dd4104220b4d65f","","mention"],["p","13a665157257e79d9dcc960deeb367fd79383be2d0babb3d861679a5701d463b","","mention"],["p","ee0d20b47fb298e8a9ed3609108fe7f2296bd71e8b82fb4f9ff8f61f62bbc7a6","","mention"]],"pubkey":"68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272","id":"8262a50cf7832351ae3f21c429e111bb31be0cf754ec437e015534bf5cc2eee8","sig":"7e81ff3dfb78ba59b09b48d5218331a3259c56f702a6b8e118938a219879d60e7062e90fc1b070a4c472988d1801ec55714388efc6a4a3876a8a957c5c7808b6"}"###;
         let root_event = Event::from_json(json).unwrap();
 
@@ -2278,6 +2160,7 @@ mod tests {
         let reply_keys = Keys::generate();
         let reply = EventBuilder::text_note_reply("Test reply", &root_event, None, None)
             .sign_with_keys(&reply_keys)
+            .await
             .unwrap();
         assert_eq!(reply.tags.public_keys().count(), 1); // Root author
         assert_eq!(
@@ -2295,6 +2178,7 @@ mod tests {
         let reply_of_reply =
             EventBuilder::text_note_reply("Test reply of reply", &reply, Some(&root_event), None)
                 .sign_with_keys(&other_keys)
+                .await
                 .unwrap();
         assert_eq!(reply_of_reply.tags.public_keys().count(), 2); // Reply + root author
 
@@ -2309,15 +2193,17 @@ mod tests {
         assert_eq!(ids.next().unwrap(), root_event.id);
     }
 
-    #[test]
+    #[tokio::test]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    fn replaceable_repost() {
+    async fn replaceable_repost() {
         let keys = Keys::generate();
         let replaceable = EventBuilder::mute_list(MuteList::default())
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         let repost = EventBuilder::repost(&replaceable, None)
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         assert_eq!(repost.kind, Kind::GenericRepost);
@@ -2334,15 +2220,17 @@ mod tests {
         );
     }
 
-    #[test]
+    #[tokio::test]
     #[cfg(all(feature = "std", feature = "os-rng"))]
-    fn addressable_repost() {
+    async fn addressable_repost() {
         let keys = Keys::generate();
         let addressable = EventBuilder::follow_set("lorem", [])
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         let repost = EventBuilder::repost(&addressable, None)
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         assert_eq!(repost.kind, Kind::GenericRepost);

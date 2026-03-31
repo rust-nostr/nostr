@@ -118,6 +118,7 @@ mod tests {
         for i in 0..num_events {
             let event = EventBuilder::text_note(i.to_string())
                 .sign_with_keys(&keys)
+                .await
                 .unwrap();
             relay.send_event(&event).await.unwrap();
         }
@@ -185,6 +186,7 @@ mod tests {
         // Send an event
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         relay.send_event(&event).await.unwrap();
 
@@ -241,6 +243,7 @@ mod tests {
         // Send an event
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         relay.send_event(&event).await.unwrap();
 
@@ -321,6 +324,7 @@ mod tests {
             // Build and send event
             let event = EventBuilder::metadata(&Metadata::new().name("Test"))
                 .sign_with_keys(&keys)
+                .await
                 .unwrap();
             r.send_event(&event).await.unwrap();
         });
@@ -352,6 +356,7 @@ mod tests {
                 // Build and send event
                 let event = EventBuilder::text_note("Additional")
                     .sign_with_keys(&keys)
+                    .await
                     .unwrap();
                 r.send_event(&event).await.unwrap();
             }
@@ -383,6 +388,7 @@ mod tests {
                 // Build and send event
                 let event = EventBuilder::text_note("Additional")
                     .sign_with_keys(&keys)
+                    .await
                     .unwrap();
                 r.send_event(&event).await.unwrap();
 

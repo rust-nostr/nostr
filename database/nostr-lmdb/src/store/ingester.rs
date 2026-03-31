@@ -398,6 +398,7 @@ mod tests {
         // Create a mix of valid and duplicate events
         let event1 = EventBuilder::text_note("Event 1")
             .sign_with_keys(&keys)
+            .await
             .expect("Failed to sign event");
 
         // Save event1 first
@@ -409,10 +410,12 @@ mod tests {
         // Now try to save a batch with duplicate and new events
         let event2 = EventBuilder::text_note("Event 2")
             .sign_with_keys(&keys)
+            .await
             .expect("Failed to sign event");
 
         let event3 = EventBuilder::text_note("Event 3")
             .sign_with_keys(&keys)
+            .await
             .expect("Failed to sign event");
 
         let futures = vec![
@@ -454,6 +457,7 @@ mod tests {
         for i in 0..10 {
             let event = EventBuilder::text_note(format!("Event to delete {}", i))
                 .sign_with_keys(&keys)
+                .await
                 .expect("Failed to sign event");
             store
                 .save_event(&event)
@@ -465,10 +469,12 @@ mod tests {
         // Now create a mixed batch of saves and deletes
         let new_event1 = EventBuilder::text_note("New event 1")
             .sign_with_keys(&keys)
+            .await
             .expect("Failed to sign event");
 
         let new_event2 = EventBuilder::text_note("New event 2")
             .sign_with_keys(&keys)
+            .await
             .expect("Failed to sign event");
 
         // Execute mixed operations concurrently

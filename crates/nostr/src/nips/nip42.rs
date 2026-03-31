@@ -51,21 +51,22 @@ mod tests {
     use super::*;
     use crate::{EventBuilder, Keys};
 
-    #[test]
-    fn test_valid_auth_event() {
+    #[tokio::test]
+    async fn test_valid_auth_event() {
         let keys = Keys::generate();
         let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let challenge = "1234567890";
 
         let event = EventBuilder::auth(challenge, relay_url.clone())
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         assert!(is_valid_auth_event(&event, &relay_url, challenge));
     }
 
-    #[test]
-    fn test_invalid_auth_event() {
+    #[tokio::test]
+    async fn test_invalid_auth_event() {
         let keys = Keys::generate();
         let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
         let challenge = "1234567890";
@@ -73,18 +74,21 @@ mod tests {
         // Wrong challenge
         let event = EventBuilder::auth("abcd", relay_url.clone())
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         assert!(!is_valid_auth_event(&event, &relay_url, challenge));
 
         // Wrong relay url
         let event = EventBuilder::auth(challenge, RelayUrl::parse("wss://example.com").unwrap())
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         assert!(!is_valid_auth_event(&event, &relay_url, challenge));
 
         // Wrong kind
         let event = EventBuilder::text_note("abcd")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         assert!(!is_valid_auth_event(&event, &relay_url, challenge));
     }

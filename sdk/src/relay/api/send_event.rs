@@ -183,6 +183,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         relay.send_event(&event).await.unwrap();
     }
@@ -205,6 +206,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         // Disable NIP42 auto auth
@@ -250,6 +252,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         let relay: Relay = Relay::builder(url).signer(keys).build();

@@ -4,7 +4,8 @@
 
 use nostr::prelude::*;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     let keys = Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
 
     let difficulty = 20; // leading zero bits
@@ -12,7 +13,8 @@ fn main() -> Result<()> {
 
     let event: Event = EventBuilder::text_note(msg_content)
         .pow(difficulty)
-        .sign_with_keys(&keys)?;
+        .sign_with_keys(&keys)
+        .await?;
 
     println!("{}", event.as_json());
 

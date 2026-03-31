@@ -1409,16 +1409,17 @@ mod tests {
 
     use super::*;
 
-    fn create_test_event(kind: u16, created_at: u64) -> Event {
+    async fn create_test_event(kind: u16, created_at: u64) -> Event {
         let keys = Keys::generate();
         EventBuilder::new(Kind::from(kind), "test content")
             .custom_created_at(Timestamp::from_secs(created_at))
             .sign_with_keys(&keys)
+            .await
             .unwrap()
     }
 
-    #[test]
-    fn test_migration_v1_to_v2() {
+    #[tokio::test]
+    async fn test_migration_v1_to_v2() {
         // Create a temporary directory for the test database
         let temp_dir = TempDir::new().unwrap();
         let lmdb_builder = NostrLmdbBuilder::new(temp_dir.path())
@@ -1433,10 +1434,10 @@ mod tests {
             let mut fbb = FlatBufferBuilder::new();
 
             // Insert some test events with different kinds
-            let event1 = create_test_event(1, 1000);
-            let event2 = create_test_event(1, 1001);
-            let event3 = create_test_event(3, 1002);
-            let event4 = create_test_event(5, 1003);
+            let event1 = create_test_event(1, 1000).await;
+            let event2 = create_test_event(1, 1001).await;
+            let event3 = create_test_event(3, 1002).await;
+            let event4 = create_test_event(5, 1003).await;
 
             lmdb.store(&mut txn, &mut fbb, &event1).unwrap();
             lmdb.store(&mut txn, &mut fbb, &event2).unwrap();

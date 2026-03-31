@@ -472,6 +472,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Broadcast test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         // Send event (broadcast to all WRITE relays by default)
@@ -500,6 +501,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Targeted test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         // Send only to relay 1
@@ -541,6 +543,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Force to all test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         // Force send to all WRITE instead of using gossip
@@ -572,6 +575,7 @@ mod tests {
         let keys_a = Keys::generate();
         let relay_list = EventBuilder::relay_list([(outbox_url.clone(), None)])
             .sign_with_keys(&keys_a)
+            .await
             .unwrap();
         let res = discovery_mock.add_event(relay_list).await.unwrap();
         assert!(res.is_success());
@@ -621,6 +625,7 @@ mod tests {
         // - Send the event to the outbox and public relay
         let event = EventBuilder::text_note("Gossip test")
             .sign_with_keys(&keys_a)
+            .await
             .unwrap();
 
         // Send event using default config (must be sent to gossip)
@@ -654,6 +659,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Broadcast test")
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         // Send event
@@ -678,6 +684,7 @@ mod tests {
         let bob_keys = Keys::generate();
         let relay_list = EventBuilder::nip17_relay_list([inbox_url.clone()])
             .sign_with_keys(&bob_keys)
+            .await
             .unwrap();
         let res = discovery_mock.add_event(relay_list).await.unwrap();
         assert!(res.is_success());
@@ -711,6 +718,7 @@ mod tests {
         let event = EventBuilder::new(Kind::GiftWrap, "payload")
             .tag(Tag::public_key(bob_keys.public_key))
             .sign_with_keys(&Keys::generate())
+            .await
             .unwrap();
         let output = client.send_event(&event).to_nip17().await.unwrap();
 
@@ -741,6 +749,7 @@ mod tests {
         let event = EventBuilder::new(Kind::GiftWrap, "payload")
             .tag(Tag::public_key(bob_keys.public_key))
             .sign_with_keys(&Keys::generate())
+            .await
             .unwrap();
 
         // Send event

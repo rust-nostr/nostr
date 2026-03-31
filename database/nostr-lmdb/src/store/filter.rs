@@ -174,16 +174,17 @@ mod tests {
 
     use super::*;
 
-    fn create_test_event(content: &str) -> Event {
+    async fn create_test_event(content: &str) -> Event {
         let keys = Keys::generate();
         EventBuilder::text_note(content)
             .sign_with_keys(&keys)
+            .await
             .unwrap()
     }
 
-    #[test]
-    fn test_search_match_in_content() {
-        let event = create_test_event("Hello World");
+    #[tokio::test]
+    async fn test_search_match_in_content() {
+        let event = create_test_event("Hello World").await;
         let event: EventBorrow = (&event).into();
 
         let mut filter = DatabaseFilter::from(Filter::new());
@@ -200,12 +201,13 @@ mod tests {
         assert!(!filter.match_event(&event));
     }
 
-    #[test]
-    fn test_search_match_in_tags() {
+    #[tokio::test]
+    async fn test_search_match_in_tags() {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("content")
             .tag(Tag::parse(["title", "Search userfacing tags"]).unwrap())
             .sign_with_keys(&keys)
+            .await
             .unwrap();
         let event: EventBorrow = (&event).into();
 
@@ -218,9 +220,9 @@ mod tests {
         assert!(!filter.match_event(&event));
     }
 
-    #[test]
-    fn test_search_empty_query() {
-        let event = create_test_event("test");
+    #[tokio::test]
+    async fn test_search_empty_query() {
+        let event = create_test_event("test").await;
         let event: EventBorrow = (&event).into();
         let mut filter = DatabaseFilter::from(Filter::new());
 
@@ -228,18 +230,18 @@ mod tests {
         assert!(!filter.match_event(&event));
     }
 
-    #[test]
-    fn test_search_no_query() {
-        let event = create_test_event("test");
+    #[tokio::test]
+    async fn test_search_no_query() {
+        let event = create_test_event("test").await;
         let event: EventBorrow = (&event).into();
         let filter = DatabaseFilter::from(Filter::new());
 
         assert!(filter.match_event(&event));
     }
 
-    #[test]
-    fn test_search_partial_match() {
-        let event = create_test_event("nostr protocol");
+    #[tokio::test]
+    async fn test_search_partial_match() {
+        let event = create_test_event("nostr protocol").await;
         let event: EventBorrow = (&event).into();
         let mut filter = DatabaseFilter::from(Filter::new());
 

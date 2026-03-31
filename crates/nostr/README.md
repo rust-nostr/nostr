@@ -20,7 +20,8 @@ You may be interested in:
 ```rust,no_run
 use nostr::prelude::*;
 
-fn main() -> Result<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     // Generate new random keys
     let keys = Keys::generate();
 
@@ -40,13 +41,20 @@ fn main() -> Result<()> {
         .lud16("pay@yukikishimoto.com")
         .custom_field("custom_field", "my value");
 
-    let event: Event = EventBuilder::metadata(&metadata).sign_with_keys(&keys)?;
+    let event: Event = EventBuilder::metadata(&metadata)
+        .sign_with_keys(&keys)
+        .await?;
 
     // New text note
-    let event: Event = EventBuilder::text_note("Hello from rust-nostr").sign_with_keys(&keys)?;
+    let event: Event = EventBuilder::text_note("Hello from rust-nostr")
+        .sign_with_keys(&keys)
+        .await?;
 
     // New POW text note
-    let event: Event = EventBuilder::text_note("POW text note from rust-nostr").pow(20).sign_with_keys(&keys)?;
+    let event: Event = EventBuilder::text_note("POW text note from rust-nostr")
+        .pow(20)
+        .sign_with_keys(&keys)
+        .await?;
 
     // Convert client message to JSON
     let json = ClientMessage::event(event).as_json();

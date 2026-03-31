@@ -516,8 +516,8 @@ mod tests {
     use super::*;
     use crate::{Event, Keys, Tags};
 
-    #[test]
-    fn test_git_repo_announcement() {
+    #[tokio::test]
+    async fn test_git_repo_announcement() {
         let repo = GitRepositoryAnnouncement {
             id: String::from("test"),
             name: Some(String::from("Test nostr repository")),
@@ -540,6 +540,7 @@ mod tests {
             .to_event_builder()
             .unwrap()
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         assert_eq!(event.kind, Kind::GitRepoAnnouncement);
@@ -561,8 +562,8 @@ mod tests {
         assert_eq!(event.tags, tags);
     }
 
-    #[test]
-    fn test_git_issue() {
+    #[tokio::test]
+    async fn test_git_issue() {
         let pk =
             PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
                 .unwrap();
@@ -580,6 +581,7 @@ mod tests {
             .to_event_builder()
             .unwrap()
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         assert_eq!(event.kind, Kind::GitIssue);
@@ -601,8 +603,8 @@ mod tests {
         assert_eq!(event.tags, tags);
     }
 
-    #[test]
-    fn test_git_patch() {
+    #[tokio::test]
+    async fn test_git_patch() {
         let pk =
             PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
                 .unwrap();
@@ -632,6 +634,7 @@ mod tests {
             .to_event_builder()
             .unwrap()
             .sign_with_keys(&keys)
+            .await
             .unwrap();
 
         assert_eq!(event.kind, Kind::GitPatch);

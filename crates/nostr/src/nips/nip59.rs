@@ -182,7 +182,9 @@ mod tests {
                 .unwrap();
 
         // Compose Gift Wrap event
-        let rumor: UnsignedEvent = EventBuilder::text_note("Test").build(sender_keys.public_key);
+        let rumor: UnsignedEvent = EventBuilder::text_note("Test")
+            .build(sender_keys.public_key)
+            .await;
         let event: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor.clone(), [])
                 .await
@@ -218,8 +220,9 @@ mod tests {
 
         // Construct a rumor that lies about its pubkey but is still wrapped/signed
         // by `sender_keys`. This mimics a spoofing attempt the recipient must reject.
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("spoofed").build(impersonated_keys.public_key());
+        let rumor: UnsignedEvent = EventBuilder::text_note("spoofed")
+            .build(impersonated_keys.public_key())
+            .await;
 
         let gift_wrap: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor, [])
