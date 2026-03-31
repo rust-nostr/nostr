@@ -18,7 +18,7 @@ use std::net::SocketAddr;
 use std::time::Duration;
 
 use nostr::nips::nip96::{self, ServerConfig, UploadRequest, UploadResponse};
-use nostr::signer::NostrSigner;
+use nostr::signer::{AsyncGetPublicKey, AsyncSignEvent};
 use nostr::types::url::Url;
 #[cfg(all(feature = "socks", not(target_arch = "wasm32")))]
 use reqwest::Proxy;
@@ -176,7 +176,7 @@ impl NostrHttpFileStorageClient {
         mime_type: Option<&str>,
     ) -> Result<Url, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         // Create new request
         let req: UploadRequest = UploadRequest::new(signer, config, &file_data).await?;

@@ -171,7 +171,7 @@ impl Client {
     ///
     /// Returns `None` if no signer is configured.
     #[inline]
-    pub fn signer(&self) -> Option<&Arc<dyn NostrSigner>> {
+    pub fn signer(&self) -> Option<&Arc<dyn AsyncNostrSigner>> {
         self.pool().state().signer()
     }
 
@@ -1228,7 +1228,7 @@ impl Client {
     /// This method requires a [`NostrSigner`].
     pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
         let signer = self.signer().ok_or(Error::SignerNotConfigured)?;
-        Ok(builder.sign(signer).await?)
+        Ok(builder.sign_async(signer).await?)
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays.

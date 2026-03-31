@@ -29,6 +29,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Require `AsyncGetPublicKey + AsyncSignEvent` for signed client operations (https://github.com/rust-nostr/nostr/pull/1329)
+
 ### Changed
 
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)

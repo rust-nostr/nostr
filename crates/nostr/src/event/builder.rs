@@ -468,12 +468,27 @@ impl EventBuilder {
     /// Check [`EventBuilder::build`] to learn more.
     #[inline]
     #[cfg(feature = "std")]
-    pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
+    pub fn sign<T>(self, signer: &T) -> Result<Event, Error>
     where
-        T: NostrSigner,
+        T: GetPublicKey + SignEvent,
+    {
+        let public_key: PublicKey = signer.get_public_key()?;
+        Ok(self.build(public_key).sign(signer)?)
+    }
+
+    /// Build, sign and return [`Event`]
+    ///
+    /// Shortcut for `builder.build(public_key).sign(signer)`.
+    ///
+    /// Check [`EventBuilder::build`] to learn more.
+    #[inline]
+    #[cfg(feature = "std")]
+    pub async fn sign_async<T>(self, signer: &T) -> Result<Event, Error>
+    where
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let public_key: PublicKey = signer.get_public_key().await?;
-        Ok(self.build(public_key).sign(signer).await?)
+        Ok(self.build(public_key).sign_async(signer).await?)
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer
@@ -1438,7 +1453,7 @@ impl EventBuilder {
         rumor: UnsignedEvent,
     ) -> Result<Self, Error>
     where
-        T: NostrSigner,
+        T: AsyncNip44,
     {
         Ok(nip59::make_seal(signer, receiver_pubkey, rumor).await?)
     }
@@ -1494,12 +1509,12 @@ impl EventBuilder {
         extra_tags: I,
     ) -> Result<Event, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent + AsyncNip44,
         I: IntoIterator<Item = Tag>,
     {
         let seal: Event = Self::seal(signer, receiver, rumor)
             .await?
-            .sign(signer)
+            .sign_async(signer)
             .await?;
         Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
     }
@@ -1545,7 +1560,7 @@ impl EventBuilder {
         rumor_extra_tags: I,
     ) -> Result<Event, Error>
     where
-        T: NostrSigner,
+        T: AsyncNostrSigner,
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
