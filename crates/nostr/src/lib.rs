@@ -27,6 +27,7 @@ extern crate alloc;
 #[macro_use]
 extern crate serde;
 pub extern crate bitcoin_hashes as hashes;
+extern crate core;
 #[cfg(feature = "rand")]
 pub extern crate rand;
 pub extern crate secp256k1;
@@ -77,5 +78,4 @@ pub use self::util::SECP256K1;
 
 /// Result
 #[doc(hidden)]
-#[cfg(feature = "std")]
-pub type Result<T, E = alloc::boxed::Box<dyn std::error::Error>> = std::result::Result<T, E>;
+pub type Result<T, E = alloc::boxed::Box<dyn core::error::Error>> = core::result::Result<T, E>;

@@ -48,6 +48,7 @@
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 - `RelayUrl::is_local_addr` now works on `no_std` builds (https://github.com/rust-nostr/nostr/pull/1267)
 - Replace `hex` dependency with `faster-hex` (https://github.com/rust-nostr/nostr/pull/1319)
+- Migrate error types from `std::error::Error` to `core::error::Error`
 
 ### Added
 

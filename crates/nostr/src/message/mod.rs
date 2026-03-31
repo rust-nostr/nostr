@@ -32,8 +32,7 @@ pub enum MessageHandleError {
     InvalidMessageFormat,
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for MessageHandleError {}
+impl core::error::Error for MessageHandleError {}
 
 impl fmt::Display for MessageHandleError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
