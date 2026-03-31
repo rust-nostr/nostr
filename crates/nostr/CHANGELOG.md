@@ -21,6 +21,10 @@
 
 ### Deprecated
 
+### Performance
+
+### Security
+
 -->
 
 ## Unreleased
@@ -78,6 +82,9 @@
 - Add `a` tag of replaceable and addressable events in `EventBuilder::repost` (https://github.com/rust-nostr/nostr/pull/1184)
 - Handle legacy events with `mention` marker (https://github.com/rust-nostr/nostr/pull/1193)
 - Parse "HEAD" as `TagKing::Head` (https://github.com/rust-nostr/nostr/pull/1215)
+
+### Performance
+
 - Optimize NIP-21 URI parsing in `PublicKey::parse` (https://github.com/rust-nostr/nostr/pull/1308)
 
 ## v0.44.2 - 2025/12/04
