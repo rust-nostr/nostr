@@ -31,6 +31,7 @@
 
 ### Breaking changes
 
+- Replace `NostrSigner` implementation with `AsyncNostrSigner` (https://github.com/rust-nostr/nostr/pull/1329)
 - Remove `tor` feature (https://github.com/rust-nostr/nostr/pull/1253)
 
 ### Changed

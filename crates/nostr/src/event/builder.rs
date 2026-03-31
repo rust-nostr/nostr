@@ -468,12 +468,27 @@ impl EventBuilder {
     /// Check [`EventBuilder::build`] to learn more.
     #[inline]
     #[cfg(feature = "std")]
-    pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
+    pub fn sign<T>(self, signer: &T) -> Result<Event, Error>
     where
-        T: NostrSigner,
+        T: GetPublicKey + SignEvent,
+    {
+        let public_key: PublicKey = signer.get_public_key()?;
+        Ok(self.build(public_key).sign(signer)?)
+    }
+
+    /// Build, sign and return [`Event`]
+    ///
+    /// Shortcut for `builder.build(public_key).sign(signer)`.
+    ///
+    /// Check [`EventBuilder::build`] to learn more.
+    #[inline]
+    #[cfg(feature = "std")]
+    pub async fn sign_async<T>(self, signer: &T) -> Result<Event, Error>
+    where
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let public_key: PublicKey = signer.get_public_key().await?;
-        Ok(self.build(public_key).sign(signer).await?)
+        Ok(self.build(public_key).sign_async(signer).await?)
     }
 
     /// Build, sign and return [`Event`] using [`Keys`] signer
@@ -1432,15 +1447,31 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub async fn seal<T>(
+    pub fn seal<T>(
         signer: &T,
         receiver_pubkey: &PublicKey,
         rumor: UnsignedEvent,
     ) -> Result<Self, Error>
     where
-        T: NostrSigner,
+        T: Nip44,
     {
-        Ok(nip59::make_seal(signer, receiver_pubkey, rumor).await?)
+        Ok(nip59::make_seal(signer, receiver_pubkey, rumor)?)
+    }
+
+    /// Seal
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
+    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+    pub async fn seal_async<T>(
+        signer: &T,
+        receiver_pubkey: &PublicKey,
+        rumor: UnsignedEvent,
+    ) -> Result<Self, Error>
+    where
+        T: AsyncNip44,
+    {
+        Ok(nip59::make_seal_async(signer, receiver_pubkey, rumor).await?)
     }
 
     /// Gift Wrap from seal
@@ -1487,19 +1518,38 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub async fn gift_wrap<T, I>(
+    pub fn gift_wrap<T, I>(
         signer: &T,
         receiver: &PublicKey,
         rumor: UnsignedEvent,
         extra_tags: I,
     ) -> Result<Event, Error>
     where
-        T: NostrSigner,
+        T: GetPublicKey + SignEvent + Nip44,
         I: IntoIterator<Item = Tag>,
     {
-        let seal: Event = Self::seal(signer, receiver, rumor)
+        let seal: Event = Self::seal(signer, receiver, rumor)?.sign(signer)?;
+        Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
+    }
+
+    /// Gift Wrap
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
+    #[inline]
+    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+    pub async fn gift_wrap_async<T, I>(
+        signer: &T,
+        receiver: &PublicKey,
+        rumor: UnsignedEvent,
+        extra_tags: I,
+    ) -> Result<Event, Error>
+    where
+        T: AsyncGetPublicKey + AsyncSignEvent + AsyncNip44,
+        I: IntoIterator<Item = Tag>,
+    {
+        let seal: Event = Self::seal_async(signer, receiver, rumor)
             .await?
-            .sign(signer)
+            .sign_async(signer)
             .await?;
         Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
     }
@@ -1538,14 +1588,37 @@ impl EventBuilder {
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub async fn private_msg<T, S, I>(
+    pub fn private_msg<T, S, I>(
         signer: &T,
         receiver: PublicKey,
         message: S,
         rumor_extra_tags: I,
     ) -> Result<Event, Error>
     where
-        T: NostrSigner,
+        T: GetPublicKey + SignEvent + Nip44,
+        S: Into<String>,
+        I: IntoIterator<Item = Tag>,
+    {
+        let public_key: PublicKey = signer.get_public_key()?;
+        let rumor: UnsignedEvent = Self::private_msg_rumor(receiver, message)
+            .tags(rumor_extra_tags)
+            .build(public_key);
+        Self::gift_wrap(signer, &receiver, rumor, [])
+    }
+
+    /// Private Direct message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+    pub async fn private_msg_async<T, S, I>(
+        signer: &T,
+        receiver: PublicKey,
+        message: S,
+        rumor_extra_tags: I,
+    ) -> Result<Event, Error>
+    where
+        T: AsyncGetPublicKey + AsyncSignEvent + AsyncNip44,
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
@@ -1553,7 +1626,7 @@ impl EventBuilder {
         let rumor: UnsignedEvent = Self::private_msg_rumor(receiver, message)
             .tags(rumor_extra_tags)
             .build(public_key);
-        Self::gift_wrap(signer, &receiver, rumor, []).await
+        Self::gift_wrap_async(signer, &receiver, rumor, []).await
     }
 
     /// Mute list

@@ -31,8 +31,7 @@ pub use crate::message::{self, *};
 // NIPs
 pub use crate::nips::nip01::{self, *};
 pub use crate::nips::nip02::{self, *};
-#[cfg(feature = "nip04")]
-pub use crate::nips::nip04;
+pub use crate::nips::nip04::{self, *};
 pub use crate::nips::nip05::{self, *};
 #[cfg(feature = "nip06")]
 pub use crate::nips::nip06::{self, *};
@@ -51,7 +50,6 @@ pub use crate::nips::nip35::{self, *};
 pub use crate::nips::nip38::{self, *};
 pub use crate::nips::nip39::{self, *};
 pub use crate::nips::nip42::{self, *};
-#[cfg(feature = "nip44")]
 pub use crate::nips::nip44::{self, *};
 #[cfg(all(feature = "std", feature = "nip46"))]
 pub use crate::nips::nip46::{self, *};

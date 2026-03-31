@@ -44,7 +44,8 @@ async fn main() -> Result<()> {
 
     let receiver =
         PublicKey::from_bech32("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
-    let msg = EventBuilder::private_msg(&signer, receiver, "Hello from rust-nostr", []).await?;
+    let msg =
+        EventBuilder::private_msg_async(&signer, receiver, "Hello from rust-nostr", []).await?;
     let output = client.send_event(&msg).to_nip17().await?;
     println!("Sent DM: {}", output.id());
 
