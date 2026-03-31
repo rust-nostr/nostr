@@ -1758,7 +1758,6 @@ dependencies = [
 name = "nostr-ndb"
 version = "0.44.0"
 dependencies = [
- "hex",
  "nostr",
  "nostr-database",
  "nostrdb",
