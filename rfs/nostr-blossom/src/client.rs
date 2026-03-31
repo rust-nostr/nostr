@@ -6,7 +6,7 @@ use base64::Engine;
 use base64::engine::general_purpose;
 use nostr::hashes::Hash;
 use nostr::hashes::sha256::Hash as Sha256Hash;
-use nostr::signer::NostrSigner;
+use nostr::signer::{AsyncGetPublicKey, AsyncSignEvent};
 use nostr::{Event, EventBuilder, JsonUtil, PublicKey, Timestamp, Url};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, RANGE};
 #[cfg(not(target_arch = "wasm32"))]
@@ -57,7 +57,7 @@ impl BlossomClient {
         signer: Option<&T>,
     ) -> Result<BlobDescriptor, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let url: Url = self.base_url.join("upload")?;
 
@@ -109,7 +109,7 @@ impl BlossomClient {
         signer: Option<&T>,
     ) -> Result<Vec<BlobDescriptor>, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let mut url: Url = self.base_url.join("list")?.join(&pubkey.to_hex())?;
 
@@ -163,7 +163,7 @@ impl BlossomClient {
         signer: Option<&T>,
     ) -> Result<Vec<u8>, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let url: Url = self.base_url.join(sha256.to_string().as_str())?;
 
@@ -219,7 +219,7 @@ impl BlossomClient {
         signer: Option<&T>,
     ) -> Result<bool, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let url: Url = self.base_url.join(sha256.to_string().as_str())?;
 
@@ -262,7 +262,7 @@ impl BlossomClient {
         signer: &T,
     ) -> Result<(), Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let url: Url = self.base_url.join(sha256.to_string().as_str())?;
 
@@ -329,10 +329,10 @@ impl BlossomClient {
         authz: &BlossomAuthorization,
     ) -> Result<HeaderValue, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let auth_event: Event = EventBuilder::blossom_auth(authz.clone())
-            .sign(signer)
+            .sign_async(signer)
             .await?;
         let encoded_auth: String = general_purpose::STANDARD.encode(auth_event.as_json());
         let value: String = format!("Nostr {}", encoded_auth);

@@ -26,8 +26,7 @@ use hyper::server::conn::http1;
 use hyper::service::service_fn;
 use hyper::{Method, Request, Response, StatusCode};
 use hyper_util::rt::TokioIo;
-use nostr::prelude::{BoxedFuture, SignerBackend};
-use nostr::{Event, NostrSigner, PublicKey, SignerError, UnsignedEvent};
+use nostr::prelude::*;
 use serde::de::DeserializeOwned;
 use serde::{Deserialize, Serialize, Serializer};
 use serde_json::{Value, json};
@@ -458,16 +457,14 @@ impl BrowserSignerProxy {
     }
 }
 
-impl NostrSigner for BrowserSignerProxy {
-    fn backend(&self) -> SignerBackend<'_> {
-        SignerBackend::BrowserExtension
-    }
-
+impl AsyncGetPublicKey for BrowserSignerProxy {
     #[inline]
     fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         Box::pin(async move { self._get_public_key().await.map_err(SignerError::backend) })
     }
+}
 
+impl AsyncSignEvent for BrowserSignerProxy {
     #[inline]
     fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
         Box::pin(async move {
@@ -476,8 +473,11 @@ impl NostrSigner for BrowserSignerProxy {
                 .map_err(SignerError::backend)
         })
     }
+}
 
-    #[inline]
+impl AsyncNip04 for BrowserSignerProxy {
+    type Error = SignerError;
+
     fn nip04_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -490,7 +490,6 @@ impl NostrSigner for BrowserSignerProxy {
         })
     }
 
-    #[inline]
     fn nip04_decrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -502,8 +501,11 @@ impl NostrSigner for BrowserSignerProxy {
                 .map_err(SignerError::backend)
         })
     }
+}
 
-    #[inline]
+impl AsyncNip44 for BrowserSignerProxy {
+    type Error = SignerError;
+
     fn nip44_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -516,7 +518,6 @@ impl NostrSigner for BrowserSignerProxy {
         })
     }
 
-    #[inline]
     fn nip44_decrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
@@ -527,6 +528,12 @@ impl NostrSigner for BrowserSignerProxy {
                 .await
                 .map_err(SignerError::backend)
         })
+    }
+}
+
+impl AsyncNostrSigner for BrowserSignerProxy {
+    fn backend(&self) -> SignerBackend<'_> {
+        SignerBackend::BrowserExtension
     }
 }
 

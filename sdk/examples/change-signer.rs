@@ -6,53 +6,52 @@ use tokio::sync::RwLock;
 
 #[derive(Debug)]
 pub struct MySignerSwitcher {
-    signer: RwLock<Arc<dyn NostrSigner>>,
+    signer: RwLock<Arc<dyn AsyncNostrSigner>>,
 }
 
 impl MySignerSwitcher {
     pub fn new<T>(signer: T) -> Self
     where
-        T: IntoNostrSigner,
+        T: AsyncNostrSigner,
     {
         Self {
-            signer: RwLock::new(signer.into_nostr_signer()),
+            signer: RwLock::new(Arc::new(signer)),
         }
     }
 
-    async fn get(&self) -> Arc<dyn NostrSigner> {
+    async fn get(&self) -> Arc<dyn AsyncNostrSigner> {
         self.signer.read().await.clone()
     }
 
     pub async fn switch<T>(&self, new: T)
     where
-        T: IntoNostrSigner,
+        T: AsyncNostrSigner,
     {
         let mut signer = self.signer.write().await;
-        *signer = new.into_nostr_signer();
+        *signer = Arc::new(new);
     }
 }
 
-impl NostrSigner for MySignerSwitcher {
-    fn backend(&self) -> SignerBackend<'_> {
-        SignerBackend::Custom(Cow::Borrowed("custom"))
-    }
-
+impl AsyncGetPublicKey for MySignerSwitcher {
     fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         Box::pin(async move { self.get().await.get_public_key().await })
     }
+}
 
-    fn sign_event(
-        &self,
-        unsigned: UnsignedEvent,
-    ) -> BoxedFuture<'_, std::result::Result<Event, SignerError>> {
+impl AsyncSignEvent for MySignerSwitcher {
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
         Box::pin(async move { self.get().await.sign_event(unsigned).await })
     }
+}
+
+impl AsyncNip04 for MySignerSwitcher {
+    type Error = SignerError;
 
     fn nip04_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
-    ) -> BoxedFuture<'a, std::result::Result<String, SignerError>> {
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
         Box::pin(async move { self.get().await.nip04_encrypt(public_key, content).await })
     }
 
@@ -60,7 +59,7 @@ impl NostrSigner for MySignerSwitcher {
         &'a self,
         public_key: &'a PublicKey,
         encrypted_content: &'a str,
-    ) -> BoxedFuture<'a, std::result::Result<String, SignerError>> {
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
         Box::pin(async move {
             self.get()
                 .await
@@ -68,12 +67,16 @@ impl NostrSigner for MySignerSwitcher {
                 .await
         })
     }
+}
+
+impl AsyncNip44 for MySignerSwitcher {
+    type Error = SignerError;
 
     fn nip44_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
-    ) -> BoxedFuture<'a, std::result::Result<String, SignerError>> {
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
         Box::pin(async move { self.get().await.nip44_encrypt(public_key, content).await })
     }
 
@@ -81,8 +84,14 @@ impl NostrSigner for MySignerSwitcher {
         &'a self,
         public_key: &'a PublicKey,
         payload: &'a str,
-    ) -> BoxedFuture<'a, std::result::Result<String, SignerError>> {
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
         Box::pin(async move { self.get().await.nip44_decrypt(public_key, payload).await })
+    }
+}
+
+impl AsyncNostrSigner for MySignerSwitcher {
+    fn backend(&self) -> SignerBackend<'_> {
+        SignerBackend::Custom(Cow::Borrowed("custom"))
     }
 }
 
@@ -93,9 +102,11 @@ async fn main() -> Result<()> {
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
     let signer = Arc::new(MySignerSwitcher::new(keys));
 
-    let client = Client::builder().signer(signer.clone()).build();
+    let mut client = Client::builder();
+    client.signer = Some(signer.clone());
+    let client = client.build();
 
-    let pk = client.signer().unwrap().get_public_key().await?;
+    let pk = signer.get_public_key().await?;
     println!("Public Key: {}", pk.to_bech32()?);
 
     let new_keys = Keys::generate();

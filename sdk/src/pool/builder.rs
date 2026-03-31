@@ -1,7 +1,7 @@
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 
-use nostr::NostrSigner;
+use nostr::signer::AsyncNostrSigner;
 use nostr_database::NostrDatabase;
 
 use super::RelayPool;
@@ -14,7 +14,7 @@ pub(crate) struct RelayPoolBuilder {
     pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
     pub(crate) monitor: Option<Monitor>,
     pub(crate) database: Arc<dyn NostrDatabase>,
-    pub(crate) signer: Option<Arc<dyn NostrSigner>>,
+    pub(crate) signer: Option<Arc<dyn AsyncNostrSigner>>,
     pub(crate) max_relays: Option<NonZeroUsize>,
     pub(crate) nip42_auto_authentication: bool,
     pub(crate) notification_channel_size: NonZeroUsize,

@@ -1368,7 +1368,7 @@ impl InnerRelay {
 
         // Construct event
         let event: Event = EventBuilder::auth(challenge, self.url.clone())
-            .sign(signer)
+            .sign_async(signer)
             .await?;
 
         // Subscribe to notifications

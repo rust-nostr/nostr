@@ -6,10 +6,11 @@
 
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
-use alloc::sync::Arc;
 use core::any::Any;
 use core::fmt::{self, Debug, Display};
 
+use crate::nips::nip04::{AsyncNip04, Nip04};
+use crate::nips::nip44::{AsyncNip44, Nip44};
 use crate::util::BoxedFuture;
 use crate::{Event, PublicKey, UnsignedEvent};
 
@@ -45,29 +46,6 @@ where
     }
 }
 
-#[doc(hidden)]
-pub trait IntoNostrSigner {
-    fn into_nostr_signer(self) -> Arc<dyn NostrSigner>;
-}
-
-impl<T> IntoNostrSigner for T
-where
-    T: NostrSigner + 'static,
-{
-    fn into_nostr_signer(self) -> Arc<dyn NostrSigner> {
-        Arc::new(self)
-    }
-}
-
-impl<T> IntoNostrSigner for Arc<T>
-where
-    T: NostrSigner + 'static,
-{
-    fn into_nostr_signer(self) -> Arc<dyn NostrSigner> {
-        self
-    }
-}
-
 /// Signer backend
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum SignerBackend<'a> {
@@ -85,68 +63,61 @@ pub enum SignerBackend<'a> {
     Custom(Cow<'a, str>),
 }
 
-/// Nostr signer abstraction
-pub trait NostrSigner: Any + Debug + Send + Sync {
+/// Nostr signer
+pub trait AsyncNostrSigner:
+    AsyncGetPublicKey
+    + AsyncSignEvent
+    + AsyncNip04<Error = SignerError>
+    + AsyncNip44<Error = SignerError>
+{
     /// Signer backend
     fn backend(&self) -> SignerBackend<'_>;
-
-    /// Get signer public key
-    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>>;
-
-    /// Sign an unsigned event
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>>;
-
-    /// NIP04 encrypt (deprecate and unsecure)
-    fn nip04_encrypt<'a>(
-        &'a self,
-        public_key: &'a PublicKey,
-        content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>>;
-
-    /// NIP04 decrypt
-    fn nip04_decrypt<'a>(
-        &'a self,
-        public_key: &'a PublicKey,
-        encrypted_content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>>;
-
-    /// NIP44 encrypt
-    fn nip44_encrypt<'a>(
-        &'a self,
-        public_key: &'a PublicKey,
-        content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>>;
-
-    /// NIP44 decrypt
-    fn nip44_decrypt<'a>(
-        &'a self,
-        public_key: &'a PublicKey,
-        payload: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>>;
 }
 
-impl NostrSigner for Arc<dyn NostrSigner> {
-    #[inline]
-    fn backend(&self) -> SignerBackend<'_> {
-        self.as_ref().backend()
-    }
+/// Get public key
+pub trait AsyncGetPublicKey: Any + Debug + Send + Sync {
+    /// Get signer public key
+    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>>;
+}
 
+/// Sign event
+pub trait AsyncSignEvent: Any + Debug + Send + Sync {
+    /// Sign an unsigned event
+    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>>;
+}
+
+impl<T> AsyncGetPublicKey for T
+where
+    T: AsRef<dyn AsyncNostrSigner> + Debug + Send + Sync + 'static,
+{
     #[inline]
     fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         self.as_ref().get_public_key()
     }
+}
 
+impl<T> AsyncSignEvent for T
+where
+    T: AsRef<dyn AsyncNostrSigner> + Debug + Send + Sync + 'static,
+{
     #[inline]
     fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
         self.as_ref().sign_event(unsigned)
     }
+}
+
+impl<T> AsyncNip04 for T
+where
+    T: AsRef<dyn AsyncNostrSigner> + Debug + Send + Sync + 'static,
+{
+    type Error = SignerError;
 
     #[inline]
     fn nip04_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
         self.as_ref().nip04_encrypt(public_key, content)
     }
 
@@ -155,16 +126,23 @@ impl NostrSigner for Arc<dyn NostrSigner> {
         &'a self,
         public_key: &'a PublicKey,
         encrypted_content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
         self.as_ref().nip04_decrypt(public_key, encrypted_content)
     }
+}
+
+impl<T> AsyncNip44 for T
+where
+    T: AsRef<dyn AsyncNostrSigner> + Debug + Send + Sync + 'static,
+{
+    type Error = SignerError;
 
     #[inline]
     fn nip44_encrypt<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
         self.as_ref().nip44_encrypt(public_key, content)
     }
 
@@ -173,7 +151,85 @@ impl NostrSigner for Arc<dyn NostrSigner> {
         &'a self,
         public_key: &'a PublicKey,
         payload: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>> {
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
+        self.as_ref().nip44_decrypt(public_key, payload)
+    }
+}
+
+/// Get public key
+pub trait GetPublicKey: Any + Debug {
+    /// Get signer public key
+    fn get_public_key(&self) -> Result<PublicKey, SignerError>;
+}
+
+/// Sign event
+pub trait SignEvent: Any + Debug {
+    /// Sign an unsigned event
+    fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError>;
+}
+
+/// Nostr signer
+pub trait NostrSigner:
+    GetPublicKey + SignEvent + Nip04<Error = SignerError> + Nip44<Error = SignerError>
+{
+    /// Signer backend
+    fn backend(&self) -> SignerBackend<'_>;
+}
+
+impl<T> GetPublicKey for T
+where
+    T: AsRef<dyn NostrSigner> + Debug + 'static,
+{
+    #[inline]
+    fn get_public_key(&self) -> Result<PublicKey, SignerError> {
+        self.as_ref().get_public_key()
+    }
+}
+
+impl<T> SignEvent for T
+where
+    T: AsRef<dyn NostrSigner> + Debug + 'static,
+{
+    #[inline]
+    fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
+        self.as_ref().sign_event(unsigned)
+    }
+}
+
+impl<T> Nip04 for T
+where
+    T: AsRef<dyn NostrSigner> + Debug + 'static,
+{
+    type Error = SignerError;
+
+    #[inline]
+    fn nip04_encrypt(&self, public_key: &PublicKey, content: &str) -> Result<String, SignerError> {
+        self.as_ref().nip04_encrypt(public_key, content)
+    }
+
+    #[inline]
+    fn nip04_decrypt(
+        &self,
+        public_key: &PublicKey,
+        encrypted_content: &str,
+    ) -> Result<String, SignerError> {
+        self.as_ref().nip04_decrypt(public_key, encrypted_content)
+    }
+}
+
+impl<T> Nip44 for T
+where
+    T: AsRef<dyn NostrSigner> + Debug + 'static,
+{
+    type Error = SignerError;
+
+    #[inline]
+    fn nip44_encrypt(&self, public_key: &PublicKey, content: &str) -> Result<String, Self::Error> {
+        self.as_ref().nip44_encrypt(public_key, content)
+    }
+
+    #[inline]
+    fn nip44_decrypt(&self, public_key: &PublicKey, payload: &str) -> Result<String, Self::Error> {
         self.as_ref().nip44_decrypt(public_key, payload)
     }
 }

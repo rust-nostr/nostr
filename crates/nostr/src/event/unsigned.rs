@@ -20,9 +20,10 @@ use super::error::Error;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::nips::nip13::{AsyncPowAdapter, PowAdapter};
+use crate::signer::{AsyncSignEvent, SignEvent};
 #[cfg(feature = "rand")]
 use crate::util;
-use crate::{Event, EventId, JsonUtil, Keys, Kind, NostrSigner, PublicKey, Tag, Tags, Timestamp};
+use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp};
 
 /// Unsigned event
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -130,9 +131,18 @@ impl UnsignedEvent {
 
     /// Sign an unsigned event
     #[inline]
-    pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
+    pub fn sign<T>(self, signer: &T) -> Result<Event, Error>
     where
-        T: NostrSigner,
+        T: SignEvent,
+    {
+        Ok(signer.sign_event(self)?)
+    }
+
+    /// Sign an unsigned event
+    #[inline]
+    pub async fn sign_async<T>(self, signer: &T) -> Result<Event, Error>
+    where
+        T: AsyncSignEvent,
     {
         Ok(signer.sign_event(self).await?)
     }

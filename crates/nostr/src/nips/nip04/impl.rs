@@ -3,15 +3,10 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP04: Encrypted Direct Message (deprecated in favor of NIP17)
-//!
-//! <div class="warning"><strong>Unsecure!</strong> Deprecated in favor of NIP17!</div>
-//!
-//! <https://github.com/nostr-protocol/nips/blob/master/04.md>
-
 use alloc::string::String;
 use alloc::vec::Vec;
 use core::fmt;
+use core::fmt::Debug;
 
 use aes::Aes256;
 use aes::cipher::block_padding::Pkcs7;
@@ -50,7 +45,7 @@ impl core::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Key(e) => e.fmt(f),
+            Self::Key(e) => write!(f, "{e}"),
             Self::InvalidContentFormat => f.write_str("Invalid NIP04 content format"),
             Self::Base64Decode => f.write_str("Error while decoding NIP04 from base64"),
             Self::Utf8Encode => f.write_str("Error while encoding NIP04 to UTF-8"),
