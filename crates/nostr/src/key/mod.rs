@@ -5,15 +5,11 @@
 
 //! Keys
 
-#[cfg(not(feature = "std"))]
-use core::cell::OnceCell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 #[cfg(feature = "std")]
 use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::sync::OnceLock as OnceCell;
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
@@ -85,7 +81,7 @@ pub struct Keys {
     /// Public key
     pub public_key: PublicKey,
     secret_key: SecretKey,
-    key_pair: OnceCell<Keypair>,
+    keypair: Keypair,
 }
 
 impl fmt::Debug for Keys {
@@ -139,13 +135,13 @@ impl Keys {
     where
         C: Signing,
     {
-        let key_pair: Keypair = Keypair::from_secret_key(secp, &secret_key);
-        let public_key: XOnlyPublicKey = XOnlyPublicKey::from_keypair(&key_pair).0;
+        let keypair: Keypair = Keypair::from_secret_key(secp, &secret_key);
+        let public_key: XOnlyPublicKey = XOnlyPublicKey::from_keypair(&keypair).0;
 
         Self {
             public_key: PublicKey::from(public_key),
             secret_key,
-            key_pair: OnceCell::from(key_pair),
+            keypair,
         }
     }
 
@@ -175,6 +171,9 @@ impl Keys {
     /// This constructor uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
     ///
     /// Use [`Keys::generate_with_rng`] to specify a custom random source.
+    ///
+    /// This internally construct a keypair, so for faster secret generation (i.e., for vanity pubkey mining),
+    /// it's suggested to use [`SecretKey::generate`] instead.
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn generate() -> Self {
@@ -183,9 +182,8 @@ impl Keys {
 
     /// Generate random keys
     ///
-    /// Generate random keys **without** construct the [`Keypair`].
-    /// This allows faster keys generation (i.e., for vanity pubkey mining).
-    /// The [`Keypair`] will be automatically created when needed and stored in a cell.
+    /// This internally construct a keypair, so for faster secret generation (i.e., for vanity pubkey mining),
+    /// it's suggested to use [`SecretKey::generate_with_rng`] instead.
     #[inline]
     #[cfg(feature = "rand")]
     pub fn generate_with_rng<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
@@ -194,13 +192,7 @@ impl Keys {
         R: RngCore,
     {
         let secret_key: SecretKey = SecretKey::generate_with_rng(rng);
-        let public_key: PublicKey = PublicKey::from_secret_key(secp, &secret_key);
-
-        Self {
-            public_key,
-            secret_key,
-            key_pair: OnceCell::new(),
-        }
+        Self::new_with_ctx(secp, secret_key)
     }
 
     /// Get public key
@@ -217,12 +209,8 @@ impl Keys {
 
     /// Get keypair
     #[inline]
-    pub fn key_pair<C>(&self, secp: &Secp256k1<C>) -> &Keypair
-    where
-        C: Signing,
-    {
-        self.key_pair
-            .get_or_init(|| Keypair::from_secret_key(secp, &self.secret_key))
+    pub fn keypair(&self) -> &Keypair {
+        &self.keypair
     }
 
     /// Creates a schnorr signature of the [`Message`].
@@ -260,8 +248,7 @@ impl Keys {
     where
         C: Signing,
     {
-        let keypair: &Keypair = self.key_pair(secp);
-        secp.sign_schnorr_with_aux_rand(message, keypair, aux)
+        secp.sign_schnorr_with_aux_rand(message, &self.keypair, aux)
     }
 }
 
