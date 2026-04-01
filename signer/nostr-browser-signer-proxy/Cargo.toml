@@ -15,7 +15,7 @@ keywords = ["nostr", "nip07", "browser", "signer", "proxy"]
 atomic-destructor.workspace = true
 bytes = "1.11"
 http-body-util = "0.1"
-hyper = { version = "1.6", features = ["server", "http1"] }
+hyper = { version = "1.9", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 nostr = { workspace = true, features = ["std"] }
 serde = { workspace = true, features = ["std", "derive"] }
