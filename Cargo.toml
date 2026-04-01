@@ -45,7 +45,7 @@ async-wsocket = {  git = "https://github.com/shadowylab/async-wsocket", rev = "0
 atomic-destructor = { version = "0.3", default-features = false }
 base64 = { version = "0.22", default-features = false }
 btreecap = "0.1"
-clap = "=4.4.18"
+clap = "=4.6.0"
 faster-hex = { version = "0.10", default-features = false }
 lru = { version = "0.16", default-features = false }
 negentropy = { version = "0.5", default-features = false }
