@@ -14,6 +14,7 @@ use core::cell::OnceCell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::ops::{Index, IndexMut};
 use core::slice::Iter;
 #[cfg(feature = "std")]
 use std::collections::hash_map::{Entry, HashMap};
@@ -83,6 +84,20 @@ impl Ord for Tags {
 impl Hash for Tags {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.list.hash(state);
+    }
+}
+
+impl Index<usize> for Tags {
+    type Output = Tag;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.list.index(index)
+    }
+}
+
+impl IndexMut<usize> for Tags {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.list.index_mut(index)
     }
 }
 
