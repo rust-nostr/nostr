@@ -70,12 +70,14 @@ impl QueryFilterPattern {
 }
 
 /// LMDB options
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub(crate) struct LmdbOptions {
     /// Whether to process request to vanish (NIP-62) events
     pub(crate) process_nip62: bool,
     /// Whether to process event deletion request (NIP-09) events
     pub(crate) process_nip09: bool,
+    /// Relay URL for relay-specific request to vanish (NIP-62).
+    pub(crate) relay_url: Option<RelayUrl>,
 }
 
 #[derive(Debug, Clone)]
@@ -192,6 +194,7 @@ impl Lmdb {
         let options = LmdbOptions {
             process_nip62: builder.process_nip62,
             process_nip09: builder.process_nip09,
+            relay_url: builder.relay_url,
         };
 
         let lmdb = Self {
@@ -503,8 +506,12 @@ impl Lmdb {
 
         // Handle request to vanish
         if self.options.process_nip62 && event.kind == Kind::RequestToVanish {
-            // For now, handling `ALL_RELAYS` only
-            if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
+            let is_targeted = event.tags.filter_standardized(TagKind::Relay).any(|tag| {
+                matches!(tag, TagStandard::AllRelays)
+                    || matches!(tag, TagStandard::Relay(relay) if Some(relay) == self.options.relay_url.as_ref())
+            });
+
+            if is_targeted {
                 self.handle_request_to_vanish(txn, &event.pubkey)?;
             }
         }
