@@ -28,23 +28,11 @@ enum SqlSelectClause {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct NostrSqliteOptions {
     /// Whether to process request to vanish (NIP-62) events
-    process_nip62: bool,
+    pub(crate) process_nip62: bool,
     /// Whether to process event deletion request (NIP-09) events
-    process_nip09: bool,
-}
-
-impl NostrSqliteOptions {
-    #[inline]
-    fn process_nip09(mut self, process_nip09: bool) -> Self {
-        self.process_nip09 = process_nip09;
-        self
-    }
-
-    #[inline]
-    fn process_nip62(mut self, process_nip62: bool) -> Self {
-        self.process_nip62 = process_nip62;
-        self
-    }
+    pub(crate) process_nip09: bool,
+    /// Relay URL for relay-specific request to vanish (NIP-62).
+    pub(crate) relay_url: Option<RelayUrl>,
 }
 
 /// Nostr SQLite database
@@ -110,9 +98,11 @@ impl NostrSqlite {
     }
 
     pub(crate) async fn from_builder(builder: NostrSqliteBuilder) -> Result<Self, Error> {
-        let options = NostrSqliteOptions::default()
-            .process_nip09(builder.process_nip09)
-            .process_nip62(builder.process_nip62);
+        let options = NostrSqliteOptions {
+            process_nip09: builder.process_nip09,
+            process_nip62: builder.process_nip62,
+            relay_url: builder.relay_url,
+        };
 
         match builder.db_type {
             DatabaseConnType::InMemory => Self::in_memory(options).await,
@@ -290,8 +280,12 @@ impl NostrSqlite {
         }
 
         if options.process_nip62 && event.kind == Kind::RequestToVanish {
-            // For now, handling `ALL_RELAYS` only
-            if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
+            let is_targeted = event.tags.filter_standardized(TagKind::Relay).any(|tag| {
+                matches!(tag, TagStandard::AllRelays)
+                    || matches!(tag, TagStandard::Relay(relay) if Some(relay) == options.relay_url.as_ref())
+            });
+
+            if is_targeted {
                 Self::handle_request_to_vanish(&tx, &event.pubkey)?;
             }
         }

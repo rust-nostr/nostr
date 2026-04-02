@@ -2,6 +2,8 @@
 
 use std::path::{Path, PathBuf};
 
+use nostr::types::RelayUrl;
+
 use crate::error::Error;
 use crate::store::NostrSqlite;
 
@@ -25,6 +27,8 @@ pub struct NostrSqliteBuilder {
     pub(crate) process_nip62: bool,
     /// Whether to process event deletion request (NIP-09) events
     pub(crate) process_nip09: bool,
+    /// Relay URL for relay-specific request to vanish (NIP-62)
+    pub(crate) relay_url: Option<RelayUrl>,
 }
 
 impl NostrSqliteBuilder {
@@ -84,6 +88,13 @@ impl NostrSqliteBuilder {
         self
     }
 
+    /// Set the relay URL to handle relay-specific request to vanish
+    #[inline]
+    pub fn relay_url(mut self, relay_url: RelayUrl) -> Self {
+        self.relay_url = Some(relay_url);
+        self
+    }
+
     /// Build [`NostrSqlite`] database
     #[inline]
     pub async fn build(self) -> Result<NostrSqlite, Error> {
@@ -101,6 +112,7 @@ impl Default for NostrSqliteBuilder {
             db_type: Default::default(),
             process_nip62: true,
             process_nip09: true,
+            relay_url: None,
         }
     }
 }
