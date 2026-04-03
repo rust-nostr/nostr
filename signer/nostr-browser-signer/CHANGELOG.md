@@ -28,6 +28,10 @@
 -->
 ## Unreleased
 
+### Breaking changes
+
+- Move browser/extension-related errors to a dedicated enum (https://github.com/rust-nostr/nostr/pull/1327)
+
 ### Changed
 
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
