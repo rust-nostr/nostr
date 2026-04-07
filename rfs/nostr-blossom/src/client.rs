@@ -4,6 +4,7 @@ use std::time::Duration;
 
 use base64::Engine;
 use base64::engine::general_purpose;
+use nostr::event::unsigned::AsyncFinalizeEvent;
 use nostr::hashes::Hash;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::signer::{AsyncGetPublicKey, AsyncSignEvent};
@@ -332,7 +333,7 @@ impl BlossomClient {
         T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let auth_event: Event = EventBuilder::blossom_auth(authz.clone())
-            .sign_async(signer)
+            .finalize_async(signer)
             .await?;
         let encoded_auth: String = general_purpose::STANDARD.encode(auth_event.as_json());
         let value: String = format!("Nostr {}", encoded_auth);

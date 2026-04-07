@@ -370,6 +370,8 @@ mod tests {
     use super::*;
     #[cfg(all(feature = "std", feature = "os-rng"))]
     use crate::Keys;
+    #[cfg(all(feature = "std", feature = "os-rng"))]
+    use crate::event::unsigned::FinalizeEvent;
 
     #[test]
     fn test_tags_deser_without_recommended_relay() {
@@ -383,7 +385,7 @@ mod tests {
     fn test_custom_kind() {
         let keys = Keys::generate();
         let e: Event = EventBuilder::new(Kind::Custom(123), "my content")
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
 
         let serialized = e.as_json();
@@ -400,7 +402,7 @@ mod tests {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")
             .tags([Tag::expiration(Timestamp::from(1600000000))])
-            .sign_with_keys(&my_keys)
+            .finalize(&my_keys)
             .unwrap();
 
         assert!(&event.is_expired());
@@ -415,7 +417,7 @@ mod tests {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")
             .tags([Tag::expiration(Timestamp::from(expiry_date))])
-            .sign_with_keys(&my_keys)
+            .finalize(&my_keys)
             .unwrap();
 
         assert!(!&event.is_expired());
@@ -426,7 +428,7 @@ mod tests {
     fn test_event_without_expiration_tag() {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")
-            .sign_with_keys(&my_keys)
+            .finalize(&my_keys)
             .unwrap();
         assert!(!&event.is_expired());
     }

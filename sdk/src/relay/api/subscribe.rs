@@ -144,6 +144,7 @@ mod tests {
 
     use async_utility::time;
     use futures::StreamExt;
+    use nostr::prelude::FinalizeEvent;
     use nostr::{Event, EventBuilder, EventId, Keys, Kind};
     use nostr_relay_builder::prelude::*;
 
@@ -218,7 +219,7 @@ mod tests {
 
         // Event
         let kind = Kind::Custom(22_222); // Ephemeral kind
-        let event: Event = EventBuilder::new(kind, "").sign_with_keys(&keys).unwrap();
+        let event: Event = EventBuilder::new(kind, "").finalize(&keys).unwrap();
 
         let event_id: EventId = event.id;
 

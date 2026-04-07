@@ -6,7 +6,7 @@
 
 use std::fmt;
 
-use nostr::event::builder;
+use nostr::event;
 use nostr::signer::SignerError;
 use nostr::types::ParseError;
 use reqwest::Response;
@@ -18,7 +18,7 @@ pub enum Error {
     /// Nostr signer error
     Signer(SignerError),
     /// Event builder error
-    EventBuilder(builder::Error),
+    Event(event::Error),
     /// Reqwest error
     Reqwest(reqwest::Error),
     /// Invalid header value
@@ -59,7 +59,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Signer(e) => write!(f, "{e}"),
-            Self::EventBuilder(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
             Self::Reqwest(e) => write!(f, "{e}"),
             Self::InvalidHeaderValue(e) => write!(f, "{e}"),
             Self::Url(e) => write!(f, "{e}"),
@@ -88,9 +88,9 @@ impl From<SignerError> for Error {
     }
 }
 
-impl From<builder::Error> for Error {
-    fn from(e: builder::Error) -> Self {
-        Self::EventBuilder(e)
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 

@@ -514,6 +514,7 @@ mod tests {
     use core::str::FromStr;
 
     use super::*;
+    use crate::prelude::FinalizeEvent;
     use crate::{Event, Keys, Tags};
 
     #[test]
@@ -536,11 +537,7 @@ mod tests {
         };
 
         let keys = Keys::generate();
-        let event: Event = repo
-            .to_event_builder()
-            .unwrap()
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event: Event = repo.to_event_builder().unwrap().finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::GitRepoAnnouncement);
         assert!(event.content.is_empty());
@@ -576,11 +573,7 @@ mod tests {
         };
 
         let keys = Keys::generate();
-        let event: Event = repo
-            .to_event_builder()
-            .unwrap()
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event: Event = repo.to_event_builder().unwrap().finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::GitIssue);
         assert_eq!(event.content, "My issue content");
@@ -628,11 +621,7 @@ mod tests {
         };
 
         let keys = Keys::generate();
-        let event: Event = repo
-            .to_event_builder()
-            .unwrap()
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event: Event = repo.to_event_builder().unwrap().finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::GitPatch);
         assert_eq!(event.content, "<patch>");

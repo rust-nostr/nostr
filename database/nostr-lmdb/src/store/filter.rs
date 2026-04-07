@@ -170,15 +170,13 @@ impl From<Filter> for DatabaseFilter {
 
 #[cfg(test)]
 mod tests {
-    use nostr::{Event, EventBuilder, Keys, Tag};
+    use nostr::prelude::*;
 
     use super::*;
 
     fn create_test_event(content: &str) -> Event {
         let keys = Keys::generate();
-        EventBuilder::text_note(content)
-            .sign_with_keys(&keys)
-            .unwrap()
+        EventBuilder::text_note(content).finalize(&keys).unwrap()
     }
 
     #[test]
@@ -205,7 +203,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("content")
             .tag(Tag::parse(["title", "Search userfacing tags"]).unwrap())
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
         let event: EventBorrow = (&event).into();
 

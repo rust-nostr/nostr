@@ -40,13 +40,13 @@ fn main() -> Result<()> {
         .lud16("pay@yukikishimoto.com")
         .custom_field("custom_field", "my value");
 
-    let event: Event = EventBuilder::metadata(&metadata).sign_with_keys(&keys)?;
+    let event: Event = EventBuilder::metadata(&metadata).sign(&keys)?;
 
     // New text note
-    let event: Event = EventBuilder::text_note("Hello from rust-nostr").sign_with_keys(&keys)?;
+    let event: Event = EventBuilder::text_note("Hello from rust-nostr").sign(&keys)?;
 
     // New POW text note
-    let event: Event = EventBuilder::text_note("POW text note from rust-nostr").pow(20).sign_with_keys(&keys)?;
+    let event: Event = EventBuilder::text_note("POW text note from rust-nostr").pow(20).sign(&keys)?;
 
     // Convert client message to JSON
     let json = ClientMessage::event(event).as_json();

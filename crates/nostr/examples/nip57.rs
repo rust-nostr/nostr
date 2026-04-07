@@ -12,7 +12,7 @@ fn main() -> Result<()> {
     let relays = [RelayUrl::parse("wss://relay.damus.io").unwrap()];
     let data = ZapRequestData::new(public_key, relays).message("Zap!");
 
-    let public_zap: Event = EventBuilder::public_zap_request(data.clone()).sign_with_keys(&keys)?;
+    let public_zap: Event = EventBuilder::public_zap_request(data.clone()).finalize(&keys)?;
     println!("Public zap request: {}", public_zap.as_json());
 
     let anon_zap: Event = nip57::anonymous_zap_request(data.clone())?;

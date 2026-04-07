@@ -3,6 +3,7 @@
 // Distributed under the MIT software license
 
 use alloc::string::{String, ToString};
+use core::convert::Infallible;
 use core::fmt;
 
 use crate::signer::SignerError;
@@ -12,6 +13,8 @@ use crate::signer::SignerError;
 pub enum Error {
     /// Error serializing or deserializing JSON data
     Json(String),
+    /// Builder error
+    Builder(String),
     /// Signer error
     Signer(String),
     /// Hex decode error
@@ -30,6 +33,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Json(e) => e.fmt(f),
+            Self::Builder(e) => e.fmt(f),
             Self::Signer(e) => e.fmt(f),
             Self::Hex(e) => e.fmt(f),
             Self::UnknownKey(key) => write!(f, "Unknown key: {key}"),
@@ -54,5 +58,11 @@ impl From<SignerError> for Error {
 impl From<faster_hex::Error> for Error {
     fn from(e: faster_hex::Error) -> Self {
         Self::Hex(e)
+    }
+}
+
+impl From<Infallible> for Error {
+    fn from(value: Infallible) -> Self {
+        match value {}
     }
 }

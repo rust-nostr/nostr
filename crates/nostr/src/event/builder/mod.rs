@@ -4,29 +4,22 @@
 
 //! Event builder
 
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
+use core::num::NonZeroU8;
 use core::ops::Range;
-#[cfg(feature = "pow-multi-thread")]
-use std::sync::Arc;
-#[cfg(feature = "pow-multi-thread")]
-use std::sync::atomic::{AtomicBool, Ordering};
-#[cfg(feature = "pow-multi-thread")]
-use std::thread::{self, JoinHandle};
 
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
-#[cfg(feature = "rand")]
-use rand::{CryptoRng, RngCore};
-#[cfg(feature = "rand")]
-use secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{Value, json};
 
+mod adapters;
+
+pub use self::adapters::*;
 use crate::nips::nip62::VanishTarget;
 use crate::prelude::*;
+use crate::util::BoxedFuture;
 
 /// Wrong kind error
 #[derive(Debug, PartialEq, Eq)]
@@ -186,6 +179,80 @@ pub struct EventBuilder {
     pub dedup_tags: bool,
 }
 
+impl BuildUnsignedEvent for EventBuilder {
+    type Error = Infallible;
+
+    fn build(mut self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error> {
+        // If self-tagging isn't allowed, discard all `p` tags that match the event author.
+        if !self.allow_self_tagging {
+            let public_key_hex: String = public_key.to_hex();
+            self.tags.retain(|t| {
+                if t.kind() == TagKind::p() {
+                    if let Some(content) = t.content() {
+                        if content == public_key_hex {
+                            return false; // Remove `p` tag that match author
+                        }
+                    }
+                }
+
+                true // No `p` tag or author public key not match
+            });
+        }
+
+        // Deduplicate tags
+        if self.dedup_tags {
+            self.tags.dedup();
+        }
+
+        // Check if should be POW
+        // match self.pow {
+        //     Some(difficulty) if difficulty > 0 => {
+        //         #[cfg(not(feature = "pow-multi-thread"))]
+        //         {
+        //             self.mine_pow_single_thread(public_key, difficulty)
+        //         }
+        //         #[cfg(feature = "pow-multi-thread")]
+        //         {
+        //             self.mine_pow_multi_thread(public_key, difficulty)
+        //         }
+        //     }
+        //     // No POW difficulty set OR difficulty == 0
+        //     _ => {
+        //         let mut unsigned: UnsignedEvent = UnsignedEvent {
+        //             id: None,
+        //             pubkey: public_key,
+        //             created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
+        //             kind: self.kind,
+        //             tags: self.tags,
+        //             content: self.content,
+        //         };
+        //         unsigned.ensure_id();
+        //         unsigned
+        //     }
+        // }
+
+        Ok(UnsignedEvent {
+            id: None,
+            pubkey: public_key,
+            created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
+            kind: self.kind,
+            tags: self.tags,
+            content: self.content,
+        })
+    }
+}
+
+impl AsyncBuildUnsignedEvent for EventBuilder {
+    type Error = Infallible;
+
+    fn build_async(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'static, Result<UnsignedEvent, Self::Error>> {
+        Box::pin(async move { self.build(public_key) })
+    }
+}
+
 impl EventBuilder {
     /// New event builder
     #[inline]
@@ -238,17 +305,6 @@ impl EventBuilder {
         self
     }
 
-    /// Set POW difficulty
-    ///
-    /// Only values `> 0` are accepted!
-    #[inline]
-    pub fn pow(mut self, difficulty: u8) -> Self {
-        if difficulty > 0 {
-            self.pow = Some(difficulty);
-        }
-        self
-    }
-
     /// Allow self-tagging
     ///
     /// When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
@@ -265,258 +321,180 @@ impl EventBuilder {
         self
     }
 
-    /// Returns the [`EventId`] if the POW difficulty is satisfied.
-    fn check_nonce(
-        &mut self,
-        public_key: &PublicKey,
-        created_at: &Timestamp,
-        nonce: u128,
-        difficulty: u8,
-    ) -> Option<EventId> {
-        // Push POW tag
-        self.tags.push(Tag::pow(nonce, difficulty));
-
-        // Compute event ID
-        let id: EventId = EventId::new(
-            public_key,
-            created_at,
-            &self.kind,
-            &self.tags,
-            &self.content,
-        );
-
-        // Check POW difficulty
-        if id.check_pow(difficulty) {
-            Some(id)
-        } else {
-            // Remove tag if the nonce doesn't satisfy the difficulty requirement
-            self.tags.pop();
-            None
-        }
-    }
-
-    /// Mine PoW using single thread (fallback method)
-    fn mine_pow_single_thread(mut self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
-        let mut nonce: u128 = 0;
-
-        loop {
-            nonce += 1;
-
-            let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
-
-            // Check if the nonce satisfies the difficulty requirement
-            if let Some(id) = self.check_nonce(&public_key, &created_at, nonce, difficulty) {
-                return UnsignedEvent {
-                    id: Some(id),
-                    pubkey: public_key,
-                    created_at,
-                    kind: self.kind,
-                    tags: self.tags,
-                    content: self.content,
-                };
-            }
-        }
-    }
-
-    /// Mine PoW using multiple threads with std::thread
-    ///
-    /// Fallback to [`Self::mine_pow_single_thread`] if:
-    /// - the number of threads is `1`;
-    /// - thread spawning or coordination fails;
-    /// - no valid solution is found by any thread (rare edge case)
-    #[cfg(feature = "pow-multi-thread")]
-    fn mine_pow_multi_thread(self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
-        // Get the number of available CPU cores
-        let num_threads = thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1);
-
-        // Single thread fallback
-        if num_threads == 1 {
-            return self.mine_pow_single_thread(public_key, difficulty);
-        }
-
-        let found: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-
-        let mut handles: Vec<JoinHandle<Option<UnsignedEvent>>> = Vec::with_capacity(num_threads);
-
-        // Spawn threads
-        for thread_id in 0..num_threads {
-            let found: Arc<AtomicBool> = found.clone();
-
-            let mut builder: Self = self.clone();
-
-            // Create a timestamp
-            // TODO: move this into the thread loop
-            let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
-
-            let handle: JoinHandle<Option<UnsignedEvent>> = thread::spawn(move || {
-                let mut nonce: u128 = thread_id as u128;
-
-                loop {
-                    // Check if another thread found the solution
-                    if found.load(Ordering::Relaxed) {
-                        break;
-                    }
-
-                    nonce += num_threads as u128;
-
-                    // Check if the nonce satisfies the difficulty requirement
-                    if let Some(id) =
-                        builder.check_nonce(&public_key, &created_at, nonce, difficulty)
-                    {
-                        // We found a valid nonce, signal other threads to stop and store the result
-                        found.store(true, Ordering::Relaxed);
-
-                        // Return the unsigned event
-                        return Some(UnsignedEvent {
-                            id: Some(id),
-                            pubkey: public_key,
-                            created_at,
-                            kind: builder.kind,
-                            tags: builder.tags,
-                            content: builder.content,
-                        });
-                    }
-                }
-
-                None
-            });
-
-            handles.push(handle);
-        }
-
-        // Wait for all threads to finish (non-blocking)
-        loop {
-            if found.load(Ordering::Relaxed) {
-                break;
-            }
-        }
-
-        // Find result
-        for handle in handles.into_iter() {
-            // NOTE: this shouldn't block the current thread,
-            // since above we've checked if the solution has been found
-            // (so all threads should be terminated).
-            if let Ok(Some(unsigned)) = handle.join() {
-                return unsigned;
-            }
-        }
-
-        // Single thread fallback
-        self.mine_pow_single_thread(public_key, difficulty)
-    }
-
-    /// Build an unsigned event
-    ///
-    /// By default, this method removes any `p` tags that match the author's public key.
-    /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
-    pub fn build(mut self, public_key: PublicKey) -> UnsignedEvent {
-        // If self-tagging isn't allowed, discard all `p` tags that match the event author.
-        if !self.allow_self_tagging {
-            let public_key_hex: String = public_key.to_hex();
-            self.tags.retain(|t| {
-                if t.kind() == TagKind::p() {
-                    if let Some(content) = t.content() {
-                        if content == public_key_hex {
-                            return false; // Remove `p` tag that match author
-                        }
-                    }
-                }
-
-                true // No `p` tag or author public key not match
-            });
-        }
-
-        // Deduplicate tags
-        if self.dedup_tags {
-            self.tags.dedup();
-        }
-
-        // Check if should be POW
-        match self.pow {
-            Some(difficulty) if difficulty > 0 => {
-                #[cfg(not(feature = "pow-multi-thread"))]
-                {
-                    self.mine_pow_single_thread(public_key, difficulty)
-                }
-                #[cfg(feature = "pow-multi-thread")]
-                {
-                    self.mine_pow_multi_thread(public_key, difficulty)
-                }
-            }
-            // No POW difficulty set OR difficulty == 0
-            _ => {
-                let mut unsigned: UnsignedEvent = UnsignedEvent {
-                    id: None,
-                    pubkey: public_key,
-                    created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
-                    kind: self.kind,
-                    tags: self.tags,
-                    content: self.content,
-                };
-                unsigned.ensure_id();
-                unsigned
-            }
-        }
-    }
-
-    /// Build, sign and return [`Event`]
-    ///
-    /// Shortcut for `builder.build(public_key).sign(signer)`.
-    ///
-    /// Check [`EventBuilder::build`] to learn more.
+    /// Set POW difficulty
     #[inline]
-    #[cfg(feature = "std")]
-    pub fn sign<T>(self, signer: &T) -> Result<Event, Error>
-    where
-        T: GetPublicKey + SignEvent,
-    {
-        let public_key: PublicKey = signer.get_public_key()?;
-        Ok(self.build(public_key).sign(signer)?)
+    pub fn pow<Adapter>(self, difficulty: NonZeroU8, adapter: Adapter) -> Pow<Self, Adapter> {
+        Pow::new(self, adapter, difficulty)
     }
 
-    /// Build, sign and return [`Event`]
-    ///
-    /// Shortcut for `builder.build(public_key).sign(signer)`.
-    ///
-    /// Check [`EventBuilder::build`] to learn more.
-    #[inline]
-    #[cfg(feature = "std")]
-    pub async fn sign_async<T>(self, signer: &T) -> Result<Event, Error>
-    where
-        T: AsyncGetPublicKey + AsyncSignEvent,
-    {
-        let public_key: PublicKey = signer.get_public_key().await?;
-        Ok(self.build(public_key).sign_async(signer).await?)
-    }
+    // /// Returns the [`EventId`] if the POW difficulty is satisfied.
+    // fn check_nonce(
+    //     &mut self,
+    //     public_key: &PublicKey,
+    //     created_at: &Timestamp,
+    //     nonce: u128,
+    //     difficulty: u8,
+    // ) -> Option<EventId> {
+    //     // Push POW tag
+    //     self.tags.push(Tag::pow(nonce, difficulty));
+    //
+    //     // Compute event ID
+    //     let id: EventId = EventId::new(
+    //         public_key,
+    //         created_at,
+    //         &self.kind,
+    //         &self.tags,
+    //         &self.content,
+    //     );
+    //
+    //     // Check POW difficulty
+    //     if id.check_pow(difficulty) {
+    //         Some(id)
+    //     } else {
+    //         // Remove tag if the nonce doesn't satisfy the difficulty requirement
+    //         self.tags.pop();
+    //         None
+    //     }
+    // }
+    //
+    // /// Mine PoW using single thread (fallback method)
+    // fn mine_pow_single_thread(mut self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
+    //     let mut nonce: u128 = 0;
+    //
+    //     loop {
+    //         nonce += 1;
+    //
+    //         let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
+    //
+    //         // Check if the nonce satisfies the difficulty requirement
+    //         if let Some(id) = self.check_nonce(&public_key, &created_at, nonce, difficulty) {
+    //             return UnsignedEvent {
+    //                 id: Some(id),
+    //                 pubkey: public_key,
+    //                 created_at,
+    //                 kind: self.kind,
+    //                 tags: self.tags,
+    //                 content: self.content,
+    //             };
+    //         }
+    //     }
+    // }
+    //
+    // /// Mine PoW using multiple threads with std::thread
+    // ///
+    // /// Fallback to [`Self::mine_pow_single_thread`] if:
+    // /// - the number of threads is `1`;
+    // /// - thread spawning or coordination fails;
+    // /// - no valid solution is found by any thread (rare edge case)
+    // #[cfg(feature = "pow-multi-thread")]
+    // fn mine_pow_multi_thread(self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
+    //     // Get the number of available CPU cores
+    //     let num_threads = thread::available_parallelism()
+    //         .map(|n| n.get())
+    //         .unwrap_or(1);
+    //
+    //     // Single thread fallback
+    //     if num_threads == 1 {
+    //         return self.mine_pow_single_thread(public_key, difficulty);
+    //     }
+    //
+    //     let found: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+    //
+    //     let mut handles: Vec<JoinHandle<Option<UnsignedEvent>>> = Vec::with_capacity(num_threads);
+    //
+    //     // Spawn threads
+    //     for thread_id in 0..num_threads {
+    //         let found: Arc<AtomicBool> = found.clone();
+    //
+    //         let mut builder: Self = self.clone();
+    //
+    //         // Create a timestamp
+    //         // TODO: move this into the thread loop
+    //         let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
+    //
+    //         let handle: JoinHandle<Option<UnsignedEvent>> = thread::spawn(move || {
+    //             let mut nonce: u128 = thread_id as u128;
+    //
+    //             loop {
+    //                 // Check if another thread found the solution
+    //                 if found.load(Ordering::Relaxed) {
+    //                     break;
+    //                 }
+    //
+    //                 nonce += num_threads as u128;
+    //
+    //                 // Check if the nonce satisfies the difficulty requirement
+    //                 if let Some(id) =
+    //                     builder.check_nonce(&public_key, &created_at, nonce, difficulty)
+    //                 {
+    //                     // We found a valid nonce, signal other threads to stop and store the result
+    //                     found.store(true, Ordering::Relaxed);
+    //
+    //                     // Return the unsigned event
+    //                     return Some(UnsignedEvent {
+    //                         id: Some(id),
+    //                         pubkey: public_key,
+    //                         created_at,
+    //                         kind: builder.kind,
+    //                         tags: builder.tags,
+    //                         content: builder.content,
+    //                     });
+    //                 }
+    //             }
+    //
+    //             None
+    //         });
+    //
+    //         handles.push(handle);
+    //     }
+    //
+    //     // Wait for all threads to finish (non-blocking)
+    //     loop {
+    //         if found.load(Ordering::Relaxed) {
+    //             break;
+    //         }
+    //     }
+    //
+    //     // Find result
+    //     for handle in handles.into_iter() {
+    //         // NOTE: this shouldn't block the current thread,
+    //         // since above we've checked if the solution has been found
+    //         // (so all threads should be terminated).
+    //         if let Ok(Some(unsigned)) = handle.join() {
+    //             return unsigned;
+    //         }
+    //     }
+    //
+    //     // Single thread fallback
+    //     self.mine_pow_single_thread(public_key, difficulty)
+    // }
 
-    /// Build, sign and return [`Event`] using [`Keys`] signer
-    ///
-    /// Check [`EventBuilder::sign_with_ctx`] to learn more.
-    #[inline]
-    #[cfg(all(feature = "std", feature = "os-rng"))]
-    pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), keys)
-    }
-
-    /// Build, sign and return [`Event`] using [`Keys`] signer
-    ///
-    /// Check [`EventBuilder::build`] to learn more.
-    #[cfg(feature = "rand")]
-    pub fn sign_with_ctx<C, R>(
-        self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        keys: &Keys,
-    ) -> Result<Event, Error>
-    where
-        C: Signing + Verification,
-        R: RngCore + CryptoRng,
-    {
-        let pubkey: PublicKey = keys.public_key();
-        Ok(self.build(pubkey).sign_with_ctx(secp, rng, keys)?)
-    }
+    // /// Build, sign and return [`Event`] using [`Keys`] signer
+    // ///
+    // /// Check [`EventBuilder::sign_with_ctx`] to learn more.
+    // #[inline]
+    // #[cfg(all(feature = "std", feature = "os-rng"))]
+    // pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
+    //     self.sign_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), keys)
+    // }
+    //
+    // /// Build, sign and return [`Event`] using [`Keys`] signer
+    // ///
+    // /// Check [`EventBuilder::build`] to learn more.
+    // #[cfg(feature = "rand")]
+    // pub fn sign_with_ctx<C, R>(
+    //     self,
+    //     secp: &Secp256k1<C>,
+    //     rng: &mut R,
+    //     keys: &Keys,
+    // ) -> Result<Event, Error>
+    // where
+    //     C: Signing + Verification,
+    //     R: RngCore + CryptoRng,
+    // {
+    //     let pubkey: PublicKey = keys.public_key();
+    //     Ok(self.build(pubkey).sign_with_ctx(secp, rng, keys)?)
+    // }
 
     /// Profile metadata
     ///
@@ -1491,10 +1469,10 @@ impl EventBuilder {
         // Push received public key
         tags.push(Tag::public_key(*receiver));
 
-        Self::new(Kind::GiftWrap, content)
+        Ok(Self::new(Kind::GiftWrap, content)
             .tags(tags)
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
-            .sign_with_keys(&keys)
+            .finalize(&keys)?)
     }
 
     /// Gift Wrap
@@ -1514,7 +1492,7 @@ impl EventBuilder {
     {
         let seal: Event = Self::seal(signer, receiver, rumor)
             .await?
-            .sign_async(signer)
+            .finalize_async(signer)
             .await?;
         Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
     }
@@ -1567,7 +1545,8 @@ impl EventBuilder {
         let public_key: PublicKey = signer.get_public_key().await?;
         let rumor: UnsignedEvent = Self::private_msg_rumor(receiver, message)
             .tags(rumor_extra_tags)
-            .build(public_key);
+            .build(public_key)
+            .unwrap_infallible();
         Self::gift_wrap(signer, &receiver, rumor, []).await
     }
 
@@ -2031,9 +2010,7 @@ mod tests {
                 .unwrap(),
         );
 
-        let event = EventBuilder::text_note("hello")
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event = EventBuilder::text_note("hello").finalize(&keys).unwrap();
 
         let serialized = event.as_json();
         let deserialized = Event::from_json(serialized).unwrap();
@@ -2050,7 +2027,7 @@ mod tests {
         // Self-tagging
         let event = EventBuilder::text_note("hello")
             .tag(Tag::public_key(keys.public_key()))
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
         assert!(event.tags.is_empty());
 
@@ -2058,7 +2035,7 @@ mod tests {
         let other = Keys::generate();
         let event = EventBuilder::text_note("hello 2")
             .tag(Tag::public_key(other.public_key()))
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
         assert_eq!(event.tags.len(), 1);
     }
@@ -2200,7 +2177,7 @@ mod tests {
         let event_builder: Event =
             EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
                 .unwrap()
-                .sign_with_keys(&keys)
+                .finalize(&keys)
                 .unwrap();
 
         assert_eq!(event_builder.kind, Kind::BadgeAward);
@@ -2226,12 +2203,12 @@ mod tests {
         ];
         let bravery_badge_event =
             EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
-                .sign_with_keys(&badge_one_keys)
+                .finalize(&badge_one_keys)
                 .unwrap();
         let bravery_badge_award =
             EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())
                 .unwrap()
-                .sign_with_keys(&badge_one_keys)
+                .finalize(&badge_one_keys)
                 .unwrap();
 
         // Badge 2
@@ -2240,12 +2217,12 @@ mod tests {
 
         let honor_badge_event =
             EventBuilder::define_badge("honor", None, None, None, None, Vec::new())
-                .sign_with_keys(&badge_two_keys)
+                .finalize(&badge_two_keys)
                 .unwrap();
         let honor_badge_award =
             EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())
                 .unwrap()
-                .sign_with_keys(&badge_two_keys)
+                .finalize(&badge_two_keys)
                 .unwrap();
 
         let example_event_json = format!(
@@ -2273,7 +2250,7 @@ mod tests {
         let profile_badges =
             EventBuilder::profile_badges(badge_definitions, badge_awards, &pub_key)
                 .unwrap()
-                .sign_with_keys(&keys)
+                .finalize(&keys)
                 .unwrap();
 
         assert_eq!(profile_badges.kind, Kind::ProfileBadges);
@@ -2291,7 +2268,7 @@ mod tests {
         // Build reply
         let reply_keys = Keys::generate();
         let reply = EventBuilder::text_note_reply("Test reply", &root_event, None, None)
-            .sign_with_keys(&reply_keys)
+            .finalize(&reply_keys)
             .unwrap();
         assert_eq!(reply.tags.public_keys().count(), 1); // Root author
         assert_eq!(
@@ -2308,7 +2285,7 @@ mod tests {
         let other_keys = Keys::generate();
         let reply_of_reply =
             EventBuilder::text_note_reply("Test reply of reply", &reply, Some(&root_event), None)
-                .sign_with_keys(&other_keys)
+                .finalize(&other_keys)
                 .unwrap();
         assert_eq!(reply_of_reply.tags.public_keys().count(), 2); // Reply + root author
 
@@ -2328,10 +2305,10 @@ mod tests {
     fn replaceable_repost() {
         let keys = Keys::generate();
         let replaceable = EventBuilder::mute_list(MuteList::default())
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
         let repost = EventBuilder::repost(&replaceable, None)
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
 
         assert_eq!(repost.kind, Kind::GenericRepost);
@@ -2353,10 +2330,10 @@ mod tests {
     fn addressable_repost() {
         let keys = Keys::generate();
         let addressable = EventBuilder::follow_set("lorem", [])
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
         let repost = EventBuilder::repost(&addressable, None)
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
 
         assert_eq!(repost.kind, Kind::GenericRepost);
@@ -2386,7 +2363,7 @@ mod benches {
     pub fn builder_to_event(bh: &mut Bencher) {
         let keys = Keys::generate();
         bh.iter(|| {
-            black_box(EventBuilder::text_note("hello").sign_with_keys(&keys)).unwrap();
+            black_box(EventBuilder::text_note("hello").finalize(&keys)).unwrap();
         });
     }
 }

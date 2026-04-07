@@ -6,16 +6,18 @@
 
 use std::fmt;
 
-use nostr::PublicKey;
 use nostr::event::builder;
 use nostr::nips::{nip04, nip44, nip46};
 use nostr::types::url;
+use nostr::{PublicKey, event};
 use nostr_sdk::client;
 use tokio::sync::SetError;
 
 /// Nostr Connect error
 #[derive(Debug)]
 pub enum Error {
+    /// Event error
+    Event(event::Error),
     /// Event builder error
     Builder(builder::Error),
     /// NIP04 error
@@ -47,6 +49,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Event(e) => e.fmt(f),
             Self::Builder(e) => e.fmt(f),
             Self::NIP04(e) => e.fmt(f),
             Self::NIP44(e) => e.fmt(f),
@@ -60,6 +63,12 @@ impl fmt::Display for Error {
             Self::UnexpectedUri => f.write_str("unexpected URI"),
             Self::PublicKeyNotMatchAppKeys => f.write_str("public key not match app keys"),
         }
+    }
+}
+
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 

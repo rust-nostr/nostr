@@ -168,6 +168,7 @@ where
 #[cfg(all(feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
+    use crate::prelude::{BuildUnsignedEvent, FinalizeEvent};
     use crate::{EventBuilder, Keys};
 
     #[tokio::test]
@@ -180,7 +181,9 @@ mod tests {
                 .unwrap();
 
         // Compose Gift Wrap event
-        let rumor: UnsignedEvent = EventBuilder::text_note("Test").build(sender_keys.public_key);
+        let rumor: UnsignedEvent = EventBuilder::text_note("Test")
+            .build(sender_keys.public_key)
+            .unwrap();
         let event: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor.clone(), [])
                 .await
@@ -192,7 +195,7 @@ mod tests {
         assert!(unwrapped.rumor.tags.is_empty());
         assert!(extract_rumor(&sender_keys, &event).await.is_err());
 
-        let event: Event = EventBuilder::text_note("").sign(&sender_keys).unwrap();
+        let event: Event = EventBuilder::text_note("").finalize(&sender_keys).unwrap();
         assert!(matches!(
             extract_rumor(&receiver_keys, &event).await.unwrap_err(),
             Error::NotGiftWrap
@@ -213,8 +216,9 @@ mod tests {
 
         // Construct a rumor that lies about its pubkey but is still wrapped/signed
         // by `sender_keys`. This mimics a spoofing attempt the recipient must reject.
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("spoofed").build(impersonated_keys.public_key());
+        let rumor: UnsignedEvent = EventBuilder::text_note("spoofed")
+            .build(impersonated_keys.public_key())
+            .unwrap();
 
         let gift_wrap: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor, [])

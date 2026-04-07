@@ -9,6 +9,21 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
+use core::any::Any;
+use core::fmt::Debug;
+use core::num::NonZeroU8;
+
+#[cfg(feature = "std")]
+mod blocking_wrapper;
+#[cfg(feature = "pow-multi-thread")]
+mod multi_thread;
+mod single_thread;
+
+#[cfg(feature = "pow-multi-thread")]
+pub use self::multi_thread::*;
+pub use self::single_thread::*;
+use crate::UnsignedEvent;
+use crate::util::BoxedFuture;
 
 /// Gets the number of leading zero bits. Result is between 0 and 255.
 #[inline]
@@ -57,13 +72,46 @@ pub fn get_prefixes_for_difficulty(leading_zero_bits: u8) -> Vec<String> {
     r
 }
 
+/// A trait for custom Proof of Work computation.
+pub trait PowAdapter: Any + Debug {
+    /// Error
+    type Error;
+
+    /// Computes Proof of Work for an unsigned event to meet the target
+    /// difficulty.
+    fn compute(
+        &self,
+        unsigned_event: UnsignedEvent,
+        target_difficulty: NonZeroU8,
+    ) -> Result<UnsignedEvent, Self::Error>;
+}
+
+/// A trait for custom Proof of Work computation.
+pub trait AsyncPowAdapter: Any + Debug + Send + Sync {
+    /// Error
+    type Error;
+
+    /// Computes Proof of Work for an unsigned event to meet the target
+    /// difficulty.
+    fn compute_async(
+        &self,
+        unsigned_event: UnsignedEvent,
+        target_difficulty: NonZeroU8,
+    ) -> BoxedFuture<'_, Result<UnsignedEvent, Self::Error>>;
+}
+
 #[cfg(test)]
 pub mod tests {
     use core::str::FromStr;
+    use core::time::Duration;
+    use std::convert::Infallible;
 
     use hashes::sha256::Hash as Sha256Hash;
 
     use super::*;
+    use crate::prelude::{AsyncBuildUnsignedEvent, BuildUnsignedEvent};
+    #[cfg(feature = "std")]
+    use crate::{EventBuilder, PublicKey, Tag, TagKind};
 
     #[test]
     fn check_get_leading_zeroes() {
@@ -434,5 +482,85 @@ pub mod tests {
                 "0000000000000000000000000000000000000000000000000000000000000001"
             ]
         );
+    }
+
+    #[test]
+    #[cfg(feature = "std")]
+    fn custom_adapter() {
+        #[derive(Debug)]
+        struct TestAdapter;
+
+        impl PowAdapter for TestAdapter {
+            type Error = Infallible;
+
+            fn compute(
+                &self,
+                mut unsigned_event: UnsignedEvent,
+                target_difficulty: NonZeroU8,
+            ) -> Result<UnsignedEvent, Self::Error> {
+                unsigned_event
+                    .tags
+                    .push(Tag::pow(3490, target_difficulty.get()));
+                unsigned_event.ensure_id();
+                Ok(unsigned_event)
+            }
+        }
+
+        let unsigned = EventBuilder::text_note(
+            "Why must I find leading zero bits? Is there no beauty in the ones?",
+        )
+        .pow(NonZeroU8::new(2).unwrap(), TestAdapter)
+        .build(PublicKey::from_slice(&[0; 32]).unwrap())
+        .unwrap();
+
+        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+            panic!("nonce tag should be exist")
+        };
+
+        assert_eq!(nonce_tag.as_slice()[1], "3490");
+        assert_eq!(nonce_tag.as_slice()[2], "2");
+    }
+
+    #[tokio::test]
+    #[cfg(feature = "std")]
+    async fn custom_async_adapter() {
+        #[derive(Debug)]
+        struct AsyncTestAdapter;
+
+        impl AsyncPowAdapter for AsyncTestAdapter {
+            type Error = Infallible;
+
+            fn compute_async(
+                &self,
+                mut unsigned_event: UnsignedEvent,
+                target_difficulty: NonZeroU8,
+            ) -> BoxedFuture<'_, Result<UnsignedEvent, Self::Error>> {
+                Box::pin(async move {
+                    // Simulate an async work
+                    tokio::time::sleep(Duration::from_secs(2)).await;
+
+                    unsigned_event
+                        .tags
+                        .push(Tag::pow(3490, target_difficulty.get()));
+                    unsigned_event.ensure_id();
+                    Ok(unsigned_event)
+                })
+            }
+        }
+
+        let unsigned = EventBuilder::text_note(
+            "Why must I find leading zero bits? Is there no beauty in the ones?",
+        )
+        .pow(NonZeroU8::new(2).unwrap(), AsyncTestAdapter)
+        .build_async(PublicKey::from_slice(&[0; 32]).unwrap())
+        .await
+        .unwrap();
+
+        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+            panic!("nonce tag should be exist")
+        };
+
+        assert_eq!(nonce_tag.as_slice()[1], "3490");
+        assert_eq!(nonce_tag.as_slice()[2], "2");
     }
 }
