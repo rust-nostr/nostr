@@ -1556,55 +1556,25 @@ impl EventBuilder {
         Self::gift_wrap(signer, &receiver, rumor, []).await
     }
 
-    /// File message rumor
-    ///
-    /// You probably are looking for [`EventBuilder::file_msg`] method.
-    ///
-    /// <div class="warning">
-    /// This constructor compose ONLY the rumor for the file message!
-    /// NOT USE THIS IF YOU DON'T KNOW WHAT YOU ARE DOING!
-    /// </div>
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[inline]
-    #[cfg(feature = "nip59")]
-    pub fn file_msg_rumor(receiver: PublicKey, url: Url) -> Self {
-        Self::new(Kind::FileMessage, url).tags([Tag::public_key(receiver)])
-    }
-
-    /// File message
+    /// Private Direct file message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub async fn file_msg<T, S, I>(
+    pub async fn private_file_msg<T, I>(
         signer: &T,
         receiver: PublicKey,
-        url: Url,
-        file_type: S,
-        decryption_key: S,
-        decryption_nonce: u128,
-        hash: hashes::sha256::Hash,
+        encrypted_file: EncryptedFile,
         rumor_extra_tags: I,
     ) -> Result<Event, Error>
     where
         T: NostrSigner,
-        S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
         let public_key: PublicKey = signer.get_public_key().await?;
-        let file_type =
-            Tag::from_standardized_without_cell(TagStandard::FileType(file_type.into()));
-        let decryption_key =
-            Tag::from_standardized_without_cell(TagStandard::DecryptionKey(decryption_key.into()));
-        let decryption_nonce =
-            Tag::from_standardized_without_cell(TagStandard::DecryptionNonce(decryption_nonce));
-        let hash = Tag::from_standardized_without_cell(TagStandard::Sha256(hash));
-        let rumor: UnsignedEvent = Self::file_msg_rumor(receiver, url)
-            .tag(file_type)
-            .tag(decryption_key)
-            .tag(decryption_nonce)
-            .tag(hash)
+        let rumor = encrypted_file
+            .to_event_builder()?
+            .tag(Tag::public_key(receiver))
             .tags(rumor_extra_tags)
             .build(public_key);
         Self::gift_wrap(signer, &receiver, rumor, []).await
