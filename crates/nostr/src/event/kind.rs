@@ -138,6 +138,7 @@ kind_variants! {
     Seal => 13, "Seal", "<https://github.com/nostr-protocol/nips/blob/master/59.md>",
     GiftWrap => 1059, "Gift Wrap", "<https://github.com/nostr-protocol/nips/blob/master/59.md>",
     PrivateDirectMessage => 14, "Private Direct message", "<https://github.com/nostr-protocol/nips/blob/master/17.md>",
+    FileMessage => 15, "File message", "<https://github.com/nostr-protocol/nips/blob/master/17.md>",
     SetStall => 30017, "Set stall", "<https://github.com/nostr-protocol/nips/blob/master/15.md>",
     SetProduct => 30018, "Set product", "<https://github.com/nostr-protocol/nips/blob/master/15.md>",
     JobFeedback => 7000, "Job Feedback", "<https://github.com/nostr-protocol/nips/blob/master/90.md>",

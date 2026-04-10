@@ -63,12 +63,24 @@ pub enum TagKind<'a> {
     Dependency,
     /// Description
     Description,
+    /// Decryption key
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    DecryptionKey,
+    /// Decryption nonce
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    DecryptionNonce,
     /// Size of the file in pixels
     Dim,
     /// Emoji
     Emoji,
     /// Encrypted
     Encrypted,
+    /// Encryption algorithm
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    EncryptionAlgorithm,
     /// Ends
     Ends,
     /// Expiration
@@ -81,6 +93,10 @@ pub enum TagKind<'a> {
     Extension,
     /// File
     File,
+    /// File type
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    FileType,
     /// Image
     Image,
     /// License of the shared content
@@ -333,13 +349,17 @@ impl<'a> TagKind<'a> {
             Self::CurrentParticipants => "current_participants",
             Self::Dependency => "dep",
             Self::Description => "description",
+            Self::DecryptionKey => "decryption-key",
+            Self::DecryptionNonce => "decryption-nonce",
             Self::Dim => "dim",
             Self::Emoji => "emoji",
             Self::Encrypted => "encrypted",
+            Self::EncryptionAlgorithm => "encryption-algorithm",
             Self::Ends => "ends",
             Self::Expiration => "expiration",
             Self::Extension => "extension",
             Self::File => "file",
+            Self::FileType => "file-type",
             Self::Head => "HEAD",
             Self::Image => "image",
             Self::License => "license",
