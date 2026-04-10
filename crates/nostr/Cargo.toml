@@ -139,5 +139,9 @@ required-features = ["std", "rand", "os-rng", "nip98"]
 name = "parser"
 required-features = ["std"]
 
+[[example]]
+name = "pow_adapter"
+required-features = ["std", "os-rng"]
+
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(bench)'] }

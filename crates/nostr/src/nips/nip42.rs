@@ -49,6 +49,7 @@ pub fn is_valid_auth_event(event: &Event, relay_url: &RelayUrl, challenge: &str)
 #[cfg(all(test, feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
+    use crate::prelude::FinalizeEvent;
     use crate::{EventBuilder, Keys};
 
     #[test]
@@ -58,7 +59,7 @@ mod tests {
         let challenge = "1234567890";
 
         let event = EventBuilder::auth(challenge, relay_url.clone())
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
 
         assert!(is_valid_auth_event(&event, &relay_url, challenge));
@@ -72,20 +73,18 @@ mod tests {
 
         // Wrong challenge
         let event = EventBuilder::auth("abcd", relay_url.clone())
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
         assert!(!is_valid_auth_event(&event, &relay_url, challenge));
 
         // Wrong relay url
         let event = EventBuilder::auth(challenge, RelayUrl::parse("wss://example.com").unwrap())
-            .sign_with_keys(&keys)
+            .finalize(&keys)
             .unwrap();
         assert!(!is_valid_auth_event(&event, &relay_url, challenge));
 
         // Wrong kind
-        let event = EventBuilder::text_note("abcd")
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event = EventBuilder::text_note("abcd").finalize(&keys).unwrap();
         assert!(!is_valid_auth_event(&event, &relay_url, challenge));
     }
 }

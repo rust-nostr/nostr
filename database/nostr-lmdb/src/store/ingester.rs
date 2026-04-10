@@ -370,7 +370,7 @@ mod tests {
     use std::sync::Arc;
 
     use futures::future::join_all;
-    use nostr::{EventBuilder, Keys, Kind};
+    use nostr::prelude::*;
     use tempfile::TempDir;
 
     use super::*;
@@ -397,8 +397,8 @@ mod tests {
 
         // Create a mix of valid and duplicate events
         let event1 = EventBuilder::text_note("Event 1")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
+            .finalize(&keys)
+            .expect("Failed to finalize event");
 
         // Save event1 first
         store
@@ -408,12 +408,12 @@ mod tests {
 
         // Now try to save a batch with duplicate and new events
         let event2 = EventBuilder::text_note("Event 2")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
+            .finalize(&keys)
+            .expect("Failed to finalize event");
 
         let event3 = EventBuilder::text_note("Event 3")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
+            .finalize(&keys)
+            .expect("Failed to finalize event");
 
         let futures = vec![
             store.save_event(&event1), // Duplicate
@@ -453,8 +453,8 @@ mod tests {
         let mut events = Vec::new();
         for i in 0..10 {
             let event = EventBuilder::text_note(format!("Event to delete {}", i))
-                .sign_with_keys(&keys)
-                .expect("Failed to sign event");
+                .finalize(&keys)
+                .expect("Failed to finalize event");
             store
                 .save_event(&event)
                 .await
@@ -464,12 +464,12 @@ mod tests {
 
         // Now create a mixed batch of saves and deletes
         let new_event1 = EventBuilder::text_note("New event 1")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
+            .finalize(&keys)
+            .expect("Failed to finalize event");
 
         let new_event2 = EventBuilder::text_note("New event 2")
-            .sign_with_keys(&keys)
-            .expect("Failed to sign event");
+            .finalize(&keys)
+            .expect("Failed to finalize event");
 
         // Execute mixed operations concurrently
         let save_fut1 = store.save_event(&new_event1);

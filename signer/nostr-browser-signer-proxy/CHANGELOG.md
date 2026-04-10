@@ -29,6 +29,10 @@
 
 ## Unreleased
 
+### Breaking changes
+
+- Replace `NostrSigner` implementation with `AsyncNostrSigner` (https://github.com/rust-nostr/nostr/pull/1329)
+
 ### Changed
 
 - Allow customizing HTML page (https://github.com/rust-nostr/nostr/pull/1203)

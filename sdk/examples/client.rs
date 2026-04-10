@@ -2,6 +2,8 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
+use std::num::NonZeroU8;
+
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
@@ -25,11 +27,13 @@ async fn main() -> Result<()> {
     println!("Not sent to: {:?}", output.failed);
 
     // Create a text note POW event to relays
-    let builder = EventBuilder::text_note("POW text note from rust-nostr").pow(20);
+    let builder = EventBuilder::text_note("POW text note from rust-nostr")
+        .pow(NonZeroU8::new(20).unwrap(), SingleThreadPow);
     client.send_event_builder(builder).await?;
 
     // Send a text note POW event to specific relays
-    let builder = EventBuilder::text_note("POW text note from rust-nostr 16").pow(16);
+    let builder = EventBuilder::text_note("POW text note from rust-nostr 16")
+        .pow(NonZeroU8::new(16).unwrap(), SingleThreadPow);
     client
         .send_event_builder_to(["wss://relay.damus.io", "wss://relay.rip"], builder)
         .await?;

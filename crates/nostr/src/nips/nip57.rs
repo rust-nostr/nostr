@@ -23,20 +23,19 @@ use cbc::Decryptor;
 use cbc::Encryptor;
 use hashes::Hash;
 use hashes::sha256::Hash as Sha256Hash;
+#[cfg(feature = "rand")]
+use rand::RngCore;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::OsRng;
-#[cfg(feature = "rand")]
-use rand::{CryptoRng, RngCore};
-#[cfg(feature = "rand")]
-use secp256k1::{Secp256k1, Signing, Verification};
 
 use super::nip01::Coordinate;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::SECP256K1;
 use crate::event::builder::Error as BuilderError;
 use crate::key::Error as KeyError;
+use crate::prelude::FinalizeEvent;
 use crate::{
     Event, EventId, JsonUtil, PublicKey, RelayUrl, SecretKey, Tag, TagStandard, Timestamp, event,
     util,
@@ -267,28 +266,13 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     }));
     Ok(EventBuilder::new(Kind::ZapRequest, message)
         .tags(tags)
-        .sign_with_keys(&keys)?)
+        .finalize(&keys)?)
 }
 
 /// Create **private** zap request
 #[inline]
 #[cfg(all(feature = "std", feature = "os-rng"))]
 pub fn private_zap_request(data: ZapRequestData, keys: &Keys) -> Result<Event, Error> {
-    private_zap_request_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), data, keys)
-}
-
-/// Create **private** zap request
-#[cfg(feature = "rand")]
-pub fn private_zap_request_with_ctx<C, R>(
-    secp: &Secp256k1<C>,
-    rng: &mut R,
-    data: ZapRequestData,
-    keys: &Keys,
-) -> Result<Event, Error>
-where
-    C: Signing + Verification,
-    R: RngCore + CryptoRng,
-{
     let created_at: Timestamp = Timestamp::now();
 
     // Create encryption key
@@ -302,20 +286,22 @@ where
     }
     let msg: String = EventBuilder::new(Kind::ZapPrivateMessage, &data.message)
         .tags(tags)
-        .sign_with_ctx(secp, rng, keys)?
+        .finalize(keys)?
         .as_json();
-    let msg: String = encrypt_private_zap_message(rng, &secret_key, &data.public_key, msg)?;
+
+    let mut rng = OsRng.unwrap_err();
+    let msg: String = encrypt_private_zap_message(&mut rng, &secret_key, &data.public_key, msg)?;
 
     // Compose event
     let mut tags: Vec<Tag> = data.into();
     tags.push(Tag::from_standardized_without_cell(TagStandard::Anon {
         msg: Some(msg),
     }));
-    let private_zap_keys: Keys = Keys::new_with_ctx(secp, secret_key);
+    let private_zap_keys: Keys = Keys::new_with_ctx(&SECP256K1, secret_key);
     Ok(EventBuilder::new(Kind::ZapRequest, "")
         .tags(tags)
         .custom_created_at(created_at)
-        .sign_with_ctx(secp, rng, &private_zap_keys)?)
+        .finalize(&private_zap_keys)?)
 }
 
 /// Create NIP57 encryption key for **private** zap

@@ -6,6 +6,8 @@
 
 use alloc::boxed::Box;
 use alloc::string::String;
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+use core::convert::Infallible;
 use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
@@ -143,5 +145,20 @@ where
     #[inline]
     fn try_as_pretty_json(&self) -> Result<String, Self::Err> {
         Ok(serde_json::to_string_pretty(self)?)
+    }
+}
+
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+pub(crate) trait UnwrapInfallible<T> {
+    fn unwrap_infallible(self) -> T;
+}
+
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+impl<T> UnwrapInfallible<T> for Result<T, Infallible> {
+    fn unwrap_infallible(self) -> T {
+        match self {
+            Ok(v) => v,
+            Err(e) => match e {},
+        }
     }
 }

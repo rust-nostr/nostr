@@ -6,6 +6,7 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
@@ -171,7 +172,7 @@ impl Client {
     ///
     /// Returns `None` if no signer is configured.
     #[inline]
-    pub fn signer(&self) -> Option<&Arc<dyn NostrSigner>> {
+    pub fn signer(&self) -> Option<&Arc<dyn AsyncNostrSigner>> {
         self.pool().state().signer()
     }
 
@@ -1226,9 +1227,13 @@ impl Client {
     /// Build, sign and return [`Event`]
     ///
     /// This method requires a [`NostrSigner`].
-    pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
+    pub async fn sign_event_builder<T>(&self, builder: T) -> Result<Event, Error>
+    where
+        T: AsyncBuildUnsignedEvent + Send + 'static,
+        T::Error: Display,
+    {
         let signer = self.signer().ok_or(Error::SignerNotConfigured)?;
-        Ok(builder.sign(signer).await?)
+        Ok(builder.finalize_async(signer).await?)
     }
 
     /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays.
@@ -1237,10 +1242,11 @@ impl Client {
     ///
     /// Check [`Client::send_event`] from more details.
     #[inline]
-    pub async fn send_event_builder(
-        &self,
-        builder: EventBuilder,
-    ) -> Result<Output<EventId>, Error> {
+    pub async fn send_event_builder<T>(&self, builder: T) -> Result<Output<EventId>, Error>
+    where
+        T: AsyncBuildUnsignedEvent + Send + 'static,
+        T::Error: Display,
+    {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(&event).await
     }
@@ -1249,14 +1255,16 @@ impl Client {
     ///
     /// This method requires a [`NostrSigner`].
     #[inline]
-    pub async fn send_event_builder_to<'a, I, U>(
+    pub async fn send_event_builder_to<'a, I, U, T>(
         &self,
         urls: I,
-        builder: EventBuilder,
+        builder: T,
     ) -> Result<Output<EventId>, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
+        T: AsyncBuildUnsignedEvent + Send + 'static,
+        T::Error: Display,
     {
         let event: Event = self.sign_event_builder(builder).await?;
         self.send_event(&event).to(urls).await

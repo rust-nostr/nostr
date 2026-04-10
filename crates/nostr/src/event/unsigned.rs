@@ -4,7 +4,9 @@
 
 //! Unsigned Event
 
+use alloc::boxed::Box;
 use alloc::string::String;
+use core::fmt::Display;
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
@@ -18,9 +20,111 @@ use secp256k1::{Message, Secp256k1, Signing, Verification};
 use super::error::Error;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent};
 #[cfg(feature = "rand")]
 use crate::util;
-use crate::{Event, EventId, JsonUtil, Keys, Kind, NostrSigner, PublicKey, Tag, Tags, Timestamp};
+use crate::util::BoxedFuture;
+use crate::{Event, EventId, JsonUtil, Keys, Kind, PublicKey, Tag, Tags, Timestamp};
+
+/// Synchronous event builder
+pub trait BuildUnsignedEvent {
+    /// Error
+    type Error;
+
+    /// Build an unsigned event synchronously
+    fn build(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error>;
+}
+
+/// Asynchronous event builder
+pub trait AsyncBuildUnsignedEvent {
+    /// Error
+    type Error;
+
+    /// Build an unsigned event asynchronously
+    fn build_async(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'static, Result<UnsignedEvent, Self::Error>>;
+}
+
+/// Finalize an unsigned event synchronously
+pub trait FinalizeEvent<S> {
+    /// Error
+    type Error;
+
+    /// Finalize
+    fn finalize(self, signer: &S) -> Result<Event, Self::Error>;
+}
+
+/// Finalize an unsigned event asynchronously
+pub trait AsyncFinalizeEvent<S> {
+    /// Error
+    type Error;
+
+    /// Finalize
+    fn finalize_async(self, signer: &S) -> BoxedFuture<Result<Event, Self::Error>>;
+}
+
+impl<T> FinalizeEvent<T> for UnsignedEvent
+where
+    T: SignEvent,
+{
+    type Error = Error;
+
+    #[inline]
+    fn finalize(self, signer: &T) -> Result<Event, Self::Error> {
+        Ok(signer.sign_event(self)?)
+    }
+}
+
+impl<T> AsyncFinalizeEvent<T> for UnsignedEvent
+where
+    T: AsyncSignEvent,
+{
+    type Error = Error;
+
+    #[inline]
+    fn finalize_async(self, signer: &T) -> BoxedFuture<Result<Event, Self::Error>> {
+        Box::pin(async move { Ok(signer.sign_event(self).await?) })
+    }
+}
+
+impl<S, T> FinalizeEvent<S> for T
+where
+    T: BuildUnsignedEvent,
+    S: GetPublicKey + SignEvent,
+    T::Error: Display,
+{
+    type Error = Error;
+
+    fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
+        let public_key: PublicKey = signer.get_public_key()?;
+        let unsigned: UnsignedEvent = self
+            .build(public_key)
+            .map_err(|e| Error::Builder(e.to_string()))?;
+        Ok(signer.sign_event(unsigned)?)
+    }
+}
+
+impl<S, T> AsyncFinalizeEvent<S> for T
+where
+    T: AsyncBuildUnsignedEvent + Send + 'static,
+    S: AsyncGetPublicKey + AsyncSignEvent,
+    T::Error: Display,
+{
+    type Error = Error;
+
+    fn finalize_async(self, signer: &S) -> BoxedFuture<Result<Event, Self::Error>> {
+        Box::pin(async move {
+            let public_key: PublicKey = signer.get_public_key().await?;
+            let unsigned: UnsignedEvent = self
+                .build_async(public_key)
+                .await
+                .map_err(|e| Error::Builder(e.to_string()))?;
+            Ok(signer.sign_event(unsigned).await?)
+        })
+    }
+}
 
 /// Unsigned event
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -84,8 +188,9 @@ impl UnsignedEvent {
         self.id.unwrap()
     }
 
+    /// Compute event ID
     #[inline]
-    fn compute_id(&self) -> EventId {
+    pub fn compute_id(&self) -> EventId {
         EventId::new(
             &self.pubkey,
             &self.created_at,
@@ -109,9 +214,18 @@ impl UnsignedEvent {
 
     /// Sign an unsigned event
     #[inline]
-    pub async fn sign<T>(self, signer: &T) -> Result<Event, Error>
+    pub fn sign<T>(self, signer: &T) -> Result<Event, Error>
     where
-        T: NostrSigner,
+        T: SignEvent,
+    {
+        Ok(signer.sign_event(self)?)
+    }
+
+    /// Sign an unsigned event
+    #[inline]
+    pub async fn sign_async<T>(self, signer: &T) -> Result<Event, Error>
+    where
+        T: AsyncSignEvent,
     {
         Ok(signer.sign_event(self).await?)
     }

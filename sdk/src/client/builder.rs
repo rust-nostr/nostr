@@ -12,7 +12,7 @@ use std::time::Duration;
 
 #[cfg(not(target_arch = "wasm32"))]
 use async_wsocket::ConnectionMode;
-use nostr::signer::{IntoNostrSigner, NostrSigner};
+use nostr::signer::{AsyncNostrSigner, IntoAsyncNostrSigner};
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
 use nostr_gossip::{GossipAllowedRelays, IntoNostrGossip, NostrGossip};
 
@@ -178,7 +178,7 @@ impl GossipConfig {
 #[derive(Debug, Clone)]
 pub struct ClientBuilder {
     /// Nostr Signer
-    pub signer: Option<Arc<dyn NostrSigner>>,
+    pub signer: Option<Arc<dyn AsyncNostrSigner>>,
     /// WebSocket transport
     pub websocket_transport: Arc<dyn WebSocketTransport>,
     /// Admission policy
@@ -261,7 +261,7 @@ impl ClientBuilder {
     #[inline]
     pub fn signer<T>(mut self, signer: T) -> Self
     where
-        T: IntoNostrSigner,
+        T: IntoAsyncNostrSigner,
     {
         self.signer = Some(signer.into_nostr_signer());
         self

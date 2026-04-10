@@ -6,7 +6,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/59.md>
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use core::fmt;
 use core::ops::Range;
 
@@ -16,10 +16,10 @@ use secp256k1::{Secp256k1, Verification};
 use crate::SECP256K1;
 use crate::event::unsigned::UnsignedEvent;
 use crate::event::{self, Event};
-use crate::signer::SignerError;
+use crate::nips::nip44::AsyncNip44;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::{EventBuilder, Timestamp};
-use crate::{JsonUtil, Kind, NostrSigner, PublicKey};
+use crate::{JsonUtil, Kind, PublicKey};
 
 /// Range for random timestamp tweak (up to 2 days)
 pub const RANGE_RANDOM_TIMESTAMP_TWEAK: Range<u64> = 0..172800; // From 0 secs to 2 days
@@ -27,10 +27,10 @@ pub const RANGE_RANDOM_TIMESTAMP_TWEAK: Range<u64> = 0..172800; // From 0 secs t
 /// NIP59 error
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    /// Signer error
-    Signer(SignerError),
     /// Event error
     Event(event::Error),
+    /// NIP-44 error
+    NIP44(String),
     /// Not Gift Wrap event
     NotGiftWrap,
     /// Rumor author does not match the seal signer
@@ -42,17 +42,11 @@ impl core::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Signer(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
+            Self::NIP44(e) => e.fmt(f),
             Self::NotGiftWrap => f.write_str("Not a Gift Wrap"),
             Self::SenderMismatch => f.write_str("sender public key mismatch"),
         }
-    }
-}
-
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Signer(e)
     }
 }
 
@@ -79,7 +73,7 @@ impl UnwrappedGift {
     #[cfg(feature = "std")]
     pub async fn from_gift_wrap<T>(signer: &T, gift_wrap: &Event) -> Result<Self, Error>
     where
-        T: NostrSigner,
+        T: AsyncNip44,
     {
         Self::from_gift_wrap_with_ctx(&SECP256K1, signer, gift_wrap).await
     }
@@ -94,7 +88,7 @@ impl UnwrappedGift {
     ) -> Result<Self, Error>
     where
         C: Verification,
-        T: NostrSigner,
+        T: AsyncNip44,
     {
         // Check event kind
         if gift_wrap.kind != Kind::GiftWrap {
@@ -104,12 +98,16 @@ impl UnwrappedGift {
         // Decrypt and verify seal
         let seal: String = signer
             .nip44_decrypt(&gift_wrap.pubkey, &gift_wrap.content)
-            .await?;
+            .await
+            .map_err(|e| Error::NIP44(e.to_string()))?;
         let seal: Event = Event::from_json(seal)?;
         seal.verify_with_ctx(secp)?;
 
         // Decrypt and parse rumor
-        let rumor: String = signer.nip44_decrypt(&seal.pubkey, &seal.content).await?;
+        let rumor: String = signer
+            .nip44_decrypt(&seal.pubkey, &seal.content)
+            .await
+            .map_err(|e| Error::NIP44(e.to_string()))?;
         let rumor: UnsignedEvent = UnsignedEvent::from_json(rumor)?;
 
         // Ensure the rumor author matches the seal
@@ -129,7 +127,7 @@ impl UnwrappedGift {
 #[cfg(feature = "std")]
 pub async fn extract_rumor<T>(signer: &T, gift_wrap: &Event) -> Result<UnwrappedGift, Error>
 where
-    T: NostrSigner,
+    T: AsyncNip44,
 {
     UnwrappedGift::from_gift_wrap(signer, gift_wrap).await
 }
@@ -145,7 +143,7 @@ pub async fn make_seal<T>(
     mut rumor: UnsignedEvent, // Don't take the `EventBuilder`, read note below.
 ) -> Result<EventBuilder, Error>
 where
-    T: NostrSigner,
+    T: AsyncNip44,
 {
     // Take an `UnsignedEvent` as rumor and not an `EventBuilder`!
     // May be useful to take an `EventBuilder` but it can create issues:
@@ -158,7 +156,8 @@ where
     // Encrypt content
     let content: String = signer
         .nip44_encrypt(receiver_pubkey, &rumor.as_json())
-        .await?;
+        .await
+        .map_err(|e| Error::NIP44(e.to_string()))?;
 
     // Compose builder
     Ok(EventBuilder::new(Kind::Seal, content)
@@ -169,6 +168,7 @@ where
 #[cfg(all(feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
+    use crate::prelude::{BuildUnsignedEvent, FinalizeEvent};
     use crate::{EventBuilder, Keys};
 
     #[tokio::test]
@@ -181,7 +181,9 @@ mod tests {
                 .unwrap();
 
         // Compose Gift Wrap event
-        let rumor: UnsignedEvent = EventBuilder::text_note("Test").build(sender_keys.public_key);
+        let rumor: UnsignedEvent = EventBuilder::text_note("Test")
+            .build(sender_keys.public_key)
+            .unwrap();
         let event: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor.clone(), [])
                 .await
@@ -193,10 +195,7 @@ mod tests {
         assert!(unwrapped.rumor.tags.is_empty());
         assert!(extract_rumor(&sender_keys, &event).await.is_err());
 
-        let event: Event = EventBuilder::text_note("")
-            .sign(&sender_keys)
-            .await
-            .unwrap();
+        let event: Event = EventBuilder::text_note("").finalize(&sender_keys).unwrap();
         assert!(matches!(
             extract_rumor(&receiver_keys, &event).await.unwrap_err(),
             Error::NotGiftWrap
@@ -217,8 +216,9 @@ mod tests {
 
         // Construct a rumor that lies about its pubkey but is still wrapped/signed
         // by `sender_keys`. This mimics a spoofing attempt the recipient must reject.
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("spoofed").build(impersonated_keys.public_key());
+        let rumor: UnsignedEvent = EventBuilder::text_note("spoofed")
+            .build(impersonated_keys.public_key())
+            .unwrap();
 
         let gift_wrap: Event =
             EventBuilder::gift_wrap(&sender_keys, &receiver_keys.public_key(), rumor, [])

@@ -31,14 +31,14 @@ async fn main() -> Result<()> {
 
     // Sign event
     let event = EventBuilder::text_note("Testing browser signer proxy")
-        .sign(&proxy)
+        .finalize_async(&proxy)
         .await?;
     println!("Event: {}", event.as_json());
 
     // Build a gift wrap
     let receiver =
         PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
-    let rumor = EventBuilder::new(Kind::Custom(123), "test").build(public_key);
+    let rumor = EventBuilder::new(Kind::Custom(123), "test").build(public_key)?;
     let gift_wrap = EventBuilder::gift_wrap(&proxy, &receiver, rumor, []).await?;
     println!("Gift wrap: {}", gift_wrap.as_json());
 
