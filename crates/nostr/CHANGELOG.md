@@ -68,6 +68,9 @@
 - Add `MachineReadablePrefix::Custom` variant (https://github.com/rust-nostr/nostr/pull/1258)
 - Add `RelayMetadata::{is_read, is_write}` functions (https://github.com/rust-nostr/nostr/pull/1290)
 - Add the kind number in the kind doc (https://github.com/rust-nostr/nostr/pull/1293)
+- Add `EventBuilder::file_msg_rumor` and `EventBuilder::file_msg`
+- Add `Kind::FileMessage`
+- Add `TagStandard::FileType`, `TagStandard::EncryptionAlgorithm`, `TagStandard::DecryptionKey` and `TagStandard::DecryptionNonce`
 
 ### Removed
 
