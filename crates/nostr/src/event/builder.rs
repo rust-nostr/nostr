@@ -1556,6 +1556,30 @@ impl EventBuilder {
         Self::gift_wrap(signer, &receiver, rumor, []).await
     }
 
+    /// Private Direct file message
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    #[inline]
+    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+    pub async fn private_file_msg<T, I>(
+        signer: &T,
+        receiver: PublicKey,
+        encrypted_file: EncryptedFile,
+        rumor_extra_tags: I,
+    ) -> Result<Event, Error>
+    where
+        T: NostrSigner,
+        I: IntoIterator<Item = Tag>,
+    {
+        let public_key: PublicKey = signer.get_public_key().await?;
+        let rumor = encrypted_file
+            .to_event_builder()?
+            .tag(Tag::public_key(receiver))
+            .tags(rumor_extra_tags)
+            .build(public_key);
+        Self::gift_wrap(signer, &receiver, rumor, []).await
+    }
+
     /// Mute list
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/51.md>

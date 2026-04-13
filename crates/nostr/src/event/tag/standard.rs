@@ -306,6 +306,22 @@ pub enum TagStandard {
     /// List of web URLs
     Web(Vec<Url>),
     Word(String),
+    /// File type
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    FileType(String),
+    /// Encryption algorithm. Note: NIP17 specifies that the encryption algorithm is aes-gcm
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    EncryptionAlgorithm,
+    /// Decryption key
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    DecryptionKey(String),
+    /// Decryption nonce
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
+    DecryptionNonce(u128),
 }
 
 impl TagStandard {
@@ -750,6 +766,10 @@ impl TagStandard {
             Self::Protected => TagKind::Protected,
             Self::Alt(..) => TagKind::Alt,
             Self::Web(..) => TagKind::Web,
+            Self::FileType(..) => TagKind::FileType,
+            Self::EncryptionAlgorithm => TagKind::EncryptionAlgorithm,
+            Self::DecryptionKey(..) => TagKind::DecryptionKey,
+            Self::DecryptionNonce(..) => TagKind::DecryptionNonce,
         }
     }
 
@@ -1083,6 +1103,15 @@ impl From<TagStandard> for Vec<String> {
                 tag.extend(urls.into_iter().map(|url| url.to_string()));
                 tag
             }
+            TagStandard::FileType(mime) => vec![tag_kind, mime],
+            TagStandard::EncryptionAlgorithm => {
+                // NIP17 specifies that the encryption algorithm is aes-gcm
+                //
+                // <https://github.com/nostr-protocol/nips/blob/master/17.md>
+                vec![tag_kind, "aes-gcm".to_string()]
+            }
+            TagStandard::DecryptionKey(key) => vec![tag_kind, key],
+            TagStandard::DecryptionNonce(nonce) => vec![tag_kind, nonce.to_string()],
         };
 
         // Tag can't be empty, require at least 1 value
