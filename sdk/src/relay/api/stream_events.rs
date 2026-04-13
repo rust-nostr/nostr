@@ -13,9 +13,8 @@ use crate::relay::{
     Error, Relay, ReqExitPolicy, SubscribeAutoCloseOptions, SubscriptionActivity,
     SubscriptionAutoClosedReason,
 };
-use crate::stream::BoxedStream;
 
-type EventStream = BoxedStream<Result<Event, Error>>;
+type EventStream = Pin<Box<dyn Stream<Item = Result<Event, Error>> + Send>>;
 
 /// Stream events
 #[must_use = "Does nothing unless you await!"]

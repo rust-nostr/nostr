@@ -6,13 +6,6 @@ use tokio::sync::broadcast;
 use tokio::sync::mpsc::Receiver;
 use tokio_stream::wrappers::BroadcastStream;
 
-/// Boxed stream
-#[cfg(not(target_arch = "wasm32"))]
-pub type BoxedStream<T> = Pin<Box<dyn Stream<Item = T> + Send>>;
-/// Boxed stream
-#[cfg(target_arch = "wasm32")]
-pub type BoxedStream<T> = Pin<Box<dyn Stream<Item = T>>>;
-
 pub(crate) struct ReceiverStream<T> {
     inner: Receiver<T>,
 }

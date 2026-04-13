@@ -12,7 +12,7 @@ use std::vec::IntoIter;
 
 use async_utility::task;
 use futures::stream::FuturesUnordered;
-use futures::{StreamExt, future};
+use futures::{Stream, StreamExt, future};
 use nostr_database::prelude::*;
 use tokio::sync::{Mutex, RwLock, broadcast, mpsc};
 
@@ -28,9 +28,10 @@ use crate::relay::{
     SubscribeAutoCloseOptions, SyncOptions,
 };
 use crate::shared::SharedState;
-use crate::stream::{BoxedStream, ReceiverStream};
+use crate::stream::ReceiverStream;
 
 pub(super) type Relays = HashMap<RelayUrl, Relay>;
+type EventStream = Pin<Box<dyn Stream<Item = (RelayUrl, Result<Event, relay::Error>)> + Send>>;
 
 // IMPORTANT: we rely on the Drop trait for shutting down the pool,
 // so it's important that the RelayPool can't be cloned, otherwise may cause a non-expected shutdown.
@@ -732,7 +733,7 @@ impl RelayPool {
         id: Option<SubscriptionId>,
         timeout: Option<Duration>,
         policy: ReqExitPolicy,
-    ) -> Result<BoxedStream<(RelayUrl, Result<Event, relay::Error>)>, Error> {
+    ) -> Result<EventStream, Error> {
         // Check if `targets` map is empty
         if filters.is_empty() {
             return Err(Error::NoRelaysSpecified);
