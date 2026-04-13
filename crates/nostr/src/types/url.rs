@@ -280,6 +280,7 @@ impl<'a> From<&'a RelayUrl> for &'a Url {
 /// Relay URL argument.
 ///
 /// This type allows passing different types to methods that accept a relay URL.
+#[derive(Debug, Clone)]
 pub enum RelayUrlArg<'a> {
     /// An already parsed relay URL.
     Parsed(Cow<'a, RelayUrl>),

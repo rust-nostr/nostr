@@ -4,12 +4,14 @@ use nostr::{Filter, RelayUrlArg};
 
 // Keep this enum private, so if we change it in the future, we'll not cause breaking changes
 // (i.e., Vec to HashMap)
+#[derive(Debug, Clone)]
 pub(super) enum InnerReqTarget<'url> {
     Auto(Vec<Filter>),
     Manual(Vec<(RelayUrlArg<'url>, Vec<Filter>)>),
 }
 
 /// Request target
+#[derive(Debug, Clone)]
 pub struct ReqTarget<'url>(InnerReqTarget<'url>);
 
 impl<'url> ReqTarget<'url> {
