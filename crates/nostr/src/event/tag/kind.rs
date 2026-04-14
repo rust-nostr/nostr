@@ -79,6 +79,10 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
     Extension,
+    /// Fallback file source
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
+    Fallback,
     /// File
     File,
     /// Image
@@ -109,6 +113,10 @@ pub enum TagKind<'a> {
     Nonce,
     /// Option
     Option,
+    /// SHA-256 of the original file before any server-side transforms
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
+    Ox,
     /// Payload
     Payload,
     /// Poll type
@@ -339,6 +347,7 @@ impl<'a> TagKind<'a> {
             Self::Ends => "ends",
             Self::Expiration => "expiration",
             Self::Extension => "extension",
+            Self::Fallback => "fallback",
             Self::File => "file",
             Self::Head => "HEAD",
             Self::Image => "image",
@@ -354,6 +363,7 @@ impl<'a> TagKind<'a> {
             Self::Name => "name",
             Self::Nonce => "nonce",
             Self::Option => "option",
+            Self::Ox => "ox",
             Self::Payload => "payload",
             Self::PollType => "polltype",
             Self::Preimage => "preimage",
@@ -418,6 +428,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "ends" => Self::Ends,
             "expiration" => Self::Expiration,
             "extension" => Self::Extension,
+            "fallback" => Self::Fallback,
             "file" => Self::File,
             "image" => Self::Image,
             "license" => Self::License,
@@ -432,6 +443,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "name" => Self::Name,
             "nonce" => Self::Nonce,
             "option" => Self::Option,
+            "ox" => Self::Ox,
             "payload" => Self::Payload,
             "polltype" => Self::PollType,
             "preimage" => Self::Preimage,

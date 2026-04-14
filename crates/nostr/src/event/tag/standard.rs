@@ -228,6 +228,7 @@ pub enum TagStandard {
     },
     Server(Url),
     Sha256(Sha256Hash),
+    OriginalHash(Sha256Hash),
     Size(usize),
     Dim(ImageDimensions),
     Magnet(String),
@@ -303,6 +304,10 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
     Alt(String),
+    /// Fallback file source URL
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
+    Fallback(Url),
     /// List of web URLs
     Web(Vec<Url>),
     Word(String),
@@ -491,6 +496,7 @@ impl TagStandard {
                 TagKind::Lnurl => Ok(Self::Lnurl(tag_1.to_string())),
                 TagKind::Name => Ok(Self::Name(tag_1.to_string())),
                 TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
+                TagKind::Fallback => Ok(Self::Fallback(Url::parse(tag_1)?)),
                 TagKind::Magnet => Ok(Self::Magnet(tag_1.to_string())),
                 TagKind::Blurhash => Ok(Self::Blurhash(tag_1.to_string())),
                 TagKind::Streaming => Ok(Self::Streaming(Url::parse(tag_1)?)),
@@ -513,6 +519,7 @@ impl TagStandard {
                 #[cfg(feature = "nip98")]
                 TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
                 TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
+                TagKind::Ox => Ok(Self::OriginalHash(Sha256Hash::from_str(tag_1)?)),
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
                 TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
@@ -715,6 +722,7 @@ impl TagStandard {
                 character: Alphabet::X,
                 uppercase: false,
             }),
+            Self::OriginalHash(..) => TagKind::Ox,
             Self::Size(..) => TagKind::Size,
             Self::Dim(..) => TagKind::Dim,
             Self::Magnet(..) => TagKind::Magnet,
@@ -749,6 +757,7 @@ impl TagStandard {
             }),
             Self::Protected => TagKind::Protected,
             Self::Alt(..) => TagKind::Alt,
+            Self::Fallback(..) => TagKind::Fallback,
             Self::Web(..) => TagKind::Web,
         }
     }
@@ -1015,6 +1024,7 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Aes256Gcm { key, iv } => vec![tag_kind, key, iv],
             TagStandard::Server(url) => vec![tag_kind, url.to_string()],
             TagStandard::Sha256(hash) => vec![tag_kind, hash.to_string()],
+            TagStandard::OriginalHash(hash) => vec![tag_kind, hash.to_string()],
             TagStandard::Size(bytes) => vec![tag_kind, bytes.to_string()],
             TagStandard::Dim(dim) => vec![tag_kind, dim.to_string()],
             TagStandard::Magnet(uri) => vec![tag_kind, uri],
@@ -1077,6 +1087,7 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::Protected => vec![tag_kind],
             TagStandard::Alt(summary) => vec![tag_kind, summary],
+            TagStandard::Fallback(url) => vec![tag_kind, url.to_string()],
             TagStandard::Web(urls) => {
                 let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
                 tag.push(tag_kind);
