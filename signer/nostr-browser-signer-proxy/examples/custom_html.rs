@@ -49,7 +49,7 @@ async fn main() -> Result<()> {
 
     // Sign event
     let event = EventBuilder::text_note("Testing browser signer proxy")
-        .sign(&proxy)
+        .sign_async(&proxy)
         .await?;
     println!("Event: {}", event.as_json());
 

@@ -5,7 +5,8 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use lru::LruCache;
-use nostr::{EventId, NostrSigner};
+use nostr::EventId;
+use nostr::signer::AsyncNostrSigner;
 use nostr_database::NostrDatabase;
 use tokio::sync::Mutex;
 
@@ -21,7 +22,7 @@ const MAX_VERIFICATION_CACHE_SIZE: usize = 128_000;
 pub(crate) struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,
     pub(crate) transport: Arc<dyn WebSocketTransport>,
-    signer: Option<Arc<dyn NostrSigner>>,
+    signer: Option<Arc<dyn AsyncNostrSigner>>,
     nip42_auto_authentication: Arc<AtomicBool>,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
@@ -32,7 +33,7 @@ impl SharedState {
     pub(crate) fn new(
         database: Arc<dyn NostrDatabase>,
         transport: Arc<dyn WebSocketTransport>,
-        signer: Option<Arc<dyn NostrSigner>>,
+        signer: Option<Arc<dyn AsyncNostrSigner>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
         nip42_auto_authentication: bool,
         monitor: Option<Monitor>,
@@ -71,7 +72,7 @@ impl SharedState {
         self.signer.is_some()
     }
 
-    pub(crate) fn signer(&self) -> Option<&Arc<dyn NostrSigner>> {
+    pub(crate) fn signer(&self) -> Option<&Arc<dyn AsyncNostrSigner>> {
         self.signer.as_ref()
     }
 

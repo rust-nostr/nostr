@@ -24,7 +24,7 @@ use crate::event::EventBuilder;
 #[cfg(feature = "std")]
 use crate::event::{self, Event, builder};
 #[cfg(all(feature = "std", feature = "rand"))]
-use crate::signer::NostrSigner;
+use crate::signer::{AsyncGetPublicKey, AsyncSignEvent};
 #[cfg(feature = "std")]
 use crate::util::JsonUtil;
 #[cfg(feature = "std")]
@@ -255,9 +255,9 @@ impl HttpData {
     #[cfg(all(feature = "std", feature = "rand"))]
     pub async fn to_authorization<T>(self, signer: &T) -> Result<String, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
-        let event: Event = EventBuilder::http_auth(self).sign(signer).await?;
+        let event: Event = EventBuilder::http_auth(self).sign_async(signer).await?;
         let encoded: String = general_purpose::STANDARD.encode(event.as_json());
         Ok(format!("{AUTH_HEADER_PREFIX} {encoded}"))
     }

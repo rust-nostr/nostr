@@ -30,6 +30,7 @@
 
 ### Breaking changes
 
+- Replace `NostrSigner` implementation with `AsyncNostrSigner` (https://github.com/rust-nostr/nostr/pull/1329)
 - Move browser/extension-related errors to a dedicated enum (https://github.com/rust-nostr/nostr/pull/1327)
 
 ### Changed

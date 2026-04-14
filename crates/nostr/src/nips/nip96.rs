@@ -20,7 +20,7 @@ use crate::nips::nip98;
 #[cfg(all(feature = "std", feature = "rand"))]
 use crate::nips::nip98::{HttpData, HttpMethod};
 #[cfg(all(feature = "std", feature = "rand"))]
-use crate::signer::NostrSigner;
+use crate::signer::{AsyncGetPublicKey, AsyncSignEvent};
 use crate::types::Url;
 use crate::{JsonUtil, TagKind, TagStandard, Tags};
 
@@ -155,7 +155,7 @@ impl UploadRequest {
     #[cfg(all(feature = "std", feature = "rand"))]
     pub async fn new<T>(signer: &T, config: &ServerConfig, file_data: &[u8]) -> Result<Self, Error>
     where
-        T: NostrSigner,
+        T: AsyncGetPublicKey + AsyncSignEvent,
     {
         let payload: Sha256Hash = Sha256Hash::hash(file_data);
         let data: HttpData =
