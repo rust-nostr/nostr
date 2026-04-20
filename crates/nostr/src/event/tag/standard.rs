@@ -9,7 +9,6 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use hashes::sha1::Hash as Sha1Hash;
 use hashes::sha256::Hash as Sha256Hash;
 use secp256k1::schnorr::Signature;
 
@@ -17,7 +16,6 @@ use super::{Error, TagKind};
 use crate::event::id::EventId;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip10::Marker;
-use crate::nips::nip34::EUC;
 use crate::nips::nip39::Identity;
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
@@ -33,7 +31,6 @@ use crate::{
 };
 
 const ALL_RELAYS: &str = "ALL_RELAYS";
-const GIT_REFS_HEADS: &str = "ref: refs/heads/";
 
 /// Standardized tag
 #[allow(deprecated)]
@@ -72,34 +69,6 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     EventReport(EventId, Report),
-    /// Git head ([`TagKind::Head`] tag)
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    GitHead(String),
-    /// Git clone ([`TagKind::Clone`] tag)
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    GitClone(Vec<Url>),
-    /// Git commit
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    GitCommit(Sha1Hash),
-    /// Git earliest unique commit ID
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    GitEarliestUniqueCommitId(Sha1Hash),
-    /// Git repo maintainers
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    GitMaintainers(Vec<PublicKey>),
-    /// Git merge base commit
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    GitMergeBase(Sha1Hash),
-    /// Git branch name
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    GitBranchName(String),
     /// Public Key
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -390,20 +359,12 @@ impl TagStandard {
                 });
             }
             TagKind::Client => return parse_client_tag(tag),
-            TagKind::Clone => {
-                let urls: Vec<Url> = extract_urls(tag)?;
-                return Ok(Self::GitClone(urls));
-            }
             TagKind::ContentWarning => {
                 return Ok(Self::ContentWarning {
                     reason: extract_optional_string(tag, 1).map(|s| s.to_string()),
                 });
             }
             TagKind::Encrypted => return Ok(Self::Encrypted),
-            TagKind::Maintainers => {
-                let public_keys: Vec<PublicKey> = extract_public_keys(tag)?;
-                return Ok(Self::GitMaintainers(public_keys));
-            }
             TagKind::Protected => return Ok(Self::Protected),
             TagKind::Relays => {
                 let urls: Vec<RelayUrl> = extract_relay_urls(tag)?;
@@ -455,10 +416,6 @@ impl TagStandard {
                 TagKind::Repository => Ok(Self::Repository(tag_1.to_string())),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
                 TagKind::Challenge => Ok(Self::Challenge(tag_1.to_string())),
-                TagKind::Head => Ok(Self::GitHead(tag_1.to_string())),
-                TagKind::Commit => Ok(Self::GitCommit(Sha1Hash::from_str(tag_1)?)),
-                TagKind::MergeBase => Ok(Self::GitMergeBase(Sha1Hash::from_str(tag_1)?)),
-                TagKind::BranchName => Ok(Self::GitBranchName(tag_1.to_string())),
                 TagKind::Title => Ok(Self::Title(tag_1.to_string())),
                 TagKind::Image => Ok(Self::Image(Url::parse(tag_1)?, None)),
                 TagKind::Thumb => Ok(Self::Thumb(Url::parse(tag_1)?, None)),
@@ -604,15 +561,6 @@ impl TagStandard {
                 })
             }
             Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
-            Self::GitHead(..) => TagKind::Head,
-            Self::GitClone(..) => TagKind::Clone,
-            Self::GitCommit(..) => TagKind::Commit,
-            Self::GitEarliestUniqueCommitId(..) => {
-                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R))
-            }
-            Self::GitMaintainers(..) => TagKind::Maintainers,
-            Self::GitMergeBase(..) => TagKind::MergeBase,
-            Self::GitBranchName(..) => TagKind::BranchName,
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::P,
                 uppercase: *uppercase,
@@ -810,33 +758,6 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::EventReport(id, report) => {
                 vec![tag_kind, id.to_hex(), report.to_string()]
-            }
-            TagStandard::GitHead(branch) => {
-                vec![tag_kind, format!("{GIT_REFS_HEADS}{branch}")]
-            }
-            TagStandard::GitClone(urls) => {
-                let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
-                tag.push(tag_kind);
-                tag.extend(urls.into_iter().map(|url| url.to_string()));
-                tag
-            }
-            TagStandard::GitCommit(hash) => {
-                vec![tag_kind, hash.to_string()]
-            }
-            TagStandard::GitEarliestUniqueCommitId(commit) => {
-                vec![tag_kind, commit.to_string(), EUC.to_string()]
-            }
-            TagStandard::GitMaintainers(public_keys) => {
-                let mut tag: Vec<String> = Vec::with_capacity(1 + public_keys.len());
-                tag.push(tag_kind);
-                tag.extend(public_keys.into_iter().map(|val| val.to_string()));
-                tag
-            }
-            TagStandard::GitMergeBase(hash) => {
-                vec![tag_kind, hash.to_string()]
-            }
-            TagStandard::GitBranchName(name) => {
-                vec![tag_kind, name]
             }
             TagStandard::PublicKeyReport(pk, report) => {
                 vec![tag_kind, pk.to_string(), report.to_string()]
@@ -1283,19 +1204,6 @@ fn parse_r_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
 {
-    if tag.len() >= 3 && !uppercase {
-        let tag_1: &str = tag[1].as_ref();
-        let tag_2: &str = tag[2].as_ref();
-
-        return if tag_2 == EUC {
-            // ["r", "<commit-id>", "euc"]
-            let commit: Sha1Hash = Sha1Hash::from_str(tag_1)?;
-            Ok(TagStandard::GitEarliestUniqueCommitId(commit))
-        } else {
-            Err(Error::UnknownStandardizedTag)
-        };
-    }
-
     if tag.len() >= 2 && !uppercase {
         let tag_1: &str = tag[1].as_ref();
 
@@ -1459,18 +1367,6 @@ where
     let mut list: Vec<RelayUrl> = Vec::with_capacity(tag.len().saturating_sub(1));
     for url in tag.iter().skip(1) {
         list.push(RelayUrl::parse(url.as_ref())?);
-    }
-    Ok(list)
-}
-
-fn extract_public_keys<S>(tag: &[S]) -> Result<Vec<PublicKey>, Error>
-where
-    S: AsRef<str>,
-{
-    // Skip index 0 because is the tag kind
-    let mut list: Vec<PublicKey> = Vec::with_capacity(tag.len().saturating_sub(1));
-    for pkey in tag.iter().skip(1) {
-        list.push(PublicKey::parse(pkey.as_ref())?);
     }
     Ok(list)
 }
@@ -2112,41 +2008,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec!["r", "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2", "euc"],
-            TagStandard::GitEarliestUniqueCommitId(
-                Sha1Hash::from_str("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2").unwrap()
-            )
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec!["clone", "https://github.com/rust-nostr/nostr.git",],
-            TagStandard::GitClone(vec![
-                Url::parse("https://github.com/rust-nostr/nostr.git").unwrap()
-            ])
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "maintainers",
-                "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ],
-            TagStandard::GitMaintainers(vec![
-                PublicKey::from_hex(
-                    "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245"
-                )
-                .unwrap(),
-                PublicKey::from_hex(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-            ])
-            .to_vec()
-        );
-
-        assert_eq!(
             vec![
                 "web",
                 "https://rust-nostr.org/",
@@ -2757,39 +2618,6 @@ mod tests {
                 value: "IT-MI".to_string(),
                 namespace: Some("ISO-3166-2".to_string())
             }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["r", "5e664e5a7845cd1373c79f580ca4fe29ab5b34d2", "euc"]).unwrap(),
-            TagStandard::GitEarliestUniqueCommitId(
-                Sha1Hash::from_str("5e664e5a7845cd1373c79f580ca4fe29ab5b34d2").unwrap()
-            )
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["clone", "https://github.com/rust-nostr/nostr.git"]).unwrap(),
-            TagStandard::GitClone(vec![
-                Url::parse("https://github.com/rust-nostr/nostr.git").unwrap()
-            ])
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "maintainers",
-                "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ])
-            .unwrap(),
-            TagStandard::GitMaintainers(vec![
-                PublicKey::from_hex(
-                    "32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245"
-                )
-                .unwrap(),
-                PublicKey::from_hex(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-            ])
         );
 
         assert_eq!(

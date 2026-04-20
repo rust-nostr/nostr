@@ -8,20 +8,464 @@
 
 #![allow(clippy::wrong_self_convention)]
 
-use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
+use core::num::ParseIntError;
+use core::str::FromStr;
 
+use hashes::hex::HexToArrayError;
 use hashes::sha1::Hash as Sha1Hash;
 
-use crate::event::builder::{Error, EventBuilder, WrongKindError};
-use crate::nips::nip01::{self, Coordinate};
-use crate::types::url::Url;
-use crate::{EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Timestamp};
+use super::nip01::{self, Coordinate};
+use super::nip22::Nip22Tag;
+use super::util::{take_and_parse_from_str, take_string};
+use crate::event::builder::{Error as BuilderError, EventBuilder, WrongKindError};
+use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::types::url::{self, Url};
+use crate::{EventId, Kind, PublicKey, RelayUrl, Timestamp, key};
 
-/// Earlier unique commit ID marker
-pub const EUC: &str = "euc";
+const EUC: &str = "euc";
+const APPLIED_AS_COMMITS: &str = "applied-as-commits";
+const BRANCH_NAME: &str = "branch-name";
+const CLONE: &str = "clone";
+const COMMIT: &str = "commit";
+const COMMIT_PGP_SIG: &str = "commit-pgp-sig";
+const COMMITTER: &str = "committer";
+const CURRENT_COMMIT: &str = "c";
+const DESCRIPTION: &str = "description";
+const GRASP: &str = "g";
+const HEAD: &str = "HEAD";
+const MAINTAINERS: &str = "maintainers";
+const MERGE_BASE: &str = "merge-base";
+const MERGE_COMMIT: &str = "merge-commit";
+const NAME: &str = "name";
+const PARENT_COMMIT: &str = "parent-commit";
+const REFERENCE: &str = "r";
+const REFS_HEADS: &str = "refs/heads/";
+const REFS_TAGS: &str = "refs/tags/";
+const SUBJECT: &str = "subject";
+const WEB: &str = "web";
+const RELAYS: &str = "relays";
+
+/// NIP-34 error
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    /// Keys error
+    Keys(key::Error),
+    /// NIP-01 error
+    Nip01(nip01::Error),
+    /// Relay URL error
+    RelayUrl(url::Error),
+    /// URL error
+    Url(url::ParseError),
+    /// Hex to array error
+    Hex(HexToArrayError),
+    /// Parse integer error
+    ParseInt(ParseIntError),
+    /// Codec error
+    Codec(TagCodecError),
+    /// Invalid `HEAD` tag
+    InvalidHeadTag,
+}
+
+impl core::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Keys(e) => e.fmt(f),
+            Self::Nip01(e) => e.fmt(f),
+            Self::RelayUrl(e) => e.fmt(f),
+            Self::Url(e) => e.fmt(f),
+            Self::Hex(e) => e.fmt(f),
+            Self::ParseInt(e) => e.fmt(f),
+            Self::Codec(e) => e.fmt(f),
+            Self::InvalidHeadTag => f.write_str("Invalid HEAD tag"),
+        }
+    }
+}
+
+impl From<key::Error> for Error {
+    fn from(e: key::Error) -> Self {
+        Self::Keys(e)
+    }
+}
+
+impl From<nip01::Error> for Error {
+    fn from(e: nip01::Error) -> Self {
+        Self::Nip01(e)
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::RelayUrl(e)
+    }
+}
+
+impl From<url::ParseError> for Error {
+    fn from(e: url::ParseError) -> Self {
+        Self::Url(e)
+    }
+}
+
+impl From<HexToArrayError> for Error {
+    fn from(e: HexToArrayError) -> Self {
+        Self::Hex(e)
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseInt(e)
+    }
+}
+
+impl From<TagCodecError> for Error {
+    fn from(e: TagCodecError) -> Self {
+        Self::Codec(e)
+    }
+}
+
+/// Standardized NIP-34 tags
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/34.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Nip34Tag {
+    /// `applied-as-commits` tag
+    AppliedAsCommits(Vec<Sha1Hash>),
+    /// `branch-name` tag
+    BranchName(String),
+    /// `clone` tag
+    Clone(Vec<Url>),
+    /// `commit` tag
+    Commit(Sha1Hash),
+    /// `commit-pgp-sig` tag
+    CommitPgpSig(String),
+    /// `committer` tag
+    Committer {
+        /// Name
+        name: String,
+        /// Email
+        email: String,
+        /// Timestamp
+        timestamp: Timestamp,
+        /// Timezone offset in minutes
+        offset_minutes: i32,
+    },
+    /// `c` tag
+    CurrentCommit(Sha1Hash),
+    /// `description` tag
+    Description(String),
+    /// `r` tag with `euc` marker
+    EarliestUniqueCommitId(Sha1Hash),
+    /// `g` tag
+    Grasp(RelayUrl),
+    /// `HEAD` tag
+    Head(String),
+    /// `maintainers` tag
+    Maintainers(Vec<PublicKey>),
+    /// `merge-base` tag
+    MergeBase(Sha1Hash),
+    /// `merge-commit` tag
+    MergeCommit(Sha1Hash),
+    /// `name` tag
+    Name(String),
+    /// `parent-commit` tag
+    ParentCommit(Sha1Hash),
+    /// `r` tag
+    Reference(Sha1Hash),
+    /// `refs/heads/<branch>` tag
+    RefHead {
+        /// Branch name
+        branch: String,
+        /// Commit ID
+        commit: Sha1Hash,
+    },
+    /// `refs/tags/<tag>` tag
+    RefTag {
+        /// Tag name
+        name: String,
+        /// Commit ID
+        commit: Sha1Hash,
+    },
+    /// `relays` tag
+    Relays(Vec<RelayUrl>),
+    /// `subject` tag
+    Subject(String),
+    /// `web` tag
+    Web(Vec<Url>),
+}
+
+impl TagCodec for Nip34Tag {
+    type Error = Error;
+
+    fn parse<I, S>(tag: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let mut iter = tag.into_iter();
+        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: &str = kind.as_ref();
+
+        match kind {
+            APPLIED_AS_COMMITS => Ok(Self::AppliedAsCommits(parse_commit_list(iter)?)),
+            BRANCH_NAME => Ok(Self::BranchName(take_string(&mut iter, "branch name")?)),
+            CLONE => Ok(Self::Clone(parse_url_list(iter)?)),
+            COMMIT => {
+                let commit: Sha1Hash =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "commit ID")?;
+                Ok(Self::Commit(commit))
+            }
+            COMMIT_PGP_SIG => Ok(Self::CommitPgpSig(take_string(
+                &mut iter,
+                "commit pgp signature",
+            )?)),
+            COMMITTER => {
+                let name: String = iter
+                    .next()
+                    .map(|value| value.as_ref().to_string())
+                    .unwrap_or_default();
+                let email: String = iter
+                    .next()
+                    .map(|value| value.as_ref().to_string())
+                    .unwrap_or_default();
+                let timestamp: Timestamp =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "committer timestamp")?;
+                let offset_minutes: i32 =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "committer offset")?;
+
+                Ok(Self::Committer {
+                    name,
+                    email,
+                    timestamp,
+                    offset_minutes,
+                })
+            }
+            CURRENT_COMMIT => {
+                let commit: Sha1Hash =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "current commit ID")?;
+                Ok(Self::CurrentCommit(commit))
+            }
+            DESCRIPTION => Ok(Self::Description(take_string(&mut iter, "description")?)),
+            GRASP => {
+                let relay: RelayUrl =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "grasp relay URL")?;
+                Ok(Self::Grasp(relay))
+            }
+            HEAD => {
+                let head: S = iter.next().ok_or(TagCodecError::Missing("head"))?;
+                let branch: &str = head
+                    .as_ref()
+                    .strip_prefix("ref: refs/heads/")
+                    .ok_or(Error::InvalidHeadTag)?;
+                Ok(Self::Head(branch.to_string()))
+            }
+            MAINTAINERS => Ok(Self::Maintainers(parse_public_keys(iter)?)),
+            MERGE_BASE => {
+                let commit: Sha1Hash =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "merge base")?;
+                Ok(Self::MergeBase(commit))
+            }
+            MERGE_COMMIT => {
+                let commit: Sha1Hash =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "merge commit ID")?;
+                Ok(Self::MergeCommit(commit))
+            }
+            NAME => Ok(Self::Name(take_string(&mut iter, "name")?)),
+            PARENT_COMMIT => {
+                let commit: Sha1Hash =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "parent commit ID")?;
+                Ok(Self::ParentCommit(commit))
+            }
+            REFERENCE => {
+                let commit: Sha1Hash =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "reference commit ID")?;
+                match iter.next() {
+                    Some(marker) if marker.as_ref() == EUC => {
+                        Ok(Self::EarliestUniqueCommitId(commit))
+                    }
+                    Some(_) => Err(TagCodecError::Unknown.into()),
+                    None => Ok(Self::Reference(commit)),
+                }
+            }
+            SUBJECT => Ok(Self::Subject(take_string(&mut iter, "subject")?)),
+            WEB => Ok(Self::Web(parse_url_list(iter)?)),
+            RELAYS => Ok(Self::Relays(parse_relay_urls(iter)?)),
+            _ if kind.starts_with(REFS_HEADS) => {
+                let commit: S = iter.next().ok_or(TagCodecError::Missing("commit id"))?;
+                Ok(Self::RefHead {
+                    branch: kind.trim_start_matches(REFS_HEADS).to_string(),
+                    commit: Sha1Hash::from_str(commit.as_ref())?,
+                })
+            }
+            _ if kind.starts_with(REFS_TAGS) => {
+                let commit: S = iter.next().ok_or(TagCodecError::Missing("commit id"))?;
+                Ok(Self::RefTag {
+                    name: kind.trim_start_matches(REFS_TAGS).to_string(),
+                    commit: Sha1Hash::from_str(commit.as_ref())?,
+                })
+            }
+            _ => Err(TagCodecError::Unknown.into()),
+        }
+    }
+
+    fn to_tag(&self) -> Tag {
+        match self {
+            Self::AppliedAsCommits(commits) => {
+                let mut tag: Vec<String> = Vec::with_capacity(1 + commits.len());
+                tag.push(String::from(APPLIED_AS_COMMITS));
+                tag.extend(commits.iter().map(ToString::to_string));
+                Tag::new(tag)
+            }
+            Self::BranchName(name) => Tag::new(vec![String::from(BRANCH_NAME), name.clone()]),
+            Self::Clone(urls) => {
+                let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
+                tag.push(String::from(CLONE));
+                tag.extend(urls.iter().map(ToString::to_string));
+                Tag::new(tag)
+            }
+            Self::Commit(commit) => Tag::new(vec![String::from(COMMIT), commit.to_string()]),
+            Self::CommitPgpSig(signature) => {
+                Tag::new(vec![String::from(COMMIT_PGP_SIG), signature.clone()])
+            }
+            Self::Committer {
+                name,
+                email,
+                timestamp,
+                offset_minutes,
+            } => Tag::new(vec![
+                String::from(COMMITTER),
+                name.clone(),
+                email.clone(),
+                timestamp.to_string(),
+                offset_minutes.to_string(),
+            ]),
+            Self::CurrentCommit(commit) => {
+                Tag::new(vec![String::from(CURRENT_COMMIT), commit.to_string()])
+            }
+            Self::Description(description) => {
+                Tag::new(vec![String::from(DESCRIPTION), description.clone()])
+            }
+            Self::EarliestUniqueCommitId(commit) => Tag::new(vec![
+                String::from(REFERENCE),
+                commit.to_string(),
+                String::from(EUC),
+            ]),
+            Self::Grasp(relay) => Tag::new(vec![String::from(GRASP), relay.to_string()]),
+            Self::Head(branch) => Tag::new(vec![
+                String::from(HEAD),
+                format!("ref: refs/heads/{branch}"),
+            ]),
+            Self::Maintainers(public_keys) => {
+                let mut tag: Vec<String> = Vec::with_capacity(1 + public_keys.len());
+                tag.push(String::from(MAINTAINERS));
+                tag.extend(public_keys.iter().map(ToString::to_string));
+                Tag::new(tag)
+            }
+            Self::MergeBase(commit) => Tag::new(vec![String::from(MERGE_BASE), commit.to_string()]),
+            Self::MergeCommit(commit) => {
+                Tag::new(vec![String::from(MERGE_COMMIT), commit.to_string()])
+            }
+            Self::Name(name) => Tag::new(vec![String::from(NAME), name.clone()]),
+            Self::ParentCommit(commit) => {
+                Tag::new(vec![String::from(PARENT_COMMIT), commit.to_string()])
+            }
+            Self::Reference(commit) => Tag::new(vec![String::from(REFERENCE), commit.to_string()]),
+            Self::RefHead { branch, commit } => {
+                Tag::new(vec![format!("{REFS_HEADS}{branch}"), commit.to_string()])
+            }
+            Self::RefTag { name, commit } => {
+                Tag::new(vec![format!("{REFS_TAGS}{name}"), commit.to_string()])
+            }
+            Self::Relays(relays) => {
+                let mut tag: Vec<String> = Vec::with_capacity(1 + relays.len());
+                tag.push(String::from(RELAYS));
+                tag.extend(relays.iter().map(ToString::to_string));
+                Tag::new(tag)
+            }
+            Self::Subject(subject) => Tag::new(vec![String::from(SUBJECT), subject.clone()]),
+            Self::Web(urls) => {
+                let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
+                tag.push(String::from(WEB));
+                tag.extend(urls.iter().map(ToString::to_string));
+                Tag::new(tag)
+            }
+        }
+    }
+}
+
+impl_tag_codec_conversions!(Nip34Tag);
+
+fn parse_commit_list<I, S>(iter: I) -> Result<Vec<Sha1Hash>, Error>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let values: Vec<Sha1Hash> = iter
+        .into_iter()
+        .map(|value| Sha1Hash::from_str(value.as_ref()))
+        .collect::<Result<_, _>>()?;
+
+    if values.is_empty() {
+        return Err(TagCodecError::Missing("commits").into());
+    }
+
+    Ok(values)
+}
+
+fn parse_public_keys<I, S>(iter: I) -> Result<Vec<PublicKey>, Error>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let values: Vec<PublicKey> = iter
+        .into_iter()
+        .map(|value| PublicKey::from_hex(value.as_ref()))
+        .collect::<Result<_, _>>()?;
+
+    if values.is_empty() {
+        return Err(TagCodecError::Missing("public keys").into());
+    }
+
+    Ok(values)
+}
+
+fn parse_relay_urls<I, S>(iter: I) -> Result<Vec<RelayUrl>, Error>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let values: Vec<RelayUrl> = iter
+        .into_iter()
+        .map(|value| RelayUrl::parse(value.as_ref()))
+        .collect::<Result<_, _>>()?;
+
+    if values.is_empty() {
+        return Err(TagCodecError::Missing("relay URLs").into());
+    }
+
+    Ok(values)
+}
+
+fn parse_url_list<I, S>(iter: I) -> Result<Vec<Url>, Error>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let values: Vec<Url> = iter
+        .into_iter()
+        .map(|value| Url::parse(value.as_ref()))
+        .collect::<Result<_, _>>()?;
+
+    if values.is_empty() {
+        return Err(TagCodecError::Missing("URLs").into());
+    }
+
+    Ok(values)
+}
 
 /// Git Repository Announcement
 ///
@@ -53,10 +497,10 @@ pub struct GitRepositoryAnnouncement {
 }
 
 impl GitRepositoryAnnouncement {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
         if self.id.is_empty() {
             // TODO: should return another error?
-            return Err(Error::NIP01(nip01::Error::InvalidCoordinate));
+            return Err(BuilderError::NIP01(nip01::Error::InvalidCoordinate));
         }
 
         let mut tags: Vec<Tag> = Vec::with_capacity(1);
@@ -66,43 +510,37 @@ impl GitRepositoryAnnouncement {
 
         // Add name
         if let Some(name) = self.name {
-            tags.push(Tag::from_standardized(TagStandard::Name(name)));
+            tags.push(Nip34Tag::Name(name).to_tag());
         }
 
         // Add description
         if let Some(description) = self.description {
-            tags.push(Tag::from_standardized(TagStandard::Description(
-                description,
-            )));
+            tags.push(Nip34Tag::Description(description).to_tag());
         }
 
         // Add web
         if !self.web.is_empty() {
-            tags.push(Tag::from_standardized(TagStandard::Web(self.web)));
+            tags.push(Nip34Tag::Web(self.web).to_tag());
         }
 
         // Add clone
         if !self.clone.is_empty() {
-            tags.push(Tag::from_standardized(TagStandard::GitClone(self.clone)));
+            tags.push(Nip34Tag::Clone(self.clone).to_tag());
         }
 
         // Add relays
         if !self.relays.is_empty() {
-            tags.push(Tag::from_standardized(TagStandard::Relays(self.relays)));
+            tags.push(Nip34Tag::Relays(self.relays).to_tag());
         }
 
         // Add EUC
         if let Some(commit) = self.euc {
-            tags.push(Tag::from_standardized(
-                TagStandard::GitEarliestUniqueCommitId(commit),
-            ));
+            tags.push(Nip34Tag::EarliestUniqueCommitId(commit).to_tag());
         }
 
         // Add maintainers
         if !self.maintainers.is_empty() {
-            tags.push(Tag::from_standardized(TagStandard::GitMaintainers(
-                self.maintainers,
-            )));
+            tags.push(Nip34Tag::Maintainers(self.maintainers).to_tag());
         }
 
         // Build
@@ -125,10 +563,10 @@ pub struct GitIssue {
 
 impl GitIssue {
     /// Based on <https://github.com/nostr-protocol/nips/blob/ea36ec9ed7596e49bf7f217b05954c1fecacad88/34.md> revision.
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(Error::WrongKind {
+            return Err(BuilderError::WrongKind {
                 received: self.repository.kind,
                 expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
             });
@@ -149,7 +587,7 @@ impl GitIssue {
 
         // Add subject
         if let Some(subject) = self.subject {
-            tags.push(Tag::from_standardized(TagStandard::Subject(subject)));
+            tags.push(Nip34Tag::Subject(subject).to_tag());
         }
 
         // Add labels
@@ -235,10 +673,10 @@ pub struct GitPatch {
 }
 
 impl GitPatch {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(Error::WrongKind {
+            return Err(BuilderError::WrongKind {
                 received: self.repository.kind,
                 expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
             });
@@ -258,7 +696,7 @@ impl GitPatch {
         tags.push(Tag::public_key(owner_public_key));
 
         // Add EUC (without `euc` marker)
-        tags.push(Tag::reference(self.euc.to_string()));
+        tags.push(Nip34Tag::Reference(self.euc).to_tag());
 
         // Serialize content to string (used later)
         let content: String = self.content.to_string();
@@ -277,25 +715,19 @@ impl GitPatch {
                 ..
             } => {
                 tags.reserve_exact(5);
-                tags.push(Tag::reference(commit.to_string()));
-                tags.push(Tag::from_standardized(TagStandard::GitCommit(commit)));
-                tags.push(Tag::custom(
-                    TagKind::Custom(Cow::Borrowed("parent-commit")),
-                    vec![parent_commit.to_string()],
-                ));
-                tags.push(Tag::custom(
-                    TagKind::Custom(Cow::Borrowed("commit-pgp-sig")),
-                    vec![commit_pgp_sig.unwrap_or_default()],
-                ));
-                tags.push(Tag::custom(
-                    TagKind::Custom(Cow::Borrowed("committer")),
-                    vec![
-                        committer.name.unwrap_or_default(),
-                        committer.email.unwrap_or_default(),
-                        committer.timestamp.to_string(),
-                        committer.offset_minutes.to_string(),
-                    ],
-                ));
+                tags.push(Nip34Tag::Reference(commit).to_tag());
+                tags.push(Nip34Tag::Commit(commit).to_tag());
+                tags.push(Nip34Tag::ParentCommit(parent_commit).to_tag());
+                tags.push(Nip34Tag::CommitPgpSig(commit_pgp_sig.unwrap_or_default()).to_tag());
+                tags.push(
+                    Nip34Tag::Committer {
+                        name: committer.name.unwrap_or_default(),
+                        email: committer.email.unwrap_or_default(),
+                        timestamp: committer.timestamp,
+                        offset_minutes: committer.offset_minutes,
+                    }
+                    .to_tag(),
+                );
             }
         }
 
@@ -331,10 +763,10 @@ pub struct GitPullRequest {
 }
 
 impl GitPullRequest {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(Error::WrongKind {
+            return Err(BuilderError::WrongKind {
                 received: self.repository.kind,
                 expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
             });
@@ -357,28 +789,23 @@ impl GitPullRequest {
 
         // Add subject
         if let Some(subject) = self.subject {
-            tags.push(Tag::from_standardized(TagStandard::Subject(subject)));
+            tags.push(Nip34Tag::Subject(subject).to_tag());
         }
 
         // Add labels
         tags.extend(self.labels.into_iter().map(Tag::hashtag));
 
         // Add current commit
-        tags.push(Tag::custom(
-            TagKind::Custom(Cow::Borrowed("c")),
-            vec![self.current_commit.to_string()],
-        ));
+        tags.push(Nip34Tag::CurrentCommit(self.current_commit).to_tag());
 
         // Add clone URLs
         if !self.clone.is_empty() {
-            tags.push(Tag::from_standardized(TagStandard::GitClone(self.clone)));
+            tags.push(Nip34Tag::Clone(self.clone).to_tag());
         }
 
         // Add branch name
         if let Some(branch_name) = self.branch_name {
-            tags.push(Tag::from_standardized(TagStandard::GitBranchName(
-                branch_name,
-            )));
+            tags.push(Nip34Tag::BranchName(branch_name).to_tag());
         }
 
         // Add root patch event (if this is a revision)
@@ -388,9 +815,7 @@ impl GitPullRequest {
 
         // Add merge base
         if let Some(merge_base) = self.merge_base {
-            tags.push(Tag::from_standardized(TagStandard::GitMergeBase(
-                merge_base,
-            )));
+            tags.push(Nip34Tag::MergeBase(merge_base).to_tag());
         }
 
         // Build
@@ -416,10 +841,10 @@ pub struct GitPullRequestUpdate {
 }
 
 impl GitPullRequestUpdate {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(Error::WrongKind {
+            return Err(BuilderError::WrongKind {
                 received: self.repository.kind,
                 expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
             });
@@ -440,31 +865,35 @@ impl GitPullRequestUpdate {
         tags.push(Tag::public_key(owner_public_key));
 
         // Add NIP-22 tags for the pull request being updated
-        tags.push(Tag::custom(
-            TagKind::Custom(Cow::Borrowed("E")),
-            vec![self.pull_request_event.to_string()],
-        ));
-        tags.push(Tag::custom(
-            TagKind::Custom(Cow::Borrowed("P")),
-            vec![self.pull_request_author.to_string()],
-        ));
+        tags.push(
+            Nip22Tag::Event {
+                id: self.pull_request_event,
+                relay_hint: None,
+                public_key: None,
+                uppercase: true,
+            }
+            .to_tag(),
+        );
+        tags.push(
+            Nip22Tag::PublicKey {
+                public_key: self.pull_request_author,
+                relay_hint: None,
+                uppercase: true,
+            }
+            .to_tag(),
+        );
 
         // Add updated current commit
-        tags.push(Tag::custom(
-            TagKind::Custom(Cow::Borrowed("c")),
-            vec![self.current_commit.to_string()],
-        ));
+        tags.push(Nip34Tag::CurrentCommit(self.current_commit).to_tag());
 
         // Add clone URLs
         if !self.clone.is_empty() {
-            tags.push(Tag::from_standardized(TagStandard::GitClone(self.clone)));
+            tags.push(Nip34Tag::Clone(self.clone).to_tag());
         }
 
         // Add merge base
         if let Some(merge_base) = self.merge_base {
-            tags.push(Tag::from_standardized(TagStandard::GitMergeBase(
-                merge_base,
-            )));
+            tags.push(Nip34Tag::MergeBase(merge_base).to_tag());
         }
 
         // Build
@@ -486,7 +915,7 @@ impl GitUserGraspList {
         let tags: Vec<Tag> = self
             .grasp_servers
             .into_iter()
-            .map(|url| Tag::custom(TagKind::Custom(Cow::Borrowed("g")), vec![url.to_string()]))
+            .map(|url| Nip34Tag::Grasp(url).to_tag())
             .collect();
 
         EventBuilder::new(Kind::GitUserGraspList, "").tags(tags)
@@ -543,6 +972,30 @@ mod tests {
         ])
         .unwrap();
         assert_eq!(event.tags, tags);
+    }
+
+    #[test]
+    fn test_standardized_git_head_tag() {
+        let tag = vec![String::from("HEAD"), String::from("ref: refs/heads/main")];
+        let parsed = Nip34Tag::parse(&tag).unwrap();
+
+        assert_eq!(parsed, Nip34Tag::Head(String::from("main")));
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
+    }
+
+    #[test]
+    fn test_standardized_applied_as_commits_tag() {
+        let commit_1 = Sha1Hash::from_str("59429cfc6cb35b0a1ddace73b5a5c5ed57b8f5ca").unwrap();
+        let commit_2 = Sha1Hash::from_str("b1fa697b5cd42fbb6ec9fef9009609200387e0b4").unwrap();
+        let tag = vec![
+            String::from("applied-as-commits"),
+            commit_1.to_string(),
+            commit_2.to_string(),
+        ];
+        let parsed = Nip34Tag::parse(&tag).unwrap();
+
+        assert_eq!(parsed, Nip34Tag::AppliedAsCommits(vec![commit_1, commit_2]));
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
     }
 
     #[test]
@@ -643,6 +1096,65 @@ mod tests {
                 "0",
             ],
             vec!["t", "root"],
+        ])
+        .unwrap();
+        assert_eq!(event.tags, tags);
+    }
+
+    #[test]
+    fn test_git_pull_request_update() {
+        let pk =
+            PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")
+                .unwrap();
+        let repository = Coordinate::new(Kind::GitRepoAnnouncement, pk).identifier("rust-nostr");
+        let pull_request_event =
+            EventId::from_hex("70b09cb6f4f6b2b8c3d2b6f0bbf8f4f6ca1d9c1df4d5f85f0dbb2a7a9c7c4f21")
+                .unwrap();
+        let pull_request_author =
+            PublicKey::from_hex("68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272")
+                .unwrap();
+
+        let update = GitPullRequestUpdate {
+            repository,
+            pull_request_event,
+            pull_request_author,
+            current_commit: Sha1Hash::from_str("b1fa697b5cd42fbb6ec9fef9009609200387e0b4").unwrap(),
+            clone: vec![Url::parse("https://github.com/rust-nostr/nostr.git").unwrap()],
+            merge_base: Some(
+                Sha1Hash::from_str("c88d901b42ff8389330d6d5d4044cf1d196696f3").unwrap(),
+            ),
+        };
+
+        let keys = Keys::generate();
+        let event: Event = update
+            .to_event_builder()
+            .unwrap()
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        assert_eq!(event.kind, Kind::GitPullRequestUpdate);
+        assert!(event.content.is_empty());
+
+        let tags = Tags::parse([
+            vec![
+                "a",
+                "30617:68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272:rust-nostr",
+            ],
+            vec![
+                "p",
+                "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
+            ],
+            vec![
+                "E",
+                "70b09cb6f4f6b2b8c3d2b6f0bbf8f4f6ca1d9c1df4d5f85f0dbb2a7a9c7c4f21",
+            ],
+            vec![
+                "P",
+                "68d81165918100b7da43fc28f7d1fc12554466e1115886b9e7bb326f65ec4272",
+            ],
+            vec!["c", "b1fa697b5cd42fbb6ec9fef9009609200387e0b4"],
+            vec!["clone", "https://github.com/rust-nostr/nostr.git"],
+            vec!["merge-base", "c88d901b42ff8389330d6d5d4044cf1d196696f3"],
         ])
         .unwrap();
         assert_eq!(event.tags, tags);
