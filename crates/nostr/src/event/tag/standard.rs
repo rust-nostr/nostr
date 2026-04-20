@@ -49,22 +49,6 @@ pub enum TagStandard {
         /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
-    /// Quote
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
-    Quote {
-        event_id: EventId,
-        relay_url: Option<RelayUrl>,
-        /// Should be the public key of the author of the referenced event
-        public_key: Option<PublicKey>,
-    },
-    /// Quote address
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/22.md>
-    QuoteAddress {
-        coordinate: Coordinate,
-        relay_url: Option<RelayUrl>,
-    },
     /// Report event
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
@@ -330,13 +314,6 @@ impl TagStandard {
                 } => {
                     return parse_r_tag(tag, uppercase);
                 }
-                // Parse `q` tag
-                SingleLetterTag {
-                    character: Alphabet::Q,
-                    uppercase: false,
-                } => {
-                    return parse_q_tag(tag);
-                }
                 // Parse `t` tag
                 SingleLetterTag {
                     character: Alphabet::T,
@@ -554,12 +531,6 @@ impl TagStandard {
                 character: Alphabet::E,
                 uppercase: *uppercase,
             }),
-            Self::Quote { .. } | Self::QuoteAddress { .. } => {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::Q,
-                    uppercase: false,
-                })
-            }
             Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::P,
@@ -717,32 +688,6 @@ impl From<TagStandard> for Vec<String> {
                     tag.push(public_key.to_string());
                 }
 
-                tag
-            }
-            TagStandard::Quote {
-                event_id,
-                relay_url,
-                public_key,
-            } => {
-                let mut tag = vec![tag_kind, event_id.to_hex()];
-                if let Some(relay_url) = relay_url {
-                    tag.push(relay_url.to_string());
-                }
-                if let Some(public_key) = public_key {
-                    // If <relay-url> is `None`, push an empty string
-                    tag.resize_with(3, String::new);
-                    tag.push(public_key.to_hex());
-                }
-                tag
-            }
-            TagStandard::QuoteAddress {
-                coordinate,
-                relay_url,
-            } => {
-                let mut tag = vec![tag_kind, coordinate.to_string()];
-                if let Some(relay_url) = relay_url {
-                    tag.push(relay_url.to_string());
-                }
                 tag
             }
             TagStandard::PublicKey {
@@ -1213,44 +1158,6 @@ where
     Err(Error::UnknownStandardizedTag)
 }
 
-fn parse_q_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
-where
-    S: AsRef<str>,
-{
-    if tag.len() < 2 {
-        return Err(Error::UnknownStandardizedTag);
-    }
-
-    let tag_1 = tag[1].as_ref();
-    let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref());
-
-    let relay_url: Option<RelayUrl> = match tag_2 {
-        Some(url) if !url.is_empty() => Some(RelayUrl::parse(url)?),
-        _ => None,
-    };
-
-    match EventId::from_hex(tag_1) {
-        Ok(event_id) => {
-            let tag_3: Option<&str> = tag.get(3).map(|r| r.as_ref());
-
-            let public_key: Option<PublicKey> = match tag_3 {
-                Some(public_key) => Some(PublicKey::from_hex(public_key)?),
-                None => None,
-            };
-
-            Ok(TagStandard::Quote {
-                event_id,
-                relay_url,
-                public_key,
-            })
-        }
-        Err(_) => Ok(TagStandard::QuoteAddress {
-            coordinate: Coordinate::from_str(tag_1)?,
-            relay_url,
-        }),
-    }
-}
-
 fn parse_t_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
@@ -1526,87 +1433,6 @@ mod tests {
                 .unwrap()
             )
             .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "q",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-            ],
-            TagStandard::Quote {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                public_key: None,
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "q",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io"
-            ],
-            TagStandard::Quote {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                public_key: None,
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "q",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ],
-            TagStandard::Quote {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                public_key: Some(
-                    PublicKey::from_str(
-                        "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                    )
-                    .unwrap()
-                ),
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "q",
-                "30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7",
-            ],
-            TagStandard::QuoteAddress {
-                coordinate: Coordinate::from_str("30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7").unwrap(),
-                relay_url: None,
-            }
-                .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "q",
-                "30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7",
-                "wss://relay.damus.io"
-            ],
-            TagStandard::QuoteAddress {
-                coordinate: Coordinate::from_str("30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7").unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-            }
-                .to_vec()
         );
 
         assert_eq!(
@@ -2078,85 +1904,6 @@ mod tests {
                 public_key: None,
                 uppercase: true
             })
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "q",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-            ])
-            .unwrap(),
-            TagStandard::Quote {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                public_key: None,
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "q",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "wss://relay.damus.io"
-            ])
-            .unwrap(),
-            TagStandard::Quote {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                public_key: None,
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "q",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ])
-            .unwrap(),
-            TagStandard::Quote {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                public_key: Some(
-                    PublicKey::from_hex(
-                        "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                    )
-                    .unwrap()
-                ),
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "q",
-                "30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7",
-            ]).unwrap(),
-            TagStandard::QuoteAddress {
-                coordinate: Coordinate::from_str("30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7").unwrap(),
-                relay_url: None,
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "q",
-                "30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7",
-                "wss://relay.damus.io"
-            ]).unwrap(),
-            TagStandard::QuoteAddress {
-                coordinate: Coordinate::from_str("30023:3c9849383bdea883b0bd16fece1ed36d37e37cdde3ce43b17ea4e9192ec11289:f9347ca7").unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-            }
         );
 
         assert_eq!(

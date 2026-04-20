@@ -551,15 +551,16 @@ impl EventBuilder {
 
         if event.kind == Kind::TextNote {
             Self::new(Kind::Repost, content).tags([
-                Tag::from_standardized(TagStandard::Event {
-                    event_id: event.id,
-                    relay_url,
-                    marker: None,
-                    // NOTE: not add public key since it's already included as `p` tag
-                    public_key: None,
-                    uppercase: false,
-                }),
-                Tag::public_key(event.pubkey),
+                Nip18Tag::Event {
+                    id: event.id,
+                    relay_hint: relay_url,
+                }
+                .to_tag(),
+                Nip18Tag::PublicKey {
+                    public_key: event.pubkey,
+                    relay_hint: None,
+                }
+                .to_tag(),
             ])
         } else {
             Self::new(Kind::GenericRepost, content)
@@ -569,19 +570,17 @@ impl EventBuilder {
                         .map(|c| Tag::coordinate(c, relay_url.clone())),
                 )
                 .tags([
-                    Tag::from_standardized(TagStandard::Event {
-                        event_id: event.id,
-                        relay_url,
-                        marker: None,
-                        // NOTE: not add public key since it's already included as `p` tag
-                        public_key: None,
-                        uppercase: false,
-                    }),
-                    Tag::public_key(event.pubkey),
-                    Tag::from_standardized(TagStandard::Kind {
-                        kind: event.kind,
-                        uppercase: false,
-                    }),
+                    Nip18Tag::Event {
+                        id: event.id,
+                        relay_hint: relay_url,
+                    }
+                    .to_tag(),
+                    Nip18Tag::PublicKey {
+                        public_key: event.pubkey,
+                        relay_hint: None,
+                    }
+                    .to_tag(),
+                    Nip18Tag::Kind(event.kind).to_tag(),
                 ])
         }
     }
@@ -1823,13 +1822,14 @@ impl EventBuilder {
             content = format!("{}\n{content}", nevent.to_nostr_uri()?);
         }
 
-        Ok(
-            Self::new(Kind::ChatMessage, content).tag(Tag::from_standardized(TagStandard::Quote {
-                event_id: reply_to.id,
-                relay_url,
+        Ok(Self::new(Kind::ChatMessage, content).tag(
+            Nip18Tag::Quote {
+                id: reply_to.id,
+                relay_hint: relay_url,
                 public_key: Some(reply_to.pubkey),
-            })),
-        )
+            }
+            .to_tag(),
+        ))
     }
 
     /// Thread
@@ -2268,22 +2268,17 @@ mod tests {
         assert_eq!(repost.kind, Kind::Repost);
         assert_eq!(repost.content, note.as_json());
         assert_eq!(
-            repost.tags[0].standardized().unwrap(),
-            TagStandard::Event {
-                event_id: note.id,
-                relay_url: Some(relay_url),
-                marker: None,
-                public_key: None,
-                uppercase: false
+            Nip18Tag::try_from(&repost.tags[0]).unwrap(),
+            Nip18Tag::Event {
+                id: note.id,
+                relay_hint: Some(relay_url),
             }
         );
         assert_eq!(
-            repost.tags[1].standardized().unwrap(),
-            TagStandard::PublicKey {
+            Nip18Tag::try_from(&repost.tags[1]).unwrap(),
+            Nip18Tag::PublicKey {
                 public_key: note.pubkey,
-                relay_url: None,
-                alias: None,
-                uppercase: false
+                relay_hint: None,
             }
         );
     }
