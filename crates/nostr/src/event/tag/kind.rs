@@ -117,10 +117,6 @@ pub enum TagKind<'a> {
     PollType,
     /// Preimage
     Preimage,
-    /// Protected event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
-    Protected,
     /// Proxy
     Proxy,
     /// PublishedAt
@@ -357,7 +353,6 @@ impl<'a> TagKind<'a> {
             Self::Payload => "payload",
             Self::PollType => "polltype",
             Self::Preimage => "preimage",
-            Self::Protected => "-",
             Self::Proxy => "proxy",
             Self::PublishedAt => "published_at",
             Self::Recording => "recording",
@@ -396,7 +391,6 @@ impl fmt::Display for TagKind<'_> {
 impl<'a> From<&'a str> for TagKind<'a> {
     fn from(kind: &'a str) -> Self {
         match kind {
-            "-" => Self::Protected,
             "aes-256-gcm" => Self::Aes256Gcm,
             "alt" => Self::Alt,
             "amount" => Self::Amount,
@@ -490,9 +484,6 @@ mod tests {
 
     #[test]
     fn test_de_serialization() {
-        assert_eq!(TagKind::from("-"), TagKind::Protected);
-        assert_eq!(TagKind::Protected.as_str(), "-");
-
         assert_eq!(TagKind::from("aes-256-gcm"), TagKind::Aes256Gcm);
         assert_eq!(TagKind::Aes256Gcm.as_str(), "aes-256-gcm");
 
@@ -562,7 +553,6 @@ mod tests {
 
     #[test]
     fn test_eq() {
-        assert_eq!(TagKind::Custom(Cow::from("-")), TagKind::Protected);
         assert_eq!(TagKind::Custom(Cow::from("p")), TagKind::p());
         assert_eq!(
             TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::P)),

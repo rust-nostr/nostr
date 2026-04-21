@@ -237,10 +237,6 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
     Repository(String),
-    /// Protected event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
-    Protected,
     /// A short human-readable plaintext summary of what that event is about
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
@@ -342,7 +338,6 @@ impl TagStandard {
                 });
             }
             TagKind::Encrypted => return Ok(Self::Encrypted),
-            TagKind::Protected => return Ok(Self::Protected),
             TagKind::Relays => {
                 let urls: Vec<RelayUrl> = extract_relay_urls(tag)?;
                 return Ok(Self::Relays(urls));
@@ -642,7 +637,6 @@ impl TagStandard {
                 character: Alphabet::L,
                 uppercase: false,
             }),
-            Self::Protected => TagKind::Protected,
             Self::Alt(..) => TagKind::Alt,
             Self::Web(..) => TagKind::Web,
         }
@@ -898,7 +892,6 @@ impl From<TagStandard> for Vec<String> {
                 }
                 tag
             }
-            TagStandard::Protected => vec![tag_kind],
             TagStandard::Alt(summary) => vec![tag_kind, summary],
             TagStandard::Web(urls) => {
                 let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
@@ -1395,8 +1388,6 @@ mod tests {
 
     #[test]
     fn test_tag_standard_serialization() {
-        assert_eq!(vec!["-"], TagStandard::Protected.to_vec());
-
         assert_eq!(
             vec!["alt", "something"],
             TagStandard::Alt(String::from("something")).to_vec()
@@ -1849,8 +1840,6 @@ mod tests {
 
     #[test]
     fn test_tag_standard_parsing() {
-        assert_eq!(TagStandard::parse(&["-"]).unwrap(), TagStandard::Protected);
-
         assert_eq!(
             TagStandard::parse(&["alt", "something"]).unwrap(),
             TagStandard::Alt(String::from("something"))

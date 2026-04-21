@@ -261,7 +261,7 @@ impl Event {
     /// <https://github.com/nostr-protocol/nips/blob/master/70.md>
     #[inline]
     pub fn is_protected(&self) -> bool {
-        self.tags.find_standardized(TagKind::Protected).is_some()
+        self.tags.iter().any(|t| t.is_protected())
     }
 }
 
