@@ -279,15 +279,14 @@ impl NostrSqlite {
             }
         }
 
-        if options.process_nip62 && event.kind == Kind::RequestToVanish {
-            let is_targeted = event.tags.filter_standardized(TagKind::Relay).any(|tag| {
-                matches!(tag, TagStandard::AllRelays)
-                    || matches!(tag, TagStandard::Relay(ref relay) if Some(relay) == options.relay_url.as_ref())
-            });
-
-            if is_targeted {
-                Self::handle_request_to_vanish(&tx, &event.pubkey)?;
-            }
+        if options.process_nip62
+            && event.kind == Kind::RequestToVanish
+            && nip62::is_valid_vanish_request_for_relay(
+                event.tags.as_slice(),
+                options.relay_url.as_ref(),
+            )
+        {
+            Self::handle_request_to_vanish(&tx, &event.pubkey)?;
         }
 
         // Insert event first

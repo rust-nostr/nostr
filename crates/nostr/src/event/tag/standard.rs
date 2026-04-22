@@ -30,8 +30,6 @@ use crate::{
     Alphabet, Event, ImageDimensions, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp,
 };
 
-const ALL_RELAYS: &str = "ALL_RELAYS";
-
 /// Standardized tag
 #[allow(deprecated)]
 #[allow(missing_docs)]
@@ -107,10 +105,6 @@ pub enum TagStandard {
     },
     Relay(RelayUrl),
     Relays(Vec<RelayUrl>),
-    /// All relays tag
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
-    AllRelays,
     /// Poll end timestamp
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
@@ -372,13 +366,7 @@ impl TagStandard {
                     uppercase: false,
                 }) => Ok(Self::AbsoluteURL(Url::parse(tag_1)?)),
                 TagKind::Dependency => Ok(Self::Dependency(tag_1.to_string())),
-                TagKind::Relay => {
-                    if tag_1 == ALL_RELAYS {
-                        Ok(Self::AllRelays)
-                    } else {
-                        Ok(Self::Relay(RelayUrl::parse(tag_1)?))
-                    }
-                }
+                TagKind::Relay => Ok(Self::Relay(RelayUrl::parse(tag_1)?)),
                 TagKind::Extension => Ok(Self::Extension(tag_1.to_string())),
                 TagKind::License => Ok(Self::License(tag_1.to_string())),
                 // TODO: depending on the event kind, handle the tag in the right way.
@@ -567,7 +555,7 @@ impl TagStandard {
                     uppercase: *uppercase,
                 })
             }
-            Self::Relay(..) | Self::AllRelays => TagKind::Relay,
+            Self::Relay(..) => TagKind::Relay,
             Self::PollEndsAt(..) => nip88::ENDS_AT_TAG_KIND,
             Self::PollOption { .. } => TagKind::Option,
             Self::PollResponse(..) => TagKind::Response,
@@ -747,7 +735,6 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Nip73Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
-            TagStandard::AllRelays => vec![tag_kind, ALL_RELAYS.to_string()],
             TagStandard::PollEndsAt(ends_at) => vec![tag_kind, ends_at.to_string()],
             TagStandard::PollOption(opt) => vec![tag_kind, opt.id, opt.text],
             TagStandard::PollResponse(response) => vec![tag_kind, response],
@@ -1776,8 +1763,6 @@ mod tests {
             TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap()).to_vec()
         );
 
-        assert_eq!(vec!["relay", "ALL_RELAYS"], TagStandard::AllRelays.to_vec());
-
         assert_eq!(
             vec!["lnurl", "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"],
             TagStandard::Lnurl(String::from("lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp")).to_vec(),
@@ -2279,11 +2264,6 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["relay", "wss://relay.damus.io"]).unwrap(),
             TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap())
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["relay", "ALL_RELAYS"]).unwrap(),
-            TagStandard::AllRelays
         );
 
         assert_eq!(

@@ -358,16 +358,6 @@ impl Tag {
         Self::from_standardized(TagStandard::Relays(urls.into_iter().collect()))
     }
 
-    /// All relays
-    ///
-    /// JSON: `["relay", "ALL_RELAYS"]`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
-    #[inline]
-    pub fn all_relays() -> Self {
-        Self::from_standardized(TagStandard::AllRelays)
-    }
-
     /// Compose `["t", "<hashtag>"]` tag
     ///
     /// This will convert the hashtag to lowercase.

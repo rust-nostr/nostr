@@ -298,15 +298,14 @@ impl MemoryStore {
                     to_discard.extend(self.internal_query_by_kind_and_author(params).map(|e| e.id));
                 }
             }
-        } else if self.options.process_nip62 && event.kind == Kind::RequestToVanish {
-            let is_targeted = event.tags.filter_standardized(TagKind::Relay).any(|tag| {
-                matches!(tag, TagStandard::AllRelays)
-                    || matches!(tag, TagStandard::Relay(ref relay) if Some(relay) == self.options.relay_url.as_ref())
-            });
-
-            if is_targeted {
-                self.handle_request_to_vanish(&event.pubkey);
-            }
+        } else if self.options.process_nip62
+            && event.kind == Kind::RequestToVanish
+            && nip62::is_valid_vanish_request_for_relay(
+                event.tags.as_slice(),
+                self.options.relay_url.as_ref(),
+            )
+        {
+            self.handle_request_to_vanish(&event.pubkey);
         }
 
         // Remove events

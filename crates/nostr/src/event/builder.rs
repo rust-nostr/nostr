@@ -612,7 +612,7 @@ impl EventBuilder {
 
         match target {
             VanishTarget::AllRelays => {
-                builder = builder.tag(Tag::all_relays());
+                builder = builder.tag(Nip62Tag::AllRelays.to_tag());
             }
             VanishTarget::Relays(list) => {
                 // Check if the list is empty
@@ -621,7 +621,7 @@ impl EventBuilder {
                     return Err(Error::EmptyTags);
                 }
 
-                builder = builder.tags(list.into_iter().map(Tag::relay));
+                builder = builder.tags(list.into_iter().map(Nip62Tag::Relay).map(Into::into));
             }
         }
 
