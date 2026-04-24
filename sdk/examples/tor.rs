@@ -41,8 +41,7 @@ async fn main() -> Result<()> {
     while let Some(notification) = notifications.next().await {
         if let ClientNotification::Event { event, .. } = notification {
             if event.kind == Kind::GiftWrap {
-                let UnwrappedGift { rumor, .. } =
-                    UnwrappedGift::from_gift_wrap(&keys, &event).await?;
+                let UnwrappedGift { rumor, .. } = UnwrappedGift::from_gift_wrap(&keys, &event)?;
                 println!("Rumor: {}", rumor.as_json());
             } else {
                 println!("{:?}", event);

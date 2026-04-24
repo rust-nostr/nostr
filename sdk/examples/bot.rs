@@ -39,7 +39,7 @@ async fn main() -> Result<()> {
     while let Some(notification) = notifications.next().await {
         if let ClientNotification::Event { event, .. } = notification {
             if event.kind == Kind::GiftWrap {
-                match UnwrappedGift::from_gift_wrap(&keys, &event).await {
+                match UnwrappedGift::from_gift_wrap(&keys, &event) {
                     Ok(UnwrappedGift { rumor, sender }) => {
                         if rumor.kind == Kind::PrivateDirectMessage {
                             let content: String = match rumor.content.as_str() {
@@ -51,7 +51,7 @@ async fn main() -> Result<()> {
                             };
 
                             // Send private message
-                            let msg = EventBuilder::private_msg(&keys, sender, content, []).await?;
+                            let msg = EventBuilder::private_msg(&keys, sender, content, [])?;
                             client.send_event(&msg).to_nip17().await?;
                         }
                     }
