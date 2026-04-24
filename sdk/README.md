@@ -50,11 +50,6 @@ async fn main() -> Result<()> {
     let builder = EventBuilder::text_note("My first text note from rust-nostr!");
     client.send_event_builder(builder).await?;
 
-    // Create a POW text note
-    let builder = EventBuilder::text_note("POW text note from nostr-sdk").pow(20);
-    client.send_event_builder(builder).await?; // Send to all relays
-    // client.send_event_builder_to(["wss://relay.damus.io"], builder).await?; // Send to specific relay
-
     Ok(())
 }
 ```

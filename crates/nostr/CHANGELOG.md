@@ -36,6 +36,7 @@
 - Add `os-rng` feature (https://github.com/rust-nostr/nostr/pull/1171)
 - Replace `TryIntoUrl` trait with `RelayUrlArg` enum (https://github.com/rust-nostr/nostr/pull/1217)
 - Remove `Copy` trait from `MachineReadablePrefix` enum (https://github.com/rust-nostr/nostr/pull/1258)
+- Remove `EventBuilder::pow` in favor of `UnsignedEvent::mine` and `UnsignedEvent::mine_async` (https://github.com/rust-nostr/nostr/pull/1334)
 
 ### Changed
 
@@ -68,6 +69,8 @@
 - Add `MachineReadablePrefix::Custom` variant (https://github.com/rust-nostr/nostr/pull/1258)
 - Add `RelayMetadata::{is_read, is_write}` functions (https://github.com/rust-nostr/nostr/pull/1290)
 - Add the kind number in the kind doc (https://github.com/rust-nostr/nostr/pull/1293)
+- Add `PowAdapter` and `AsyncPowAdapter` traits (https://github.com/rust-nostr/nostr/pull/1334)
+- Add `UnsignedEvent::mine` and `UnsignedEvent::mine_async` (https://github.com/rust-nostr/nostr/pull/1334)
 
 ### Removed
 

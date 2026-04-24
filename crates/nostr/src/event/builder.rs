@@ -8,12 +8,6 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 use core::ops::Range;
-#[cfg(feature = "pow-multi-thread")]
-use std::sync::Arc;
-#[cfg(feature = "pow-multi-thread")]
-use std::sync::atomic::{AtomicBool, Ordering};
-#[cfg(feature = "pow-multi-thread")]
-use std::thread::{self, JoinHandle};
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
@@ -174,8 +168,6 @@ pub struct EventBuilder {
     content: String,
     /// Custom timestamp
     pub custom_created_at: Option<Timestamp>,
-    /// POW difficulty
-    pub pow: Option<u8>,
     /// Allow self-tagging
     ///
     /// If enabled, the `p` tags that match the signing keypair will not be discarded.
@@ -198,7 +190,6 @@ impl EventBuilder {
             tags: Tags::new(),
             content: content.into(),
             custom_created_at: None,
-            pow: None,
             allow_self_tagging: false,
             dedup_tags: false,
         }
@@ -238,17 +229,6 @@ impl EventBuilder {
         self
     }
 
-    /// Set POW difficulty
-    ///
-    /// Only values `> 0` are accepted!
-    #[inline]
-    pub fn pow(mut self, difficulty: u8) -> Self {
-        if difficulty > 0 {
-            self.pow = Some(difficulty);
-        }
-        self
-    }
-
     /// Allow self-tagging
     ///
     /// When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
@@ -263,148 +243,6 @@ impl EventBuilder {
     pub fn dedup_tags(mut self) -> Self {
         self.dedup_tags = true;
         self
-    }
-
-    /// Returns the [`EventId`] if the POW difficulty is satisfied.
-    fn check_nonce(
-        &mut self,
-        public_key: &PublicKey,
-        created_at: &Timestamp,
-        nonce: u128,
-        difficulty: u8,
-    ) -> Option<EventId> {
-        // Push POW tag
-        self.tags.push(Tag::pow(nonce, difficulty));
-
-        // Compute event ID
-        let id: EventId = EventId::new(
-            public_key,
-            created_at,
-            &self.kind,
-            &self.tags,
-            &self.content,
-        );
-
-        // Check POW difficulty
-        if id.check_pow(difficulty) {
-            Some(id)
-        } else {
-            // Remove tag if the nonce doesn't satisfy the difficulty requirement
-            self.tags.pop();
-            None
-        }
-    }
-
-    /// Mine PoW using single thread (fallback method)
-    fn mine_pow_single_thread(mut self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
-        let mut nonce: u128 = 0;
-
-        loop {
-            nonce += 1;
-
-            let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
-
-            // Check if the nonce satisfies the difficulty requirement
-            if let Some(id) = self.check_nonce(&public_key, &created_at, nonce, difficulty) {
-                return UnsignedEvent {
-                    id: Some(id),
-                    pubkey: public_key,
-                    created_at,
-                    kind: self.kind,
-                    tags: self.tags,
-                    content: self.content,
-                };
-            }
-        }
-    }
-
-    /// Mine PoW using multiple threads with std::thread
-    ///
-    /// Fallback to [`Self::mine_pow_single_thread`] if:
-    /// - the number of threads is `1`;
-    /// - thread spawning or coordination fails;
-    /// - no valid solution is found by any thread (rare edge case)
-    #[cfg(feature = "pow-multi-thread")]
-    fn mine_pow_multi_thread(self, public_key: PublicKey, difficulty: u8) -> UnsignedEvent {
-        // Get the number of available CPU cores
-        let num_threads = thread::available_parallelism()
-            .map(|n| n.get())
-            .unwrap_or(1);
-
-        // Single thread fallback
-        if num_threads == 1 {
-            return self.mine_pow_single_thread(public_key, difficulty);
-        }
-
-        let found: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
-
-        let mut handles: Vec<JoinHandle<Option<UnsignedEvent>>> = Vec::with_capacity(num_threads);
-
-        // Spawn threads
-        for thread_id in 0..num_threads {
-            let found: Arc<AtomicBool> = found.clone();
-
-            let mut builder: Self = self.clone();
-
-            // Create a timestamp
-            // TODO: move this into the thread loop
-            let created_at: Timestamp = self.custom_created_at.unwrap_or_else(Timestamp::now);
-
-            let handle: JoinHandle<Option<UnsignedEvent>> = thread::spawn(move || {
-                let mut nonce: u128 = thread_id as u128;
-
-                loop {
-                    // Check if another thread found the solution
-                    if found.load(Ordering::Relaxed) {
-                        break;
-                    }
-
-                    nonce += num_threads as u128;
-
-                    // Check if the nonce satisfies the difficulty requirement
-                    if let Some(id) =
-                        builder.check_nonce(&public_key, &created_at, nonce, difficulty)
-                    {
-                        // We found a valid nonce, signal other threads to stop and store the result
-                        found.store(true, Ordering::Relaxed);
-
-                        // Return the unsigned event
-                        return Some(UnsignedEvent {
-                            id: Some(id),
-                            pubkey: public_key,
-                            created_at,
-                            kind: builder.kind,
-                            tags: builder.tags,
-                            content: builder.content,
-                        });
-                    }
-                }
-
-                None
-            });
-
-            handles.push(handle);
-        }
-
-        // Wait for all threads to finish (non-blocking)
-        loop {
-            if found.load(Ordering::Relaxed) {
-                break;
-            }
-        }
-
-        // Find result
-        for handle in handles.into_iter() {
-            // NOTE: this shouldn't block the current thread,
-            // since above we've checked if the solution has been found
-            // (so all threads should be terminated).
-            if let Ok(Some(unsigned)) = handle.join() {
-                return unsigned;
-            }
-        }
-
-        // Single thread fallback
-        self.mine_pow_single_thread(public_key, difficulty)
     }
 
     /// Build an unsigned event
@@ -433,31 +271,15 @@ impl EventBuilder {
             self.tags.dedup();
         }
 
-        // Check if should be POW
-        match self.pow {
-            Some(difficulty) if difficulty > 0 => {
-                #[cfg(not(feature = "pow-multi-thread"))]
-                {
-                    self.mine_pow_single_thread(public_key, difficulty)
-                }
-                #[cfg(feature = "pow-multi-thread")]
-                {
-                    self.mine_pow_multi_thread(public_key, difficulty)
-                }
-            }
-            // No POW difficulty set OR difficulty == 0
-            _ => {
-                let mut unsigned: UnsignedEvent = UnsignedEvent {
-                    id: None,
-                    pubkey: public_key,
-                    created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
-                    kind: self.kind,
-                    tags: self.tags,
-                    content: self.content,
-                };
-                unsigned.ensure_id();
-                unsigned
-            }
+        // Construct unsigned event
+        UnsignedEvent {
+            // Not compute event ID, as the user may want POW, so would be an unnecessary computation.
+            id: None,
+            pubkey: public_key,
+            created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
+            kind: self.kind,
+            tags: self.tags,
+            content: self.content,
         }
     }
 

@@ -18,6 +18,8 @@ You may be interested in:
 ## Getting started
 
 ```rust,no_run
+use std::num::NonZeroU8;
+
 use nostr::prelude::*;
 
 fn main() -> Result<()> {
@@ -46,7 +48,10 @@ fn main() -> Result<()> {
     let event: Event = EventBuilder::text_note("Hello from rust-nostr").sign_with_keys(&keys)?;
 
     // New POW text note
-    let event: Event = EventBuilder::text_note("POW text note from rust-nostr").pow(20).sign_with_keys(&keys)?;
+    let difficulty: NonZeroU8 = NonZeroU8::new(16).unwrap();
+    let unsigned: UnsignedEvent = EventBuilder::text_note("POW text note from rust-nostr").build(keys.public_key);
+    let unsigned: UnsignedEvent = unsigned.mine(SingleThreadPow, difficulty)?;
+    let event: Event = unsigned.sign_with_keys(&keys)?;
 
     // Convert client message to JSON
     let json = ClientMessage::event(event).as_json();
