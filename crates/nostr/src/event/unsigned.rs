@@ -5,6 +5,7 @@
 //! Unsigned Event
 
 use alloc::string::String;
+use core::num::NonZeroU8;
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::TryRngCore;
@@ -18,6 +19,7 @@ use secp256k1::{Message, Secp256k1, Signing, Verification};
 use super::error::Error;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::nips::nip13::{AsyncPowAdapter, PowAdapter};
 #[cfg(feature = "rand")]
 use crate::util;
 use crate::{Event, EventId, JsonUtil, Keys, Kind, NostrSigner, PublicKey, Tag, Tags, Timestamp};
@@ -84,8 +86,9 @@ impl UnsignedEvent {
         self.id.unwrap()
     }
 
+    /// Compute the event ID
     #[inline]
-    fn compute_id(&self) -> EventId {
+    pub fn compute_id(&self) -> EventId {
         EventId::new(
             &self.pubkey,
             &self.created_at,
@@ -105,6 +108,24 @@ impl UnsignedEvent {
         }
 
         Ok(())
+    }
+
+    /// Mine an unsigned event synchronously
+    #[inline]
+    pub fn mine<T>(self, adapter: T, difficulty: NonZeroU8) -> Result<Self, T::Error>
+    where
+        T: PowAdapter,
+    {
+        adapter.compute(self, difficulty)
+    }
+
+    /// Mine an unsigned event asynchronously
+    #[inline]
+    pub async fn mine_async<T>(self, adapter: T, difficulty: NonZeroU8) -> Result<Self, T::Error>
+    where
+        T: AsyncPowAdapter,
+    {
+        adapter.compute(self, difficulty).await
     }
 
     /// Sign an unsigned event
