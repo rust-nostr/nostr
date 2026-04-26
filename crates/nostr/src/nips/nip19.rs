@@ -939,28 +939,3 @@ mod tests {
         assert!(event.author.is_none());
     }
 }
-
-#[cfg(bench)]
-mod benches {
-    use super::*;
-    use crate::test::{Bencher, black_box};
-
-    #[bench]
-    pub fn to_bech32_nevent(bh: &mut Bencher) {
-        let event_id =
-            EventId::from_hex("d94a3f4dd87b9a3b0bed183b32e916fa29c8020107845d1752d72697fe5309a5")
-                .unwrap();
-        let public_key =
-            PublicKey::from_str("32e1827635450ebb3c5a7d12c1f8e7b2b514439ac10a67eef3d9fd9c5c68e245")
-                .unwrap();
-        let relays = [
-            RelayUrl::parse("wss://r.x.com").unwrap(),
-            RelayUrl::parse("wss://djbas.sadkb.com").unwrap(),
-        ];
-        let nip19_event = Nip19Event::new(event_id).author(public_key).relays(relays);
-
-        bh.iter(|| {
-            black_box(nip19_event.to_bech32()).unwrap();
-        });
-    }
-}

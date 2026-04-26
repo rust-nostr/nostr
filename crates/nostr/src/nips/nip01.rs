@@ -621,19 +621,3 @@ mod tests {
         )
     }
 }
-
-#[cfg(bench)]
-mod benches {
-    use test::{Bencher, black_box};
-
-    use super::*;
-
-    #[bench]
-    pub fn parse_coordinate(bh: &mut Bencher) {
-        let coordinate: &str =
-            "30023:aa4fc8665f5696e33db7e1a572e3b0f5b3d615837b0f362dcb1c8068b098c7b4:ipsum";
-        bh.iter(|| {
-            black_box(Coordinate::parse(coordinate)).unwrap();
-        });
-    }
-}

@@ -230,18 +230,3 @@ mod tests {
         assert!(!id.check_pow(25));
     }
 }
-
-#[cfg(bench)]
-mod benches {
-    use super::*;
-    use crate::test::{Bencher, black_box};
-
-    const ID: &str = "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45";
-
-    #[bench]
-    pub fn parse_event_id_from_hex(bh: &mut Bencher) {
-        bh.iter(|| {
-            black_box(EventId::from_hex(ID)).unwrap();
-        });
-    }
-}
