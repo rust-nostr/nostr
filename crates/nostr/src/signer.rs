@@ -5,10 +5,10 @@
 //! Nostr Signer
 
 use alloc::borrow::Cow;
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::sync::Arc;
 use core::any::Any;
-use core::fmt::{self, Debug};
+use core::fmt::{self, Debug, Display};
 
 use crate::util::BoxedFuture;
 use crate::{Event, PublicKey, UnsignedEvent};
@@ -17,8 +17,7 @@ use crate::{Event, PublicKey, UnsignedEvent};
 #[derive(Debug, PartialEq, Eq)]
 pub struct SignerError(String);
 
-#[cfg(feature = "std")]
-impl std::error::Error for SignerError {}
+impl core::error::Error for SignerError {}
 
 impl fmt::Display for SignerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -29,22 +28,11 @@ impl fmt::Display for SignerError {
 impl SignerError {
     /// New signer error
     #[inline]
-    #[cfg(feature = "std")]
     pub fn backend<E>(error: E) -> Self
     where
-        E: std::error::Error,
+        E: Display,
     {
         Self(error.to_string())
-    }
-
-    /// New signer error
-    #[inline]
-    #[cfg(not(feature = "std"))]
-    pub fn backend<E>(error: E) -> Self
-    where
-        E: Into<String>,
-    {
-        Self(error.into())
     }
 }
 

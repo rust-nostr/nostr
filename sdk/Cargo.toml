@@ -18,8 +18,8 @@ rustdoc-args = ["--cfg", "docsrs"]
 [dependencies]
 async-utility.workspace = true
 async-wsocket = { workspace = true, features = ["socks"] }
+faster-hex = { workspace = true, features = ["std"] }
 futures = "0.3"
-hex = { workspace = true, features = ["std"] }
 lru.workspace = true
 negentropy = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std", "rand", "os-rng"] }

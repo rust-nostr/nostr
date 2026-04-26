@@ -21,8 +21,16 @@
 
 ### Deprecated
 
+### Performance
+
+### Security
+
 -->
 ## Unreleased
+
+### Breaking changes
+
+- Move browser/extension-related errors to a dedicated enum (https://github.com/rust-nostr/nostr/pull/1327)
 
 ### Changed
 

@@ -60,10 +60,11 @@ impl QueryByParamReplaceable {
 }
 
 /// Options for the memory database
-#[derive(Debug, Clone, Copy, Default)]
+#[derive(Debug, Clone, Default)]
 pub(crate) struct MemoryOptions {
     pub(crate) process_nip09: bool,
     pub(crate) process_nip62: bool,
+    pub(crate) relay_url: Option<RelayUrl>,
 }
 
 enum QueryPattern {
@@ -299,8 +300,12 @@ impl MemoryStore {
                 }
             }
         } else if self.options.process_nip62 && event.kind == Kind::RequestToVanish {
-            // For now, handling `ALL_RELAYS` only
-            if let Some(TagStandard::AllRelays) = event.tags.find_standardized(TagKind::Relay) {
+            let is_targeted = event.tags.filter_standardized(TagKind::Relay).any(|tag| {
+                matches!(tag, TagStandard::AllRelays)
+                    || matches!(tag, TagStandard::Relay(relay) if Some(relay) == self.options.relay_url.as_ref())
+            });
+
+            if is_targeted {
                 self.handle_request_to_vanish(&event.pubkey);
             }
         }
@@ -645,7 +650,7 @@ impl MemoryStore {
 
         // Reset helper to default
         *self = Self {
-            options: self.options,
+            options: self.options.clone(),
             ..Default::default()
         };
 

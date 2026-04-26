@@ -726,16 +726,22 @@ impl InnerLocalRelay {
                 // Construct negentropy client
                 let mut negentropy = Negentropy::owned(storage, 60_000)?;
 
+                let Some(size) = initial_message.len().checked_div(2) else {
+                    tracing::warn!("Can't divide initial negentropy message size");
+                    return Ok(());
+                };
+
                 // Reconcile
-                let bytes: Vec<u8> = hex::decode(initial_message.as_ref())?;
-                let message: Vec<u8> = negentropy.reconcile(&bytes)?;
+                let mut buf: Vec<u8> = vec![0u8; size];
+                faster_hex::hex_decode(initial_message.as_bytes(), &mut buf)?;
+                let message: Vec<u8> = negentropy.reconcile(&buf)?;
 
                 // Reply
                 send_msg(
                     ws_tx,
                     RelayMessage::NegMsg {
                         subscription_id: Cow::Borrowed(&subscription_id),
-                        message: Cow::Owned(hex::encode(message)),
+                        message: Cow::Owned(faster_hex::hex_string(&message)),
                     },
                 )
                 .await?;
@@ -752,16 +758,22 @@ impl InnerLocalRelay {
             } => {
                 match session.negentropy_subscription.get_mut(&subscription_id) {
                     Some(negentropy) => {
+                        let Some(size) = message.len().checked_div(2) else {
+                            tracing::warn!("Can't divide negentropy message size");
+                            return Ok(());
+                        };
+
                         // Reconcile
-                        let bytes: Vec<u8> = hex::decode(message.as_ref())?;
-                        let message = negentropy.reconcile(&bytes)?;
+                        let mut buf: Vec<u8> = vec![0u8; size];
+                        faster_hex::hex_decode(message.as_bytes(), &mut buf)?;
+                        let message: Vec<u8> = negentropy.reconcile(&buf)?;
 
                         // Reply
                         send_msg(
                             ws_tx,
                             RelayMessage::NegMsg {
                                 subscription_id,
-                                message: Cow::Owned(hex::encode(message)),
+                                message: Cow::Owned(faster_hex::hex_string(&message)),
                             },
                         )
                         .await

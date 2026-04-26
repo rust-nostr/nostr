@@ -18,6 +18,6 @@ reqwest = { workspace = true, default-features = false, features = ["json", "rus
 serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
-clap = { workspace = true, features = ["derive"] }
+clap = { version = "4.6", features = ["derive"] }
 nostr = { workspace = true, features = ["std", "os-rng"] }
 tokio = { workspace = true, features = ["full"] }

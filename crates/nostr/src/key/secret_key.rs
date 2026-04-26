@@ -108,12 +108,6 @@ impl SecretKey {
         }
     }
 
-    /// Get secret key as `hex` string
-    #[inline]
-    pub fn to_secret_hex(&self) -> String {
-        hex::encode(self.as_secret_bytes())
-    }
-
     /// Get secret key as `bytes`
     #[inline]
     pub fn as_secret_bytes(&self) -> &[u8] {
@@ -124,6 +118,21 @@ impl SecretKey {
     #[inline]
     pub fn to_secret_bytes(&self) -> [u8; Self::LEN] {
         self.inner.secret_bytes()
+    }
+
+    /// Get secret key as `hex` string
+    #[inline]
+    pub fn to_secret_hex(&self) -> String {
+        // SAFETY: hex is a valid UTF-8
+        unsafe { String::from_utf8_unchecked(self.to_secret_hex_byte_array().to_vec()) }
+    }
+
+    /// Get secret key as `hex` string
+    #[inline]
+    pub fn to_secret_hex_byte_array(&self) -> [u8; Self::LEN * 2] {
+        let mut buf = [0u8; Self::LEN * 2];
+        faster_hex::hex_encode(self.as_secret_bytes(), &mut buf).expect("Buffer size is correct");
+        buf
     }
 
     /// Encrypt secret key

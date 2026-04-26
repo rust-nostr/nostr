@@ -40,15 +40,9 @@ enum CallFunc<'a> {
     Call2(&'a JsValue, &'a JsValue),
 }
 
-/// NIP07 error
+/// NIP07 browser/extension error
 #[derive(Debug)]
-pub enum Error {
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
-    /// Keys error
-    Keys(key::Error),
-    /// Unsigned error
-    Event(event::Error),
+pub enum ExtensionError {
     /// Generic WASM error
     Wasm(String),
     /// Impossible to get window
@@ -61,20 +55,61 @@ pub enum Error {
     TypeMismatch,
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for ExtensionError {}
 
-impl fmt::Display for Error {
+impl fmt::Display for ExtensionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::Keys(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
             Self::Wasm(e) => write!(f, "{e}"),
             Self::NoGlobalWindowObject => write!(f, "No global `window` object"),
             Self::NamespaceNotFound(n) => write!(f, "`{n}` namespace not found"),
             Self::ObjectKeyNotFound(n) => write!(f, "Key `{n}` not found in object"),
             Self::TypeMismatch => write!(f, "Type mismatch"),
         }
+    }
+}
+
+impl From<JsValue> for ExtensionError {
+    fn from(e: JsValue) -> Self {
+        Self::Wasm(format!("{e:?}"))
+    }
+}
+
+/// NIP-07 error
+#[derive(Debug)]
+pub enum Error {
+    /// Browser/Extension-related errors
+    Extension(ExtensionError),
+    /// Secp256k1 error
+    Secp256k1(secp256k1::Error),
+    /// Keys error
+    Keys(key::Error),
+    /// Unsigned event error
+    Event(event::Error),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Extension(e) => write!(f, "{e}"),
+            Self::Secp256k1(e) => write!(f, "{e}"),
+            Self::Keys(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
+        }
+    }
+}
+
+impl From<ExtensionError> for Error {
+    fn from(e: ExtensionError) -> Self {
+        Self::Extension(e)
+    }
+}
+
+impl From<JsValue> for Error {
+    fn from(e: JsValue) -> Self {
+        Self::Extension(ExtensionError::from(e))
     }
 }
 
@@ -96,12 +131,6 @@ impl From<event::Error> for Error {
     }
 }
 
-impl From<JsValue> for Error {
-    fn from(e: JsValue) -> Self {
-        Self::Wasm(format!("{e:?}"))
-    }
-}
-
 /// Signer for interaction with browser extensions (ex. Alby)
 ///
 /// Browser extensions: <https://github.com/aljazceru/awesome-nostr#nip-07-browser-extensions>
@@ -119,39 +148,44 @@ unsafe impl Sync for BrowserSigner {}
 
 impl BrowserSigner {
     /// Compose new NIP07 Signer
-    pub fn new() -> Result<Self, Error> {
-        let window: Window = web_sys::window().ok_or(Error::NoGlobalWindowObject)?;
+    pub fn new() -> Result<Self, ExtensionError> {
+        let window: Window = web_sys::window().ok_or(ExtensionError::NoGlobalWindowObject)?;
         let namespace: JsValue = Reflect::get(&window, &JsValue::from_str("nostr"))
-            .map_err(|_| Error::NamespaceNotFound(String::from("nostr")))?;
+            .map_err(|_| ExtensionError::NamespaceNotFound(String::from("nostr")))?;
         let nostr_obj: Object = namespace
             .dyn_into()
-            .map_err(|_| Error::NamespaceNotFound(String::from("nostr")))?;
+            .map_err(|_| ExtensionError::NamespaceNotFound(String::from("nostr")))?;
         Ok(Self { nostr_obj })
     }
 
-    fn get_func(&self, obj: &Object, name: &str) -> Result<Function, Error> {
+    fn get_func(&self, obj: &Object, name: &str) -> Result<Function, ExtensionError> {
         let val: JsValue = Reflect::get(obj, &JsValue::from_str(name))
-            .map_err(|_| Error::NamespaceNotFound(name.to_string()))?;
+            .map_err(|_| ExtensionError::NamespaceNotFound(name.to_string()))?;
         val.dyn_into()
-            .map_err(|_| Error::NamespaceNotFound(name.to_string()))
+            .map_err(|_| ExtensionError::NamespaceNotFound(name.to_string()))
     }
 
-    fn get_sub_obj(&self, super_obj: &Object, name: &str) -> Result<Object, Error> {
+    fn get_sub_obj(&self, super_obj: &Object, name: &str) -> Result<Object, ExtensionError> {
         let namespace: JsValue = Reflect::get(super_obj, &JsValue::from_str(name))
-            .map_err(|_| Error::NamespaceNotFound(String::from(name)))?;
+            .map_err(|_| ExtensionError::NamespaceNotFound(String::from(name)))?;
         namespace
             .dyn_into()
-            .map_err(|_| Error::NamespaceNotFound(String::from(name)))
+            .map_err(|_| ExtensionError::NamespaceNotFound(String::from(name)))
     }
 
     /// Get value from object key
     #[inline]
-    fn get_value_by_key(&self, obj: &Object, key: &str) -> Result<JsValue, Error> {
+    fn get_value_by_key(&self, obj: &Object, key: &str) -> Result<JsValue, ExtensionError> {
         Reflect::get(obj, &JsValue::from_str(key))
-            .map_err(|_| Error::ObjectKeyNotFound(key.to_string()))
+            .map_err(|_| ExtensionError::ObjectKeyNotFound(key.to_string()))
     }
 
-    async fn call_func<T>(&self, obj: &Object, name: &str, args: CallFunc<'_>) -> Result<T, Error>
+    async fn call_func<T>(
+        &self,
+        obj: &Object,
+        name: &str,
+        args: CallFunc<'_>,
+    ) -> Result<T, ExtensionError>
     where
         T: JsCast,
     {
@@ -164,7 +198,7 @@ impl BrowserSigner {
         let promise: Promise = Promise::resolve(&temp);
         let result: JsValue = JsFuture::from(promise).await?;
 
-        result.dyn_into().map_err(|_| Error::TypeMismatch)
+        result.dyn_into().map_err(|_| ExtensionError::TypeMismatch)
     }
 
     /// Get Public Key
@@ -228,7 +262,7 @@ impl BrowserSigner {
         let sig: String = self
             .get_value_by_key(&event_obj, "sig")?
             .as_string()
-            .ok_or(Error::TypeMismatch)?;
+            .ok_or(ExtensionError::TypeMismatch)?;
         let sig: Signature = Signature::from_str(&sig)?;
 
         // Add signature

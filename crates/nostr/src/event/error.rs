@@ -15,7 +15,7 @@ pub enum Error {
     /// Signer error
     Signer(String),
     /// Hex decode error
-    Hex(hex::FromHexError),
+    Hex(faster_hex::Error),
     /// Unknown JSON event key
     UnknownKey(String),
     /// Invalid event ID
@@ -24,8 +24,7 @@ pub enum Error {
     InvalidSignature,
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
+impl core::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -52,8 +51,8 @@ impl From<SignerError> for Error {
     }
 }
 
-impl From<hex::FromHexError> for Error {
-    fn from(e: hex::FromHexError) -> Self {
+impl From<faster_hex::Error> for Error {
+    fn from(e: faster_hex::Error) -> Self {
         Self::Hex(e)
     }
 }

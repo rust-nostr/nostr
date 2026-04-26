@@ -26,8 +26,7 @@ pub enum Error {
     MultipleSchemeSeparators,
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
+impl core::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -281,6 +280,7 @@ impl<'a> From<&'a RelayUrl> for &'a Url {
 /// Relay URL argument.
 ///
 /// This type allows passing different types to methods that accept a relay URL.
+#[derive(Debug, Clone)]
 pub enum RelayUrlArg<'a> {
     /// An already parsed relay URL.
     Parsed(Cow<'a, RelayUrl>),

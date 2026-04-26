@@ -6,7 +6,7 @@
 
 use alloc::string::{String, ToString};
 use core::fmt;
-use core::str::FromStr;
+use core::str::{self, FromStr};
 
 use hashes::Hash;
 use hashes::sha256::Hash as Sha256Hash;
@@ -87,7 +87,7 @@ impl EventId {
     /// Parse from hex string
     pub fn from_hex(hex: &str) -> Result<Self, Error> {
         let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
-        hex::decode_to_slice(hex, &mut bytes)?;
+        faster_hex::hex_decode(hex.as_bytes(), &mut bytes)?;
         Ok(Self::from_byte_array(bytes))
     }
 
@@ -121,7 +121,16 @@ impl EventId {
     /// Get as hex string
     #[inline]
     pub fn to_hex(&self) -> String {
-        hex::encode(self.as_bytes())
+        // SAFETY: hex is a valid UTF-8
+        unsafe { String::from_utf8_unchecked(self.to_hex_byte_array().to_vec()) }
+    }
+
+    /// Get as hex 64-byte array
+    #[inline]
+    pub fn to_hex_byte_array(&self) -> [u8; Self::LEN * 2] {
+        let mut buf = [0u8; Self::LEN * 2];
+        faster_hex::hex_encode(self.as_bytes(), &mut buf).expect("Buffer size is correct");
+        buf
     }
 
     /// Check POW
@@ -184,7 +193,10 @@ impl Serialize for EventId {
     where
         S: serde::Serializer,
     {
-        serializer.serialize_str(&self.to_hex())
+        let bytes: [u8; Self::LEN * 2] = self.to_hex_byte_array();
+        // SAFETY: hex is a valid UTF-8
+        let encoded: &str = unsafe { str::from_utf8_unchecked(&bytes) };
+        serializer.serialize_str(encoded)
     }
 }
 

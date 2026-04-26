@@ -21,6 +21,10 @@
 
 ### Deprecated
 
+### Performance
+
+### Security
+
 -->
 
 ## Unreleased
@@ -33,6 +37,10 @@
 ### Added
 
 - Add search (NIP-50) capability (https://github.com/rust-nostr/nostr/pull/1196)
+
+### Removed
+
+- Remove `hex` dependency (https://github.com/rust-nostr/nostr/pull/1319)
 
 ## v0.44.0 - 2025/11/06
 

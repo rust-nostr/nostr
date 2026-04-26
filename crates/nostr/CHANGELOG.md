@@ -21,6 +21,10 @@
 
 ### Deprecated
 
+### Performance
+
+### Security
+
 -->
 
 ## Unreleased
@@ -43,11 +47,14 @@
 - Make `Kind::from_u16` and `Kind::as_u16` const (https://github.com/rust-nostr/nostr/pull/1136)
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 - `RelayUrl::is_local_addr` now works on `no_std` builds (https://github.com/rust-nostr/nostr/pull/1267)
+- Replace `hex` dependency with `faster-hex` (https://github.com/rust-nostr/nostr/pull/1319)
+- Migrate error types from `std::error::Error` to `core::error::Error`
 
 ### Added
 
 - Impl `TryFrom<i64>` for `Timestamp`
 - Impl `IntoNostrSigner` for `Arc<T>`
+- Impl `Index<usize>` and `IndexMut<usize>` for `Tags`
 - Add `EventBuilder::nip17_relay_list`
 - Add `EventBuilder::git_pull_request`, `EventBuilder::git_pull_request_update` and `EventBuilder::git_user_grasp_list` (https://gitworkshop.dev/yukikishimoto.com/nostr/prs/note1jwe7k8fuynzze6w8pfxp2zkfehk9cteuuxuamvjkavefxq9a7m7qffreyq)
 - Add `RelayUrlScheme` enum and `RelayUrl::scheme` method (https://github.com/rust-nostr/nostr/pull/1127)
@@ -78,6 +85,11 @@
 - Add `a` tag of replaceable and addressable events in `EventBuilder::repost` (https://github.com/rust-nostr/nostr/pull/1184)
 - Handle legacy events with `mention` marker (https://github.com/rust-nostr/nostr/pull/1193)
 - Parse "HEAD" as `TagKing::Head` (https://github.com/rust-nostr/nostr/pull/1215)
+
+### Performance
+
+- Optimize NIP-21 URI parsing in `PublicKey::parse` (https://github.com/rust-nostr/nostr/pull/1308)
+- Optimize event serialization by ~73% (https://github.com/rust-nostr/nostr/pull/1319)
 
 ## v0.44.2 - 2025/12/04
 

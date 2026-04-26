@@ -9,11 +9,7 @@ pub enum TransportError {
     /// I/O error
     IO(io::Error),
     /// An error happened in the underlying backend.
-    #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
     Backend(Box<dyn std::error::Error + Send + Sync>),
-    /// An error happened in the underlying backend.
-    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-    Backend(Box<dyn std::error::Error>),
 }
 
 impl std::error::Error for TransportError {}
@@ -40,26 +36,11 @@ impl TransportError {
         Self::IO(io::Error::new(ErrorKind::TimedOut, "timeout"))
     }
 
-    /// Create a new backend error
-    ///
-    /// Shorthand for `Self::Backend(Box::new(error))`.
+    /// Create a new backend error.
     #[inline]
-    #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
     pub fn backend<E>(error: E) -> Self
     where
         E: Into<Box<dyn std::error::Error + Send + Sync>>,
-    {
-        Self::Backend(error.into())
-    }
-
-    /// Create a new backend error
-    ///
-    /// Shorthand for `Self::Backend(Box::new(error))`.
-    #[inline]
-    #[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
-    pub fn backend<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn std::error::Error>>,
     {
         Self::Backend(error.into())
     }

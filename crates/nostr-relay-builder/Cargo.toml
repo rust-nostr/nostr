@@ -19,7 +19,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 async-utility.workspace = true
 async-wsocket.workspace = true
 atomic-destructor.workspace = true
-hex = { workspace = true, features = ["std"] }
+faster-hex = { workspace = true, features = ["std"] }
 negentropy = { workspace = true, features = ["std"] }
 nostr = { workspace = true, default-features = false, features = ["std", "rand"] }
 nostr-database.workspace = true
@@ -30,7 +30,7 @@ tracing.workspace = true
 
 [dev-dependencies]
 base64 = { workspace = true, features = ["std"] }
-hyper = { version = "1.6", features = ["server", "http1"] }
+hyper = { version = "1.9", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
 nostr-lmdb.workspace = true
 tokio = { workspace = true, features = ["signal"] }

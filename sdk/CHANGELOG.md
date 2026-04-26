@@ -21,6 +21,10 @@
 
 ### Deprecated
 
+### Performance
+
+### Security
+
 -->
 
 ## Unreleased
@@ -74,6 +78,7 @@
 - Redesign `Client::notifications` and `Relay::notifications` APIs (https://github.com/rust-nostr/nostr/pull/1245)
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 - Terminate event stream on drop
+- Replace `hex` dependency with `faster-hex` (https://github.com/rust-nostr/nostr/pull/1319)
 
 ### Added
 

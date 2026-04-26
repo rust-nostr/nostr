@@ -14,6 +14,7 @@ use crate::nips::nip73::ExternalContentId;
 use crate::{Alphabet, Event, EventId, Kind, PublicKey, RelayUrl, Tag, TagKind, TagStandard, Url};
 
 /// Comment target
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum CommentTarget<'a> {
     /// Event
     Event {

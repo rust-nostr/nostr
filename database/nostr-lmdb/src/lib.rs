@@ -58,6 +58,8 @@ pub struct NostrLmdbBuilder {
     ///
     /// Defaults to `true`
     pub process_nip09: bool,
+    /// Relay URL for relay-specific request to vanish (NIP-62)
+    pub relay_url: Option<RelayUrl>,
 }
 
 impl NostrLmdbBuilder {
@@ -73,6 +75,7 @@ impl NostrLmdbBuilder {
             additional_dbs: 0,
             process_nip62: true,
             process_nip09: true,
+            relay_url: None,
         }
     }
 
@@ -115,6 +118,13 @@ impl NostrLmdbBuilder {
     /// Defaults to `true`
     pub fn process_nip09(mut self, process_nip09: bool) -> Self {
         self.process_nip09 = process_nip09;
+        self
+    }
+
+    /// Set the relay URL to handle relay-specific request to vanish
+    #[inline]
+    pub fn relay_url(mut self, relay_url: RelayUrl) -> Self {
+        self.relay_url = Some(relay_url);
         self
     }
 
@@ -269,7 +279,23 @@ mod tests {
                 _temp: path,
             }
         }
+
+        async fn new_with_relay_url(url: RelayUrl) -> Self {
+            let path = tempfile::tempdir().unwrap();
+            Self {
+                db: NostrLmdb::builder(&path)
+                    .relay_url(url)
+                    .build()
+                    .await
+                    .unwrap(),
+                _temp: path,
+            }
+        }
     }
 
-    database_unit_tests!(TempDatabase, TempDatabase::new);
+    database_unit_tests!(
+        TempDatabase,
+        TempDatabase::new,
+        TempDatabase::new_with_relay_url
+    );
 }

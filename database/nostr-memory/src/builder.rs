@@ -2,6 +2,8 @@
 
 use core::num::NonZeroUsize;
 
+use nostr::types::RelayUrl;
+
 use crate::MemoryDatabase;
 
 /// Memory Database Builder
@@ -13,8 +15,10 @@ pub struct MemoryDatabaseBuilder {
     ///
     /// Defaults to `true`
     pub(crate) process_nip09: bool,
-    /// Whether to process request to vanish (NIP-62) events
+    /// Whether to process request to vanish (NIP-62) events.
     pub(crate) process_nip62: bool,
+    /// Relay URL for relay-specific request to vanish (NIP-62).
+    pub(crate) relay_url: Option<RelayUrl>,
 }
 
 impl Default for MemoryDatabaseBuilder {
@@ -23,6 +27,7 @@ impl Default for MemoryDatabaseBuilder {
             max_events: None,
             process_nip09: true,
             process_nip62: true,
+            relay_url: None,
         }
     }
 }
@@ -52,6 +57,13 @@ impl MemoryDatabaseBuilder {
     #[inline]
     pub fn process_nip62(mut self, process_nip62: bool) -> Self {
         self.process_nip62 = process_nip62;
+        self
+    }
+
+    /// Set the relay URL to handle relay-specific request to vanish
+    #[inline]
+    pub fn relay_url(mut self, relay_url: RelayUrl) -> Self {
+        self.relay_url = Some(relay_url);
         self
     }
 

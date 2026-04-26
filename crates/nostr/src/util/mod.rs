@@ -38,13 +38,31 @@ pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + Send + 'a>>;
 pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 
 #[cfg(feature = "rand")]
+fn random_bytes<R, const N: usize>(rng: &mut R) -> [u8; N]
+where
+    R: RngCore,
+{
+    let mut ret: [u8; N] = [0u8; N];
+    rng.fill_bytes(&mut ret);
+    ret
+}
+
+#[inline]
+#[cfg(feature = "rand")]
 pub(crate) fn random_32_bytes<R>(rng: &mut R) -> [u8; 32]
 where
     R: RngCore,
 {
-    let mut ret: [u8; 32] = [0u8; 32];
-    rng.fill_bytes(&mut ret);
-    ret
+    random_bytes(rng)
+}
+
+#[cfg(feature = "rand")]
+pub(crate) fn random_hex_string<R, const N: usize>(rng: &mut R) -> String
+where
+    R: RngCore,
+{
+    let bytes: [u8; N] = random_bytes(rng);
+    faster_hex::hex_string(&bytes)
 }
 
 /// Generate shared key

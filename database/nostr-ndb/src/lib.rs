@@ -261,7 +261,7 @@ fn ndb_note_to_tags<'a>(note: &Note<'a>) -> Result<Vec<CowTag<'a>>, DatabaseErro
         let tag_str: Vec<Cow<'a, str>> = tag
             .into_iter()
             .map(|s| match s.variant() {
-                NdbStrVariant::Id(id) => Cow::Owned(hex::encode(id)),
+                NdbStrVariant::Id(id) => Cow::Owned(EventId::from_byte_array(*id).to_hex()),
                 NdbStrVariant::Str(s) => Cow::Borrowed(s),
             })
             .collect();

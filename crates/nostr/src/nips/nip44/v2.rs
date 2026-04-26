@@ -52,8 +52,7 @@ pub enum ErrorV2 {
     InvalidPadding,
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for ErrorV2 {}
+impl core::error::Error for ErrorV2 {}
 
 impl fmt::Display for ErrorV2 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

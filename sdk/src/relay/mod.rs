@@ -3,13 +3,14 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::HashMap;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use async_utility::time;
 use async_wsocket::ConnectionMode;
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, oneshot};
 
@@ -41,7 +42,7 @@ pub use self::stats::*;
 pub use self::status::*;
 use crate::client::ClientNotification;
 use crate::shared::SharedState;
-use crate::stream::{BoxedStream, NotificationStream};
+use crate::stream::NotificationStream;
 
 /// Subscription auto-closed reason
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -215,7 +216,7 @@ impl Relay {
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
-    pub fn notifications(&self) -> BoxedStream<RelayNotification> {
+    pub fn notifications(&self) -> Pin<Box<dyn Stream<Item = RelayNotification> + Send>> {
         // If the relay is permanently unusable, return an empty stream
         let status: RelayStatus = self.status();
         if status.is_banned() || status.is_shutdown() {

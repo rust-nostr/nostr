@@ -25,8 +25,7 @@ pub enum FileMetadataError {
     MissingSha,
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for FileMetadataError {}
+impl core::error::Error for FileMetadataError {}
 
 impl fmt::Display for FileMetadataError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -5,7 +5,7 @@ pub extern crate tokio;
 /// Macro to generate common database store tests.
 #[macro_export]
 macro_rules! database_unit_tests {
-    ($store_type:ty, $setup_fn:expr) => {
+    ($store_type:ty, $setup_fn:expr, $setup_with_relay_url:expr) => {
         use std::collections::HashSet;
         use std::ops::Deref;
         use std::time::Duration;
@@ -97,6 +97,59 @@ macro_rules! database_unit_tests {
 
         async fn count_all(store: &$store_type) -> usize {
             store.count(Filter::new()).await.expect("Failed to count events")
+        }
+
+        async fn dummy_nip62(store: &$store_type) -> Keys {
+            let to_vanish = Keys::generate();
+            let helper = Keys::generate();
+
+            let event1 = EventBuilder::text_note("Hi 1")
+                .sign_with_keys(&to_vanish)
+                .unwrap();
+            let event2 = EventBuilder::text_note("Hi 2")
+                .sign_with_keys(&to_vanish)
+                .unwrap();
+            let replaceable = EventBuilder::contact_list([
+                Contact::new(Keys::generate().public_key),
+                Contact::new(Keys::generate().public_key),
+            ])
+            .sign_with_keys(&to_vanish)
+            .unwrap();
+            let addresable = EventBuilder::long_form_text_note("LONG")
+                .tag(Tag::identifier("lorem-ipsum".to_string()))
+                .sign_with_keys(&to_vanish)
+                .unwrap();
+            let dummy_gift_wrap = EventBuilder::new(Kind::GiftWrap, ":)")
+                .tag(Tag::public_key(to_vanish.public_key))
+                .sign_with_keys(&helper)
+                .unwrap();
+
+            store.save_event(&event1).await.unwrap();
+            store.save_event(&event2).await.unwrap();
+            store.save_event(&replaceable).await.unwrap();
+            store.save_event(&addresable).await.unwrap();
+            store.save_event(&dummy_gift_wrap).await.unwrap();
+
+            // Make sure the event are there
+            assert_eq!(
+                store
+                    .count(Filter::new().author(to_vanish.public_key))
+                    .await
+                    .unwrap(),
+                4
+            );
+            assert_eq!(
+                store
+                    .count(
+                        Filter::new()
+                            .kind(Kind::GiftWrap)
+                            .pubkey(to_vanish.public_key)
+                    )
+                    .await
+                    .unwrap(),
+                1
+            );
+            to_vanish
         }
 
         #[tokio::test]
@@ -887,55 +940,7 @@ macro_rules! database_unit_tests {
                 return;
             }
 
-            let to_vanish = Keys::generate();
-            let helper = Keys::generate();
-
-            let event1 = EventBuilder::text_note("Hi 1")
-                .sign_with_keys(&to_vanish)
-                .unwrap();
-            let event2 = EventBuilder::text_note("Hi 2")
-                .sign_with_keys(&to_vanish)
-                .unwrap();
-            let replaceable = EventBuilder::contact_list([
-                Contact::new(Keys::generate().public_key),
-                Contact::new(Keys::generate().public_key),
-            ])
-            .sign_with_keys(&to_vanish)
-            .unwrap();
-            let addresable = EventBuilder::long_form_text_note("LONG")
-                .tag(Tag::identifier("lorem-ipsum".to_string()))
-                .sign_with_keys(&to_vanish)
-                .unwrap();
-            let dummy_gift_wrap = EventBuilder::new(Kind::GiftWrap, ":)")
-                .tag(Tag::public_key(to_vanish.public_key))
-                .sign_with_keys(&helper)
-                .unwrap();
-
-            store.save_event(&event1).await.unwrap();
-            store.save_event(&event2).await.unwrap();
-            store.save_event(&replaceable).await.unwrap();
-            store.save_event(&addresable).await.unwrap();
-            store.save_event(&dummy_gift_wrap).await.unwrap();
-
-            // Make sure the event are there
-            assert_eq!(
-                store
-                    .count(Filter::new().author(to_vanish.public_key))
-                    .await
-                    .unwrap(),
-                4
-            );
-            assert_eq!(
-                store
-                    .count(
-                        Filter::new()
-                            .kind(Kind::GiftWrap)
-                            .pubkey(to_vanish.public_key)
-                    )
-                    .await
-                    .unwrap(),
-                1
-            );
+            let to_vanish = dummy_nip62(&store).await;
 
             // Request to vanish
             let request_to_vanish = EventBuilder::request_vanish(VanishTarget::AllRelays)
@@ -964,12 +969,64 @@ macro_rules! database_unit_tests {
                 0
             );
 
+            let new_event = EventBuilder::text_note("It was a mistake, please accept my event")
+                .sign_with_keys(&to_vanish)
+                .unwrap();
+
             // Try adding new event, should get rejected
-            let status = store.save_event(&event1).await.unwrap();
+            let status = store.save_event(&new_event).await.unwrap();
+            assert_eq!(status, SaveEventStatus::Rejected(RejectedReason::Vanished));
+        }
+
+        #[tokio::test]
+        async fn test_request_to_vanish_relay() {
+            let store: $store_type = $setup_fn().await;
+            let features = store.features();
+
+            if !features.request_to_vanish {
+                println!("Skipping request to vanish tests as the database doesn't support it!");
+                return;
+            }
+
+            let url = RelayUrl::parse("wss://nostr.example.com").unwrap();
+            let store: $store_type = $setup_with_relay_url(url.clone()).await;
+
+            let to_vanish = dummy_nip62(&store).await;
+
+            // Request to vanish
+            let request_to_vanish = EventBuilder::request_vanish(VanishTarget::relay(url))
+                .unwrap()
+                .sign_with_keys(&to_vanish)
+                .unwrap();
+            store.save_event(&request_to_vanish).await.unwrap();
+
+            // Check if the events deleted
             assert_eq!(
-                status,
-                SaveEventStatus::Rejected(RejectedReason::Vanished)
+                store
+                    .count(Filter::new().author(to_vanish.public_key))
+                    .await
+                    .unwrap(),
+                1 // The request to vanish event
             );
+            assert_eq!(
+                store
+                    .count(
+                        Filter::new()
+                            .kind(Kind::GiftWrap)
+                            .pubkey(to_vanish.public_key)
+                    )
+                    .await
+                    .unwrap(),
+                0
+            );
+
+            let new_event = EventBuilder::text_note("It was a mistake, please accept my event")
+                .sign_with_keys(&to_vanish)
+                .unwrap();
+
+            // Try adding new event, should get rejected
+            let status = store.save_event(&new_event).await.unwrap();
+            assert_eq!(status, SaveEventStatus::Rejected(RejectedReason::Vanished));
         }
     };
 }

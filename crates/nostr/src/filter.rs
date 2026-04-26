@@ -33,8 +33,7 @@ pub enum SingleLetterTagError {
     InvalidChar,
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for SingleLetterTagError {}
+impl core::error::Error for SingleLetterTagError {}
 
 impl fmt::Display for SingleLetterTagError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {

@@ -6,12 +6,13 @@
 
 use std::borrow::Cow;
 use std::collections::HashMap;
+use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
 #[cfg(not(target_arch = "wasm32"))]
 use async_wsocket::ConnectionMode;
-use futures::StreamExt;
+use futures::{Stream, StreamExt};
 use nostr::prelude::*;
 use nostr_database::prelude::*;
 use tokio::sync::oneshot;
@@ -32,7 +33,7 @@ pub use self::notification::*;
 use crate::monitor::Monitor;
 use crate::pool::{RelayPool, RelayPoolBuilder};
 use crate::relay::{Relay, RelayCapabilities, RelayLimits, RelayOptions, SyncOptions};
-use crate::stream::{BoxedStream, NotificationStream};
+use crate::stream::NotificationStream;
 
 #[derive(Debug)]
 struct ClientConfig {
@@ -207,7 +208,7 @@ impl Client {
     ///
     /// <div class="warning">When you call this method, you subscribe to the notifications channel from that precise moment. Anything received by relay/s before that moment is not included in the channel!</div>
     #[inline]
-    pub fn notifications(&self) -> BoxedStream<ClientNotification> {
+    pub fn notifications(&self) -> Pin<Box<dyn Stream<Item = ClientNotification> + Send>> {
         if self.is_shutdown() {
             return Box::pin(futures::stream::empty());
         }

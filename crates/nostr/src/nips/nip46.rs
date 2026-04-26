@@ -23,6 +23,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::event::unsigned::UnsignedEvent;
 use crate::types::url::{self, ParseError, RelayUrl, Url};
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use crate::util;
 use crate::{Event, JsonUtil, PublicKey, event, key};
 
 /// NIP46 URI Scheme
@@ -64,8 +66,7 @@ pub enum Error {
     },
 }
 
-#[cfg(feature = "std")]
-impl std::error::Error for Error {}
+impl core::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -870,11 +871,8 @@ impl NostrConnectUri {
         I: IntoIterator<Item = RelayUrl>,
         S: Into<String>,
     {
-        let mut secret_bytes: [u8; 16] = [0u8; 16];
-        OsRng
-            .try_fill_bytes(&mut secret_bytes)
-            .expect("OsRng failed");
-        let secret: String = hex::encode(secret_bytes);
+        let mut rng = OsRng.unwrap_err();
+        let secret: String = util::random_hex_string::<_, 16>(&mut rng);
         Self::client_with_secret(public_key, relays, app_name, secret)
     }
 
@@ -1139,6 +1137,20 @@ mod test {
             uri,
             NostrConnectUri::client_with_secret(pubkey, [relay_url], app_name, "mysecret")
         );
+    }
+
+    #[test]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
+    fn test_make_client_uri() {
+        let pubkey =
+            PublicKey::parse("b889ff5b1513b641e2a139f661a661364979c5beee91842f8f0ef42ab558e9d4")
+                .unwrap();
+        let relay_url = RelayUrl::parse("wss://relay.damus.io").unwrap();
+        let app_name = "Example";
+        let uri = NostrConnectUri::client(pubkey, [relay_url], app_name);
+
+        assert!(uri.secret().is_some());
+        assert_eq!(uri.secret().unwrap().len(), 32);
     }
 
     #[test]

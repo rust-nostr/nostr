@@ -21,6 +21,10 @@
 
 ### Deprecated
 
+### Performance
+
+### Security
+
 -->
 
 ## Unreleased

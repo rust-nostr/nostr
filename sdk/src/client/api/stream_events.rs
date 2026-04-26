@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::future::IntoFuture;
+use std::pin::Pin;
 use std::time::Duration;
 
+use futures::Stream;
 use nostr::types::url::RelayUrl;
 use nostr::{Event, Filter, SubscriptionId};
 
@@ -10,9 +12,8 @@ use super::util::build_targets;
 use crate::client::{Client, Error};
 use crate::future::BoxedFuture;
 use crate::relay::{self, ReqExitPolicy};
-use crate::stream::BoxedStream;
 
-type EventStream = BoxedStream<(RelayUrl, Result<Event, relay::Error>)>;
+type EventStream = Pin<Box<dyn Stream<Item = (RelayUrl, Result<Event, relay::Error>)> + Send>>;
 
 /// Stream events
 #[must_use = "Does nothing unless you await!"]

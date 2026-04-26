@@ -9,23 +9,26 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
 
-use async_utility::futures_util::stream::SplitSink;
-use async_wsocket::futures_util::{Sink, SinkExt, StreamExt, TryStreamExt};
 use async_wsocket::{ConnectionMode, Message, WebSocket};
+use futures::stream::SplitSink;
+use futures::{Sink, SinkExt, Stream, StreamExt, TryStreamExt};
 use nostr::Url;
 
 use super::error::TransportError;
 use crate::future::BoxedFuture;
-use crate::stream::BoxedStream;
 
 /// WebSocket transport sink
 #[cfg(not(target_arch = "wasm32"))]
-pub type WebSocketSink = Box<dyn Sink<Message, Error = TransportError> + Send + Unpin>;
+pub type WebSocketSink = Pin<Box<dyn Sink<Message, Error = TransportError> + Send>>;
 /// WebSocket transport sink
 #[cfg(target_arch = "wasm32")]
-pub type WebSocketSink = Box<dyn Sink<Message, Error = TransportError> + Unpin>;
+pub type WebSocketSink = Pin<Box<dyn Sink<Message, Error = TransportError>>>;
 /// WebSocket transport stream
-pub type WebSocketStream = BoxedStream<Result<Message, TransportError>>;
+#[cfg(not(target_arch = "wasm32"))]
+pub type WebSocketStream = Pin<Box<dyn Stream<Item = Result<Message, TransportError>> + Send>>;
+/// WebSocket transport stream
+#[cfg(target_arch = "wasm32")]
+pub type WebSocketStream = Pin<Box<dyn Stream<Item = Result<Message, TransportError>>>>;
 
 #[doc(hidden)]
 pub trait IntoWebSocketTransport {
@@ -94,7 +97,7 @@ impl WebSocketTransport for DefaultWebsocketTransport {
 
             // NOTE: don't use sink_map_err here, as it may cause panics!
             // Issue: https://github.com/rust-nostr/nostr/issues/984
-            let sink: WebSocketSink = Box::new(TransportSink(tx)) as WebSocketSink;
+            let sink: WebSocketSink = Box::pin(TransportSink(tx)) as WebSocketSink;
             let stream: WebSocketStream =
                 Box::pin(rx.map_err(TransportError::backend)) as WebSocketStream;
 
