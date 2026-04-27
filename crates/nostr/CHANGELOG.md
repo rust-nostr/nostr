@@ -39,6 +39,7 @@
 - Replace `TryIntoUrl` trait with `RelayUrlArg` enum (https://github.com/rust-nostr/nostr/pull/1217)
 - Remove `Copy` trait from `MachineReadablePrefix` enum (https://github.com/rust-nostr/nostr/pull/1258)
 - Remove `EventBuilder::pow` in favor of `UnsignedEvent::mine` and `UnsignedEvent::mine_async` (https://github.com/rust-nostr/nostr/pull/1334)
+- Replace `kinds: Option<Vec<String>>` in `FeeSchedule` with `kinds: Option<Vec<u16>>` in `RelayInformationDocument` (https://github.com/rust-nostr/nostr/pull/1336)
 
 ### Changed
 
@@ -74,6 +75,8 @@
 - Add the kind number in the kind doc (https://github.com/rust-nostr/nostr/pull/1293)
 - Add `PowAdapter` and `AsyncPowAdapter` traits (https://github.com/rust-nostr/nostr/pull/1334)
 - Add `UnsignedEvent::mine` and `UnsignedEvent::mine_async` (https://github.com/rust-nostr/nostr/pull/1334)
+- Add `banner`, `self`, `terms_of_service` to `RelayInformationDocument` (https://github.com/rust-nostr/nostr/pull/1336)
+- Add `restricted_writes`, `default_limit` to `Limitation` (https://github.com/rust-nostr/nostr/pull/1336)
 
 ### Removed
 
@@ -84,6 +87,9 @@
 - Remove `kind` field in `CommentTarget::Coordinate` variant (https://github.com/rust-nostr/nostr/pull/1294)
 - Remove `Timestamp::as_u64` (https://github.com/rust-nostr/nostr/pull/1295)
 - Remove `Nip19Event::from_event` (https://github.com/rust-nostr/nostr/pull/1296)
+- Remove `relay_countries`, `retention`, `language_tags`, `tags`, `posting_policy` from `RelayInformationDocument` (https://github.com/rust-nostr/nostr/pull/1336)
+- Remove `Retention`, `RetentionKind` from `nip11` (https://github.com/rust-nostr/nostr/pull/1336)
+- Remove `max_filters` from `Limitation` (https://github.com/rust-nostr/nostr/pull/1336)
 
 ### Fixed
 
