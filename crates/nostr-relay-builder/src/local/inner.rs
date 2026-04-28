@@ -1097,7 +1097,7 @@ where
     I: IntoIterator<Item = String>,
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    let mut stream = stream::iter(json_msgs.into_iter()).map(|msg| Ok(Message::Text(msg.into())));
+    let mut stream = stream::iter(json_msgs).map(|msg| Ok(Message::Text(msg.into())));
     tx.send_all(&mut stream).await?;
     Ok(())
 }

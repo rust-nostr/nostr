@@ -447,32 +447,26 @@ impl Nip19Event {
             let bytes = data.get(2..l + 2).ok_or(Error::TLV)?;
 
             match *t {
-                SPECIAL => {
-                    if event_id.is_none() {
-                        event_id = Some(EventId::from_slice(bytes)?);
-                    }
+                SPECIAL if event_id.is_none() => {
+                    event_id = Some(EventId::from_slice(bytes)?);
                 }
                 // from nip19: "for nevent, *optionally*, the 32 bytes of
                 // the pubkey of the event"
-                AUTHOR => {
-                    if author.is_none() {
-                        author = PublicKey::from_slice(bytes).ok(); // NOT propagate error if public key is invalid
-                    }
+                AUTHOR if author.is_none() => {
+                    author = PublicKey::from_slice(bytes).ok(); // NOT propagate error if public key is invalid
                 }
                 RELAY => {
                     let url: Cow<str> = String::from_utf8_lossy(bytes);
                     let url: RelayUrl = RelayUrl::parse(&url)?;
                     relays.push(url);
                 }
-                KIND => {
-                    if kind.is_none() {
-                        // The kind value must be a 32-bit unsigned number according to
-                        // https://github.com/nostr-protocol/nips/blob/37f6cbb775126b386414220f783ca0f5f85e7614/19.md#shareable-identifiers-with-extra-metadata
-                        let k: u16 =
-                            u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
-                                as u16;
-                        kind = Some(Kind::from(k));
-                    }
+                KIND if kind.is_none() => {
+                    // The kind value must be a 32-bit unsigned number according to
+                    // https://github.com/nostr-protocol/nips/blob/37f6cbb775126b386414220f783ca0f5f85e7614/19.md#shareable-identifiers-with-extra-metadata
+                    let k: u16 =
+                        u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
+                            as u16;
+                    kind = Some(Kind::from(k));
                 }
                 _ => (),
             };
@@ -593,10 +587,8 @@ impl Nip19Profile {
             let bytes = data.get(2..l + 2).ok_or(Error::TLV)?;
 
             match *t {
-                SPECIAL => {
-                    if public_key.is_none() {
-                        public_key = Some(PublicKey::from_slice(bytes)?);
-                    }
+                SPECIAL if public_key.is_none() => {
+                    public_key = Some(PublicKey::from_slice(bytes)?);
                 }
                 RELAY => {
                     let url: Cow<str> = String::from_utf8_lossy(bytes);
@@ -693,10 +685,8 @@ impl Nip19Coordinate {
             let bytes: &[u8] = data.get(2..l + 2).ok_or(Error::TLV)?;
 
             match *t {
-                SPECIAL => {
-                    if identifier.is_none() {
-                        identifier = Some(String::from_utf8_lossy(bytes).to_string());
-                    }
+                SPECIAL if identifier.is_none() => {
+                    identifier = Some(String::from_utf8_lossy(bytes).to_string());
                 }
                 RELAY => {
                     let url: Cow<str> = String::from_utf8_lossy(bytes);
@@ -704,20 +694,16 @@ impl Nip19Coordinate {
                         relays.push(url);
                     }
                 }
-                AUTHOR => {
-                    if pubkey.is_none() {
-                        pubkey = Some(PublicKey::from_slice(bytes)?);
-                    }
+                AUTHOR if pubkey.is_none() => {
+                    pubkey = Some(PublicKey::from_slice(bytes)?);
                 }
-                KIND => {
-                    if kind.is_none() {
-                        // The kind value must be a 32-bit unsigned number according to
-                        // https://github.com/nostr-protocol/nips/blob/37f6cbb775126b386414220f783ca0f5f85e7614/19.md#shareable-identifiers-with-extra-metadata
-                        let k: u16 =
-                            u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
-                                as u16;
-                        kind = Some(Kind::from(k));
-                    }
+                KIND if kind.is_none() => {
+                    // The kind value must be a 32-bit unsigned number according to
+                    // https://github.com/nostr-protocol/nips/blob/37f6cbb775126b386414220f783ca0f5f85e7614/19.md#shareable-identifiers-with-extra-metadata
+                    let k: u16 =
+                        u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
+                            as u16;
+                    kind = Some(Kind::from(k));
                 }
                 _ => (),
             };

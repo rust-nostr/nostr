@@ -356,6 +356,7 @@ pub(super) async fn sync(
                         subscription_id,
                         message,
                     } => {
+                        #[allow(clippy::collapsible_match)]
                         if subscription_id.as_ref() == &sub_id {
                             let mut curr_have_ids: Vec<Id> = Vec::new();
                             let mut curr_need_ids: Vec<Id> = Vec::new();
@@ -404,6 +405,7 @@ pub(super) async fn sync(
                         subscription_id,
                         message,
                     } => {
+                        #[allow(clippy::collapsible_match)]
                         if subscription_id.as_ref() == &sub_id {
                             return Err(Error::RelayMessage(message.into_owned()));
                         } else {
@@ -420,6 +422,7 @@ pub(super) async fn sync(
                         subscription_id,
                         event,
                     } => {
+                        #[allow(clippy::collapsible_match)]
                         if subscription_id.as_ref() == &down_sub_id {
                             output.received.insert(event.id);
 
@@ -431,6 +434,7 @@ pub(super) async fn sync(
                         }
                     }
                     RelayMessage::EndOfStoredEvents(subscription_id) => {
+                        #[allow(clippy::collapsible_match)]
                         if subscription_id.as_ref() == &down_sub_id {
                             in_flight_down = false;
 
@@ -452,6 +456,7 @@ pub(super) async fn sync(
                     RelayMessage::Closed {
                         subscription_id, ..
                     } => {
+                        #[allow(clippy::collapsible_match)]
                         if subscription_id.as_ref() == &down_sub_id {
                             in_flight_down = false;
 
@@ -486,10 +491,8 @@ pub(super) async fn sync(
                     last_relevant_msg = Instant::now();
                 }
             }
-            RelayNotification::RelayStatus { status } => {
-                if status.is_disconnected() {
-                    return Err(Error::NotConnected);
-                }
+            RelayNotification::RelayStatus { status } if status.is_disconnected() => {
+                return Err(Error::NotConnected);
             }
             _ => (),
         };
@@ -541,18 +544,14 @@ async fn check_negentropy_support(
                 match *message {
                     RelayMessage::NegMsg {
                         subscription_id, ..
-                    } => {
-                        if subscription_id.as_ref() == sub_id {
-                            break;
-                        }
+                    } if subscription_id.as_ref() == sub_id => {
+                        break;
                     }
                     RelayMessage::NegErr {
                         subscription_id,
                         message,
-                    } => {
-                        if subscription_id.as_ref() == sub_id {
-                            return Err(Error::RelayMessage(message.into_owned()));
-                        }
+                    } if subscription_id.as_ref() == sub_id => {
+                        return Err(Error::RelayMessage(message.into_owned()));
                     }
                     RelayMessage::Notice(message) => {
                         if message == "ERROR: negentropy error: negentropy query missing elements" {

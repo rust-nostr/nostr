@@ -303,7 +303,7 @@ impl RelayPool {
         let list = future::join_all(futures).await;
 
         // Iterate results and compose output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+        for (url, result) in urls.into_iter().zip(list) {
             match result {
                 Ok(..) => {
                     output.success.insert(url);
@@ -456,7 +456,7 @@ impl RelayPool {
         let list = future::join_all(futures).await;
 
         // Iter results and construct output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+        for (url, result) in urls.into_iter().zip(list) {
             match result {
                 Ok(()) => {
                     // Success, insert relay url in 'success' set result
@@ -586,7 +586,7 @@ impl RelayPool {
         let mut output: Output<SubscriptionId> = Output::new(id);
 
         // Iter results and construct output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+        for (url, result) in urls.into_iter().zip(list) {
             match result {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
@@ -621,7 +621,7 @@ impl RelayPool {
         let list = future::join_all(futures).await;
 
         // Iter results and construct output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+        for (url, result) in urls.into_iter().zip(list) {
             match result {
                 Ok(true) => {
                     // Success, insert relay url in 'success' set result
@@ -658,7 +658,7 @@ impl RelayPool {
         let list = future::join_all(futures).await;
 
         // Iter results and construct output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+        for (url, result) in urls.into_iter().zip(list) {
             match result {
                 Ok(()) => {
                     // Success, insert relay url in 'success' set result
@@ -711,7 +711,7 @@ impl RelayPool {
         let list = future::join_all(futures).await;
 
         // Iter results and constructs output
-        for (url, result) in urls.into_iter().zip(list.into_iter()) {
+        for (url, result) in urls.into_iter().zip(list) {
             match result {
                 Ok(reconciliation) => {
                     // Success, insert relay url in 'success' set result
@@ -780,7 +780,7 @@ impl RelayPool {
 
         // Zip-up urls and futures into a single iterator
         let streams: Zip<IntoIter<RelayUrl>, IntoIter<Result<_, _>>> =
-            urls.into_iter().zip(awaited.into_iter());
+            urls.into_iter().zip(awaited);
 
         // Single driver task: polls all streams, de-duplicates, forwards
         task::spawn(async move {
