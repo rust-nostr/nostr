@@ -33,13 +33,15 @@ async fn main() -> Result<()> {
     println!("\nBunker URI: {bunker_uri}\n");
 
     // Compose client
-    let client = Client::builder().signer(signer.clone()).build();
+    let client = Client::default();
     client.add_relay("wss://relay.damus.io").await?;
     client.connect().await;
 
     // Publish events
-    let builder = EventBuilder::text_note("Testing rust-nostr NIP46 signer [bunker]");
-    let output = client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("Testing rust-nostr NIP46 signer [bunker]")
+        .sign_async(&signer)
+        .await?;
+    let output = client.send_event(&event).await?;
     println!("Published text note: {}\n", output.id());
 
     let receiver =

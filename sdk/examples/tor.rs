@@ -10,12 +10,9 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    // Parse keys
-    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
-
     // Configure client to use a proxy for the onion relays
     let proxy: Proxy = Proxy::onion(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
-    let client = Client::builder().signer(keys.clone()).proxy(proxy).build();
+    let client = Client::builder().proxy(proxy).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -24,6 +21,9 @@ async fn main() -> Result<()> {
         .await?;
 
     client.connect().await;
+
+    // Parse keys
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
     let filter: Filter = Filter::new().pubkey(keys.public_key()).limit(0);
     client.subscribe(filter).await?;
