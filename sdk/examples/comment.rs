@@ -10,8 +10,7 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let keys = Keys::generate();
-    let client = Client::builder().signer(keys).build();
+    let client = Client::default();
 
     client.add_relay("wss://relay.damus.io/").await?;
     client.add_relay("wss://relay.primal.net/").await?;
@@ -25,10 +24,13 @@ async fn main() -> Result<()> {
         .timeout(Duration::from_secs(10))
         .await?;
 
-    let comment_to = events.first().unwrap();
-    let builder = EventBuilder::comment("This is a reply", CommentTarget::from(comment_to), None);
+    let keys = Keys::generate();
 
-    let output = client.send_event_builder(builder).await?;
+    let comment_to = events.first().unwrap();
+    let event = EventBuilder::comment("This is a reply", CommentTarget::from(comment_to), None)
+        .sign(&keys)?;
+
+    let output = client.send_event(&event).await?;
     println!("Output: {:?}", output);
 
     Ok(())

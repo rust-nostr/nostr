@@ -67,9 +67,8 @@ impl RelayPool {
             state: SharedState::new(
                 builder.database,
                 builder.websocket_transport,
-                builder.signer,
                 builder.admit_policy,
-                builder.nip42_auto_authentication,
+                builder.authenticator,
                 builder.monitor,
             ),
             relays: RwLock::new(HashMap::new()),
@@ -101,11 +100,6 @@ impl RelayPool {
     #[inline]
     pub(crate) fn monitor(&self) -> Option<&Monitor> {
         self.state.monitor.as_ref()
-    }
-
-    #[inline]
-    pub(crate) fn state(&self) -> &SharedState {
-        &self.state
     }
 
     #[inline]

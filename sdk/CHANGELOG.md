@@ -32,6 +32,9 @@
 ### Breaking changes
 
 - Require `AsyncNostrSigner` in client, relay and builder APIs instead of `NostrSigner` (https://github.com/rust-nostr/nostr/pull/1329)
+- Replace signer-based NIP-42 authentication with a dedicated `Authenticator` (https://github.com/rust-nostr/nostr/pull/1340)
+- Remove `ClientBuilder::signer` and `RelayBuilder::signer` (https://github.com/rust-nostr/nostr/pull/1340)
+- Remove `Client::signer`, `Client::automatic_authentication`, `Client::sign_event_builder`, `Client::send_event_builder` and `Client::send_event_builder_to` (https://github.com/rust-nostr/nostr/pull/1340)
 - Replace `usize` with `u8` for gossip relay limits
 - Remove `autoconnect` option from `ClientOptions`
 - Change `Client::stream_events*` output to include the `RelayUrl` and `Result`, enabling callers to identify which relay sent the event or if a specific relay encountered an error (https://github.com/rust-nostr/nostr/pull/1156)
@@ -91,6 +94,7 @@
 - Add `GossipAllowedRelays` to `GossipOptions` to filter relays during selection (https://github.com/rust-nostr/nostr/pull/1128)
 - Add `AdmitPolicy::admit_auth` to control relay authentication (https://github.com/rust-nostr/nostr/pull/1218)
 - Add gossip background refresher (https://github.com/rust-nostr/nostr/pull/1260)
+- Add `Authenticator` and `SignerAuthenticator` for NIP-42 relay authentication (https://github.com/rust-nostr/nostr/pull/1340)
 
 ## v0.44.1 - 2025/11/09
 

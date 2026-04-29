@@ -98,6 +98,7 @@ mod tests {
     use nostr_relay_builder::prelude::*;
 
     use super::*;
+    use crate::authenticator::SignerAuthenticator;
     use crate::relay::{Error, RelayOptions, RelayStatus};
 
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
@@ -190,9 +191,6 @@ mod tests {
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
 
-        // Disable NIP42 auto auth
-        relay.inner.state.automatic_authentication(false);
-
         // Unauthenticated fetch (MUST return error)
         let err = relay
             .fetch_events(filter.clone())
@@ -208,17 +206,6 @@ mod tests {
             }
             e => panic!("Unexpected error: {e}"),
         }
-
-        // Enable NIP42 auto auth
-        relay.inner.state.automatic_authentication(true);
-
-        // Unauthenticated fetch (MUST return error)
-        let err = relay
-            .fetch_events(filter.clone())
-            .timeout(Duration::from_secs(5))
-            .await
-            .unwrap_err();
-        assert!(matches!(err, Error::AuthenticationFailed));
     }
 
     #[tokio::test]
@@ -234,7 +221,8 @@ mod tests {
         // Signer
         let keys = Keys::generate();
 
-        let relay: Relay = Relay::builder(url).signer(keys.clone()).build();
+        let authenticator = SignerAuthenticator::new(keys.clone());
+        let relay: Relay = Relay::builder(url).authenticator(authenticator).build();
 
         relay.connect();
 
@@ -245,28 +233,6 @@ mod tests {
         relay.send_event(&event).await.unwrap();
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
-
-        // Disable NIP42 auto auth
-        relay.inner.state.automatic_authentication(false);
-
-        // NIP-42 auth disabled, so it's an unauthenticated REQ (MUST return error)
-        let err = relay
-            .fetch_events(filter.clone())
-            .timeout(Duration::from_secs(5))
-            .await
-            .unwrap_err();
-        match err {
-            Error::RelayMessage(msg) => {
-                assert_eq!(
-                    MachineReadablePrefix::parse(&msg).unwrap(),
-                    MachineReadablePrefix::AuthRequired
-                );
-            }
-            e => panic!("Unexpected error: {e}"),
-        }
-
-        // Enable NIP42 auto auth
-        relay.inner.state.automatic_authentication(true);
 
         // Authenticated fetch
         let res = relay

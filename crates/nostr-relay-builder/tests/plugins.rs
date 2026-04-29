@@ -38,7 +38,7 @@ async fn update_filter() {
     relay.run().await.unwrap();
 
     let keys = Keys::generate();
-    let client = Client::builder().signer(keys).build();
+    let client = Client::default();
 
     client
         .add_relay(relay.url().await)
@@ -47,17 +47,19 @@ async fn update_filter() {
         .unwrap();
 
     // Event with our target tag
-    client
-        .send_event_builder(EventBuilder::text_note(":)").tag(Tag::hashtag(UPDATE_TAG)))
-        .await
+    let event = EventBuilder::text_note(":)")
+        .tag(Tag::hashtag(UPDATE_TAG))
+        .sign(&keys)
         .unwrap();
+    client.send_event(&event).await.unwrap();
 
     // This event has a random tag and should be filtered out in the REQ.
     // It would only appear if the filter had not been updated correctly.
-    client
-        .send_event_builder(EventBuilder::text_note(":)").tag(Tag::hashtag("TEST")))
-        .await
+    let event = EventBuilder::text_note(":)")
+        .tag(Tag::hashtag("TEST"))
+        .sign(&keys)
         .unwrap();
+    client.send_event(&event).await.unwrap();
 
     // Empty filter to get all events. It should be updated to have `UPDATE_TAG`
     let events = client.fetch_events(Filter::new()).await.unwrap();

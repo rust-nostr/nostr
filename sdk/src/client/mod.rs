@@ -97,7 +97,8 @@ impl Client {
     /// use nostr_sdk::prelude::*;
     ///
     /// let signer = Keys::generate();
-    /// let client: Client = Client::builder().signer(signer).build();
+    /// let authenticator = SignerAuthenticator::new(signer);
+    /// let client: Client = Client::builder().authenticator(authenticator).build();
     /// ```
     #[inline]
     pub fn builder() -> ClientBuilder {
@@ -115,11 +116,10 @@ impl Client {
         let pool_builder: RelayPoolBuilder = RelayPoolBuilder {
             websocket_transport: builder.websocket_transport,
             admit_policy: Some(Arc::new(admit_policy_wrapper)),
+            authenticator: builder.authenticator,
             monitor: builder.monitor,
             database: builder.database,
-            signer: builder.signer,
             max_relays: builder.max_relays,
-            nip42_auto_authentication: builder.automatic_authentication,
             notification_channel_size: builder.notification_channel_size,
         };
 
@@ -166,14 +166,6 @@ impl Client {
     #[inline]
     fn weak_clone(&self) -> WeakClient {
         WeakClient(Arc::downgrade(&self.0))
-    }
-
-    /// Get current nostr signer
-    ///
-    /// Returns `None` if no signer is configured.
-    #[inline]
-    pub fn signer(&self) -> Option<&Arc<dyn AsyncNostrSigner>> {
-        self.pool().state().signer()
     }
 
     /// Get database
@@ -232,16 +224,6 @@ impl Client {
                 })
                 .take_until(rx_done),
         )
-    }
-
-    /// Enable or disable automatic authenticate to relays
-    ///
-    /// This feature requires a configured signer!
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[inline]
-    pub fn automatic_authentication(&self, enable: bool) {
-        self.pool().state().automatic_authentication(enable);
     }
 
     /// Get relays from the relay pool.
@@ -1222,45 +1204,6 @@ impl Client {
         U: Into<RelayUrlArg<'a>>,
     {
         self.send_event(event).to(urls).await
-    }
-
-    /// Build, sign and return [`Event`]
-    ///
-    /// This method requires a [`NostrSigner`].
-    pub async fn sign_event_builder(&self, builder: EventBuilder) -> Result<Event, Error> {
-        let signer = self.signer().ok_or(Error::SignerNotConfigured)?;
-        Ok(builder.sign_async(signer).await?)
-    }
-
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to relays.
-    ///
-    /// This method requires a [`NostrSigner`].
-    ///
-    /// Check [`Client::send_event`] from more details.
-    #[inline]
-    pub async fn send_event_builder(
-        &self,
-        builder: EventBuilder,
-    ) -> Result<Output<EventId>, Error> {
-        let event: Event = self.sign_event_builder(builder).await?;
-        self.send_event(&event).await
-    }
-
-    /// Take an [`EventBuilder`], sign it by using the [`NostrSigner`] and broadcast to specific relays.
-    ///
-    /// This method requires a [`NostrSigner`].
-    #[inline]
-    pub async fn send_event_builder_to<'a, I, U>(
-        &self,
-        urls: I,
-        builder: EventBuilder,
-    ) -> Result<Output<EventId>, Error>
-    where
-        I: IntoIterator<Item = U>,
-        U: Into<RelayUrlArg<'a>>,
-    {
-        let event: Event = self.sign_event_builder(builder).await?;
-        self.send_event(&event).to(urls).await
     }
 }
 

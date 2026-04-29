@@ -1050,9 +1050,7 @@ impl InnerRelay {
                     RelayMessage::EndOfStoredEvents(id) => {
                         self.received_eose(id).await;
                     }
-                    RelayMessage::Auth { challenge }
-                        if self.state.is_auto_authentication_enabled() =>
-                    {
+                    RelayMessage::Auth { challenge } if self.state.is_authenticator_available() => {
                         // Forward action to ingester
                         let _ = ingester_tx.send(IngesterCommand::Authenticate {
                             challenge: challenge.to_string(),
@@ -1363,13 +1361,17 @@ impl InnerRelay {
             }
         }
 
-        // Get signer
-        let signer = self.state.signer().ok_or(Error::SignerNotConfigured)?;
+        let Some(authenticator) = &self.state.authenticator else {
+            return Err(Error::AuthenticatorNotConfigured);
+        };
 
-        // Construct event
-        let event: Event = EventBuilder::auth(challenge, self.url.clone())
-            .sign_async(signer)
-            .await?;
+        // Create the NIP-42 auth event
+        let event: Event = authenticator.make_auth_event(&self.url, &challenge).await?;
+
+        // Ensure event is valid
+        if !nip42::is_valid_auth_event(&event, &self.url, &challenge) {
+            return Err(Error::AuthenticationEventInvalid);
+        }
 
         // Subscribe to notifications
         let mut notifications = self.internal_notification_sender.subscribe();
@@ -1597,7 +1599,7 @@ impl InnerRelay {
                             match MachineReadablePrefix::parse(&message) {
                                 Some(MachineReadablePrefix::AuthRequired) => {
                                     // Authentication is not enabled, return.
-                                    if !self.state.is_auto_authentication_enabled() {
+                                    if !self.state.is_authenticator_available() {
                                         return Some(HandleAutoClosing {
                                             to_close: false, // No need to send CLOSE msg
                                             reason: Some(SubscriptionAutoClosedReason::Closed(
