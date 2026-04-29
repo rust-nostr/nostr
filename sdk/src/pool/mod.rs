@@ -222,6 +222,7 @@ impl RelayPool {
         &self,
         url: Cow<'_, RelayUrl>,
         force: bool,
+        ban: bool,
     ) -> Result<(), Error> {
         // Acquire write lock
         let mut relays = self.relays.write().await;
@@ -232,8 +233,8 @@ impl RelayPool {
             None => return Err(Error::RelayNotFound(url.into_owned())),
         };
 
-        // If NOT force, check if it has `GOSSIP` capability
-        if !force {
+        // If NOT force and ban, check if it has `GOSSIP` capability
+        if !force && !ban {
             // If can't be removed, re-insert it.
             if !can_remove_relay(&relay) {
                 relays.insert(url.into_owned(), relay);
@@ -241,8 +242,13 @@ impl RelayPool {
             }
         }
 
-        // Disconnect
-        relay.disconnect();
+        if ban {
+            // Ban
+            relay.ban();
+        } else {
+            // Disconnect
+            relay.disconnect();
+        }
 
         Ok(())
     }

@@ -12,6 +12,7 @@ pub struct RemoveRelay<'client, 'url> {
     client: &'client Client,
     url: RelayUrlArg<'url>,
     force: bool,
+    ban: bool,
 }
 
 impl<'client, 'url> RemoveRelay<'client, 'url> {
@@ -20,6 +21,7 @@ impl<'client, 'url> RemoveRelay<'client, 'url> {
             client,
             url,
             force: false,
+            ban: false,
         }
     }
 
@@ -27,6 +29,13 @@ impl<'client, 'url> RemoveRelay<'client, 'url> {
     #[inline]
     pub fn force(mut self) -> Self {
         self.force = true;
+        self
+    }
+
+    /// Ban the relay
+    #[inline]
+    pub fn ban(mut self) -> Self {
+        self.ban = true;
         self
     }
 }
@@ -44,7 +53,11 @@ where
             let url: Cow<RelayUrl> = self.url.try_into_relay_url()?;
 
             // Remove the relay from the pool
-            Ok(self.client.pool().remove_relay(url, self.force).await?)
+            Ok(self
+                .client
+                .pool()
+                .remove_relay(url, self.force, self.ban)
+                .await?)
         })
     }
 }
@@ -53,7 +66,7 @@ where
 mod tests {
     use super::*;
     use crate::pool;
-    use crate::relay::RelayCapabilities;
+    use crate::relay::{RelayCapabilities, RelayStatus};
 
     #[tokio::test]
     async fn test_remove_nonexistent_relay() {
@@ -133,6 +146,50 @@ mod tests {
                 .await
                 .is_ok()
         );
+        assert!(client.relay("ws://127.0.0.1:8888").await.unwrap().is_none());
+        assert!(client.relays().await.is_empty());
+        assert!(client.pool().all_relays().await.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_ban_relay() {
+        let client = Client::default();
+
+        client.add_relay("ws://127.0.0.1:6666").await.unwrap();
+
+        client
+            .add_relay("ws://127.0.0.1:8888")
+            .capabilities(RelayCapabilities::default() | RelayCapabilities::GOSSIP)
+            .await
+            .unwrap();
+
+        assert_eq!(client.relays().await.len(), 2);
+        assert_eq!(client.pool().all_relays().await.len(), 2);
+
+        // Ban the non-gossip relay
+        let relay = client.relay("ws://127.0.0.1:6666").await.unwrap().unwrap();
+        assert!(
+            client
+                .remove_relay("ws://127.0.0.1:6666")
+                .ban()
+                .await
+                .is_ok()
+        );
+        assert_eq!(relay.status(), RelayStatus::Banned);
+        assert!(client.relay("ws://127.0.0.1:6666").await.unwrap().is_none());
+        assert_eq!(client.relays().await.len(), 1);
+        assert_eq!(client.pool().all_relays().await.len(), 1);
+
+        // Ban the gossip relay
+        let relay = client.relay("ws://127.0.0.1:8888").await.unwrap().unwrap();
+        assert!(
+            client
+                .remove_relay("ws://127.0.0.1:8888")
+                .ban()
+                .await
+                .is_ok()
+        );
+        assert_eq!(relay.status(), RelayStatus::Banned);
         assert!(client.relay("ws://127.0.0.1:8888").await.unwrap().is_none());
         assert!(client.relays().await.is_empty());
         assert!(client.pool().all_relays().await.is_empty());
