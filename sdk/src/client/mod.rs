@@ -342,7 +342,10 @@ impl Client {
     /// Add relay
     ///
     /// By default, relays added with this method will have both [`RelayCapabilities::READ`] and [`RelayCapabilities::WRITE`] capabilities enabled.
-    /// If the relay already exists, the capabilities will be updated and `false` returned.
+    ///
+    /// Returns `true` only when a new relay is actually inserted into the pool.
+    /// If the relay already exists, its capabilities are updated and `false` is returned.
+    /// If the relay is rejected by the admission policy, this method also returns `false`.
     ///
     /// To add a relay with specific capabilities, use [`AddRelay::capabilities`].
     ///

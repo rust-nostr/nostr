@@ -23,6 +23,7 @@ pub(crate) use self::builder::RelayPoolBuilder;
 pub(crate) use self::error::Error;
 use crate::client::{ClientNotification, InnerAckPolicy, Output, SyncSummary};
 use crate::monitor::Monitor;
+use crate::policy::AdmitStatus;
 use crate::relay::{
     self, AtomicRelayCapabilities, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
     SubscribeAutoCloseOptions, SyncOptions,
@@ -170,6 +171,19 @@ impl RelayPool {
         // Check if the pool has been shutdown
         if self.is_shutdown() {
             return Err(Error::Shutdown);
+        }
+
+        // Check if the relay can be added to the pool, per-policy.
+        if let Some(policy) = &self.state.admit_policy {
+            if let AdmitStatus::Rejected { .. } = policy.admit_relay(&url).await? {
+                // Do not return an error here.
+                //
+                // A relay rejected by the admission policy is a valid outcome for this
+                // operation, not a pool failure. Returning an error would make callers
+                // such as `Client::gossip_break_down_filter` fail the whole workflow,
+                // while they only may need to know that this relay was not added.
+                return Ok(false);
+            }
         }
 
         // Get relays

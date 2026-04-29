@@ -168,7 +168,30 @@ where
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     use super::*;
+    use crate::policy::{AdmitPolicy, AdmitStatus, PolicyError};
+
+    #[derive(Debug)]
+    struct RejectRelayPolicy {
+        rejected_relays: HashSet<RelayUrl>,
+    }
+
+    impl AdmitPolicy for RejectRelayPolicy {
+        fn admit_relay<'a>(
+            &'a self,
+            relay_url: &'a RelayUrl,
+        ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+            Box::pin(async move {
+                if self.rejected_relays.contains(relay_url) {
+                    Ok(AdmitStatus::rejected("relay rejected"))
+                } else {
+                    Ok(AdmitStatus::Success)
+                }
+            })
+        }
+    }
 
     #[tokio::test]
     async fn test_add_relay() {
@@ -228,5 +251,21 @@ mod tests {
             relay.capabilities().load(),
             RelayCapabilities::READ | RelayCapabilities::GOSSIP
         );
+    }
+
+    #[tokio::test]
+    async fn test_add_relay_rejected_by_policy() {
+        let rejected = RelayUrl::parse("wss://relay.damus.io").unwrap();
+        let client = Client::builder()
+            .admit_policy(RejectRelayPolicy {
+                rejected_relays: HashSet::from([rejected.clone()]),
+            })
+            .build();
+
+        let res = client.add_relay(&rejected).await.unwrap();
+        assert!(!res);
+
+        let relay = client.relay(&rejected).await.unwrap();
+        assert!(relay.is_none());
     }
 }

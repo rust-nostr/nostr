@@ -71,6 +71,17 @@ impl AdmitStatus {
 
 /// Admission policy
 pub trait AdmitPolicy: fmt::Debug + Send + Sync {
+    /// Admit a relay in the pool
+    ///
+    /// Returns [`AdmitStatus::Success`] if the relay can be added to the pool, otherwise [`AdmitStatus::Rejected`].
+    fn admit_relay<'a>(
+        &'a self,
+        relay_url: &'a RelayUrl,
+    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+        let _ = relay_url;
+        Box::pin(async move { Ok(AdmitStatus::Success) })
+    }
+
     /// Admit connecting to a relay
     ///
     /// Returns [`AdmitStatus::Success`] if the connection is allowed, otherwise [`AdmitStatus::Rejected`].
