@@ -10,17 +10,11 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    // Parse keys
-    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
-
     // Configure client to use embedded tor for `.onion` relays
     let connection: Connection = Connection::new()
         .proxy(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)))
         .target(ConnectionTarget::Onion);
-    let client = Client::builder()
-        .signer(keys.clone())
-        .connection(connection)
-        .build();
+    let client = Client::builder().connection(connection).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -32,6 +26,9 @@ async fn main() -> Result<()> {
         .await?;
 
     client.connect().await;
+
+    // Parse keys
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
     let filter: Filter = Filter::new().pubkey(keys.public_key()).limit(0);
     client.subscribe(filter).await?;

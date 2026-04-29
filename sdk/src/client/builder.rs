@@ -12,10 +12,10 @@ use std::time::Duration;
 
 #[cfg(not(target_arch = "wasm32"))]
 use async_wsocket::ConnectionMode;
-use nostr::signer::AsyncNostrSigner;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
 use nostr_gossip::{GossipAllowedRelays, IntoNostrGossip, NostrGossip};
 
+use crate::authenticator::Authenticator;
 use crate::client::Client;
 use crate::events_tracker::MemoryEventsTracker;
 use crate::monitor::Monitor;
@@ -177,14 +177,12 @@ impl GossipConfig {
 /// Client builder
 #[derive(Debug, Clone)]
 pub struct ClientBuilder {
-    // TODO: remove signer in favor or an "authenticator" (NIP-42).
-    //  All the event signing stuff will be done outside the client, in the client we need only an authenticator for supporting NIP-42.
-    /// Nostr Signer
-    pub signer: Option<Arc<dyn AsyncNostrSigner>>,
     /// WebSocket transport
     pub websocket_transport: Arc<dyn WebSocketTransport>,
     /// Admission policy
     pub admit_policy: Option<Arc<dyn AdmitPolicy>>,
+    /// Authenticator
+    pub authenticator: Option<Arc<dyn Authenticator>>,
     /// Database
     pub database: Arc<dyn NostrDatabase>,
     /// Gossip
@@ -198,8 +196,6 @@ pub struct ClientBuilder {
     pub connection: Connection,
     /// Max relays allowed in the pool
     pub max_relays: Option<NonZeroUsize>,
-    /// Automatic authentication to relays (NIP-42)
-    pub automatic_authentication: bool,
     /// Notification channel size
     pub notification_channel_size: NonZeroUsize,
     /// Connection timeout (default: 15 sec)
@@ -221,9 +217,9 @@ pub struct ClientBuilder {
 impl Default for ClientBuilder {
     fn default() -> Self {
         Self {
-            signer: None,
             websocket_transport: Arc::new(DefaultWebsocketTransport),
             admit_policy: None,
+            authenticator: None,
             database: Arc::new(MemoryEventsTracker::default()),
             gossip: None,
             gossip_config: GossipConfig::default(),
@@ -231,7 +227,6 @@ impl Default for ClientBuilder {
             #[cfg(not(target_arch = "wasm32"))]
             connection: Connection::default(),
             max_relays: None,
-            automatic_authentication: true,
             connect_timeout: Duration::from_secs(15),
             relay_limits: RelayLimits::default(),
             max_avg_latency: None,
@@ -248,25 +243,6 @@ impl ClientBuilder {
     #[inline]
     pub fn new() -> Self {
         Self::default()
-    }
-
-    /// Set signer
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr_sdk::prelude::*;
-    ///
-    /// // Signer with private keys
-    /// let keys = Keys::generate();
-    /// let client = ClientBuilder::new().signer(keys).build();
-    /// ```
-    #[inline]
-    pub fn signer<T>(mut self, signer: T) -> Self
-    where
-        T: AsyncNostrSigner + 'static,
-    {
-        self.signer = Some(Arc::new(signer));
-        self
     }
 
     /// Set custom WebSocket transport
@@ -288,6 +264,36 @@ impl ClientBuilder {
         T: AdmitPolicy + 'static,
     {
         self.admit_policy = Some(Arc::new(policy));
+        self
+    }
+
+    /// Set a NIP-42 authenticator.
+    ///
+    /// The authenticator is used when a relay requires authentication and the
+    /// client needs to build an `AUTH` event.
+    ///
+    /// If you already have a signer that implements
+    /// [`AsyncGetPublicKey`](nostr::signer::AsyncGetPublicKey) and
+    /// [`AsyncSignEvent`](nostr::signer::AsyncSignEvent), you can wrap it with
+    /// [`SignerAuthenticator`](crate::authenticator::SignerAuthenticator).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use nostr_sdk::prelude::*;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let keys = Keys::generate();
+    /// let authenticator = SignerAuthenticator::new(keys);
+    /// let client = Client::builder().authenticator(authenticator).build();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    pub fn authenticator<T>(mut self, authenticator: T) -> Self
+    where
+        T: Authenticator + 'static,
+    {
+        self.authenticator = Some(Arc::new(authenticator));
         self
     }
 
@@ -339,15 +345,6 @@ impl ClientBuilder {
     #[inline]
     pub fn max_relays(mut self, num: Option<NonZeroUsize>) -> Self {
         self.max_relays = num;
-        self
-    }
-
-    /// Auto authenticates to relays (default: true)
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/42.md>
-    #[inline]
-    pub fn automatic_authentication(mut self, enabled: bool) -> Self {
-        self.automatic_authentication = enabled;
         self
     }
 

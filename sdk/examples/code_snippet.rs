@@ -10,14 +10,15 @@ const EXAMPLE_SNIPPET: &str = include_str!("code_snippet.rs");
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let keys = Keys::generate();
-    let client = Client::builder().signer(keys).build();
+    let client = Client::default();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nos.lol").await?;
     client.add_relay("wss://nostr.mom").await?;
 
     client.connect().await;
+
+    let keys = Keys::generate();
 
     // Build a code snippet for this example :)
     let snippet: CodeSnippet = CodeSnippet::new(EXAMPLE_SNIPPET)
@@ -27,10 +28,11 @@ async fn main() -> Result<()> {
         .extension("rs")
         .license("MIT");
 
-    let builder = EventBuilder::code_snippet(snippet);
+    let event = EventBuilder::code_snippet(snippet).sign(&keys)?;
 
-    let event = client.send_event_builder(builder).await?;
-    let nevent = Nip19Event::new(*event.id()).relays(vec![
+    let output = client.send_event(&event).await?;
+
+    let nevent = Nip19Event::new(*output.id()).relays(vec![
         RelayUrl::parse("wss://nos.lol")?,
         RelayUrl::parse("wss://nostr.mom")?,
     ]);

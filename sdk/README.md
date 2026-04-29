@@ -29,12 +29,7 @@ async fn main() -> Result<()> {
     let bech32_pubkey: String = keys.public_key().to_bech32()?;
     println!("Bech32 PubKey: {}", bech32_pubkey);
 
-    // Configure client to use proxy for `.onion` relays
-    let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
-    let connection: Connection = Connection::new()
-        .proxy(addr) // Use `.embedded_tor()` instead to enable the embedded tor client (require `tor` feature)
-        .target(ConnectionTarget::Onion);
-    let client = Client::builder().signer(keys).connection(connection).build();
+    let client = Client::default();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -47,8 +42,8 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let builder = EventBuilder::text_note("My first text note from rust-nostr!");
-    client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("My first text note from rust-nostr!").sign(&keys)?;
+    client.send_event(&event).await?;
 
     Ok(())
 }

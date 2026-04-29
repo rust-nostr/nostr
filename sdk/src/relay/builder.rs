@@ -3,11 +3,11 @@
 use std::sync::Arc;
 
 use nostr::RelayUrl;
-use nostr::signer::AsyncNostrSigner;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
 
 use super::options::RelayOptions;
 use super::{Relay, RelayCapabilities};
+use crate::authenticator::Authenticator;
 use crate::events_tracker::MemoryEventsTracker;
 use crate::policy::AdmitPolicy;
 use crate::transport::websocket::{DefaultWebsocketTransport, WebSocketTransport};
@@ -19,12 +19,12 @@ pub struct RelayBuilder {
     pub url: RelayUrl,
     /// WebSocket transport
     pub websocket_transport: Arc<dyn WebSocketTransport>,
-    /// Nostr Signer
-    pub signer: Option<Arc<dyn AsyncNostrSigner>>,
     /// Database
     pub database: Arc<dyn NostrDatabase>,
     /// Admission policy
     pub admit_policy: Option<Arc<dyn AdmitPolicy>>,
+    /// Authenticator
+    pub authenticator: Option<Arc<dyn Authenticator>>,
     /// Capabilities
     pub capabilities: RelayCapabilities,
     /// Relay pool options
@@ -38,9 +38,9 @@ impl RelayBuilder {
         Self {
             url,
             websocket_transport: Arc::new(DefaultWebsocketTransport),
-            signer: None,
             database: Arc::new(MemoryEventsTracker::default()),
             admit_policy: None,
+            authenticator: None,
             capabilities: RelayCapabilities::default(),
             opts: RelayOptions::default(),
         }
@@ -53,16 +53,6 @@ impl RelayBuilder {
         T: WebSocketTransport + 'static,
     {
         self.websocket_transport = Arc::new(transport);
-        self
-    }
-
-    /// Set a signer
-    #[inline]
-    pub fn signer<T>(mut self, signer: T) -> Self
-    where
-        T: AsyncNostrSigner + 'static,
-    {
-        self.signer = Some(Arc::new(signer));
         self
     }
 
@@ -83,6 +73,37 @@ impl RelayBuilder {
         T: AdmitPolicy + 'static,
     {
         self.admit_policy = Some(Arc::new(policy));
+        self
+    }
+
+    /// Set a NIP-42 authenticator.
+    ///
+    /// The authenticator is used when a relay requires authentication and the
+    /// client needs to build an `AUTH` event.
+    ///
+    /// If you already have a signer that implements
+    /// [`AsyncGetPublicKey`](nostr::signer::AsyncGetPublicKey) and
+    /// [`AsyncSignEvent`](nostr::signer::AsyncSignEvent), you can wrap it with
+    /// [`SignerAuthenticator`](crate::authenticator::SignerAuthenticator).
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// # use nostr_sdk::prelude::*;
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let keys = Keys::generate();
+    /// let authenticator = SignerAuthenticator::new(keys);
+    /// let url = RelayUrl::parse("wss://relay.damus.io")?;
+    /// let client = Relay::builder(url).authenticator(authenticator).build();
+    /// # Ok(())
+    /// # }
+    /// ```
+    #[inline]
+    pub fn authenticator<T>(mut self, authenticator: T) -> Self
+    where
+        T: Authenticator + 'static,
+    {
+        self.authenticator = Some(Arc::new(authenticator));
         self
     }
 
