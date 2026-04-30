@@ -8,8 +8,6 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use hashes::sha256::Hash as Sha256Hash;
-
 use super::{Error, TagKind};
 use crate::event::id::EventId;
 use crate::nips::nip01::Coordinate;
@@ -18,8 +16,6 @@ use crate::nips::nip48::Protocol;
 use crate::nips::nip56::Report;
 use crate::nips::nip73::{ExternalContentId, Nip73Kind};
 use crate::nips::nip90::DataVendingMachineStatus;
-#[cfg(feature = "nip98")]
-use crate::nips::nip98::HttpMethod;
 use crate::types::{RelayUrl, Url};
 use crate::{
     Alphabet, Event, ImageDimensions, JsonUtil, Kind, PublicKey, SingleLetterTag, Timestamp,
@@ -124,10 +120,6 @@ pub enum TagStandard {
     PublishedAt(Timestamp),
     Url(Url),
     Server(Url),
-    AbsoluteURL(Url),
-    #[cfg(feature = "nip98")]
-    Method(HttpMethod),
-    Payload(Sha256Hash),
     Anon {
         msg: Option<String>,
     },
@@ -302,10 +294,6 @@ impl TagStandard {
                     character: Alphabet::G,
                     uppercase: false,
                 }) => Ok(Self::Geohash(tag_1.to_string())),
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::U,
-                    uppercase: false,
-                }) => Ok(Self::AbsoluteURL(Url::parse(tag_1)?)),
                 TagKind::Dependency => Ok(Self::Dependency(tag_1.to_string())),
                 TagKind::Relay => Ok(Self::Relay(RelayUrl::parse(tag_1)?)),
                 TagKind::Extension => Ok(Self::Extension(tag_1.to_string())),
@@ -337,9 +325,6 @@ impl TagStandard {
                     }),
                     Err(_) => Err(Error::UnknownStandardizedTag),
                 },
-                #[cfg(feature = "nip98")]
-                TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
-                TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
                 TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
@@ -481,13 +466,6 @@ impl TagStandard {
             Self::Url(..) => TagKind::Url,
             Self::Server(..) => TagKind::Server,
             Self::DataVendingMachineStatus { .. } => TagKind::Status,
-            Self::AbsoluteURL(..) => TagKind::SingleLetter(SingleLetterTag {
-                character: Alphabet::U,
-                uppercase: false,
-            }),
-            #[cfg(feature = "nip98")]
-            Self::Method(..) => TagKind::Method,
-            Self::Payload(..) => TagKind::Payload,
             Self::Anon { .. } => TagKind::Anon,
             Self::Proxy { .. } => TagKind::Proxy,
             Self::Emoji { .. } => TagKind::Emoji,
@@ -657,14 +635,6 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Lnurl(lnurl) => vec![tag_kind, lnurl],
             TagStandard::Url(url) => vec![tag_kind, url.to_string()],
             TagStandard::Server(url) => vec![tag_kind, url.to_string()],
-            TagStandard::AbsoluteURL(url) => {
-                vec![tag_kind, url.to_string()]
-            }
-            #[cfg(feature = "nip98")]
-            TagStandard::Method(method) => {
-                vec![tag_kind, method.to_string()]
-            }
-            TagStandard::Payload(p) => vec![tag_kind, p.to_string()],
             TagStandard::Anon { msg } => {
                 let mut tag = vec![tag_kind];
                 if let Some(msg) = msg {

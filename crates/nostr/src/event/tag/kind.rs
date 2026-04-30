@@ -81,8 +81,6 @@ pub enum TagKind<'a> {
     Lnurl,
     /// Maintainers
     Maintainers,
-    /// HTTP Method Request
-    Method,
     /// MLS Protocol Version
     MlsProtocolVersion,
     /// MLS Cipher Suite
@@ -95,8 +93,6 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     Nonce,
-    /// Payload
-    Payload,
     /// Preimage
     Preimage,
     /// Proxy
@@ -307,13 +303,11 @@ impl<'a> TagKind<'a> {
             Self::Lnurl => "lnurl",
             Self::Maintainers => "maintainers",
             Self::MergeBase => "merge-base",
-            Self::Method => "method",
             Self::MlsProtocolVersion => "mls_protocol_version",
             Self::MlsCiphersuite => "mls_ciphersuite",
             Self::MlsExtensions => "mls_extensions",
             Self::Name => "name",
             Self::Nonce => "nonce",
-            Self::Payload => "payload",
             Self::Preimage => "preimage",
             Self::Proxy => "proxy",
             Self::PublishedAt => "published_at",
@@ -369,13 +363,11 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "lnurl" => Self::Lnurl,
             "maintainers" => Self::Maintainers,
             "merge-base" => Self::MergeBase,
-            "method" => Self::Method,
             "mls_protocol_version" => Self::MlsProtocolVersion,
             "mls_ciphersuite" => Self::MlsCiphersuite,
             "mls_extensions" => Self::MlsExtensions,
             "name" => Self::Name,
             "nonce" => Self::Nonce,
-            "payload" => Self::Payload,
             "preimage" => Self::Preimage,
             "proxy" => Self::Proxy,
             "published_at" => Self::PublishedAt,
