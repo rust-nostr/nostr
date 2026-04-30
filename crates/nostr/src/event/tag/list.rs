@@ -620,9 +620,6 @@ mod tests {
         let long_e_tag_2 = Tag::from_standardized(TagStandard::Event {
             event_id: event2,
             relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-            marker: None,
-            public_key: None,
-            uppercase: false,
         });
 
         let empty_list: Vec<String> = Vec::new();

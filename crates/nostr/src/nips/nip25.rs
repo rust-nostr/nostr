@@ -7,7 +7,9 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/25.md>
 
 use super::nip01::Coordinate;
-use crate::{Event, EventId, Kind, PublicKey, RelayUrl, Tag, TagStandard, Tags};
+use super::nip22::Nip22Tag;
+use crate::event::tag::{Tag, TagCodec, TagStandard, Tags};
+use crate::{Event, EventId, Kind, PublicKey, RelayUrl};
 
 /// Reaction target
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -43,13 +45,16 @@ impl ReactionTarget {
 
         // Serialization order: keep the `e` and `a` tags together, followed by the `p` and other tags.
 
-        tags.push(Tag::from_standardized(TagStandard::Event {
-            event_id: self.event_id,
-            relay_url: self.relay_hint.clone(),
-            public_key: Some(self.public_key),
-            marker: None,
-            uppercase: false,
-        }));
+        // TODO: replace with a dedicated NIP-25 tag
+        tags.push(
+            Nip22Tag::Event {
+                id: self.event_id,
+                relay_hint: self.relay_hint.clone(),
+                public_key: Some(self.public_key),
+                uppercase: false,
+            }
+            .to_tag(),
+        );
 
         if let Some(coordinate) = self.coordinate {
             tags.push(Tag::coordinate(coordinate, self.relay_hint.clone()));

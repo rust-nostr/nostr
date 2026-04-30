@@ -30,7 +30,6 @@ pub use self::list::Tags;
 pub use self::standard::TagStandard;
 use super::id::EventId;
 use crate::nips::nip01::{Coordinate, Nip01Tag};
-use crate::nips::nip10::Marker;
 use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip56::Report;
 use crate::nips::nip70::Nip70Tag;
@@ -437,28 +436,6 @@ impl Tag {
         buf.extend(values.into_iter().map(|v| v.into()));
 
         Self::new(buf)
-    }
-
-    /// Check if is a standard event tag with `root` marker
-    pub fn is_root(&self) -> bool {
-        matches!(
-            self.standardized(),
-            Some(TagStandard::Event {
-                marker: Some(Marker::Root),
-                ..
-            })
-        )
-    }
-
-    /// Check if is a standard event tag with `reply` marker
-    pub fn is_reply(&self) -> bool {
-        matches!(
-            self.standardized(),
-            Some(TagStandard::Event {
-                marker: Some(Marker::Reply),
-                ..
-            })
-        )
     }
 
     /// Check if it's a protected event tag

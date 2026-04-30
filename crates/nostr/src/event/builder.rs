@@ -411,7 +411,7 @@ impl EventBuilder {
         content: S,
         reply_to: &Event,
         root: Option<&Event>,
-        relay_url: Option<RelayUrl>,
+        relay_hint: Option<RelayUrl>,
     ) -> Self
     where
         S: Into<String>,
@@ -422,35 +422,41 @@ impl EventBuilder {
             Some(root) => {
                 // Check if root event is different from reply event
                 if root.id != reply_to.id {
-                    tags.push(Tag::from_standardized(TagStandard::Event {
-                        event_id: reply_to.id,
-                        relay_url: relay_url.clone(),
-                        marker: Some(Marker::Reply),
-                        public_key: Some(reply_to.pubkey),
-                        uppercase: false,
-                    }));
+                    tags.push(
+                        Nip10Tag::Event {
+                            id: reply_to.id,
+                            relay_hint: relay_hint.clone(),
+                            marker: Some(Marker::Reply),
+                            public_key: Some(reply_to.pubkey),
+                        }
+                        .to_tag(),
+                    );
                     tags.push(Tag::public_key(reply_to.pubkey));
                 }
 
                 // ID and author
-                tags.push(Tag::from_standardized(TagStandard::Event {
-                    event_id: root.id,
-                    relay_url,
-                    marker: Some(Marker::Root),
-                    public_key: Some(root.pubkey),
-                    uppercase: false,
-                }));
+                tags.push(
+                    Nip10Tag::Event {
+                        id: root.id,
+                        relay_hint,
+                        marker: Some(Marker::Root),
+                        public_key: Some(root.pubkey),
+                    }
+                    .to_tag(),
+                );
                 tags.push(Tag::public_key(root.pubkey));
             }
             // No root tag, add only reply_to tags
             None => {
-                tags.push(Tag::from_standardized(TagStandard::Event {
-                    event_id: reply_to.id,
-                    relay_url,
-                    marker: Some(Marker::Reply),
-                    public_key: Some(reply_to.pubkey),
-                    uppercase: false,
-                }));
+                tags.push(
+                    Nip10Tag::Event {
+                        id: reply_to.id,
+                        relay_hint,
+                        marker: Some(Marker::Reply),
+                        public_key: Some(reply_to.pubkey),
+                    }
+                    .to_tag(),
+                );
                 tags.push(Tag::public_key(reply_to.pubkey));
             }
         }
@@ -530,9 +536,6 @@ impl EventBuilder {
                 TagStandard::Event {
                     event_id,
                     relay_url,
-                    marker: None,
-                    public_key: None,
-                    uppercase: false,
                 },
             )]),
         )
@@ -690,15 +693,15 @@ impl EventBuilder {
         relay_url: Option<RelayUrl>,
         metadata: &Metadata,
     ) -> Self {
-        Self::new(Kind::ChannelMetadata, metadata.as_json()).tags([Tag::from_standardized(
-            TagStandard::Event {
-                event_id: channel_id,
-                relay_url,
+        Self::new(Kind::ChannelMetadata, metadata.as_json()).tag(
+            Nip10Tag::Event {
+                id: channel_id,
+                relay_hint: relay_url,
                 marker: None,
                 public_key: None,
-                uppercase: false,
-            },
-        )])
+            }
+            .to_tag(),
+        )
     }
 
     /// Channel message
@@ -709,15 +712,15 @@ impl EventBuilder {
     where
         S: Into<String>,
     {
-        Self::new(Kind::ChannelMessage, content).tags([Tag::from_standardized(
-            TagStandard::Event {
-                event_id: channel_id,
-                relay_url: Some(relay_url),
+        Self::new(Kind::ChannelMessage, content).tag(
+            Nip10Tag::Event {
+                id: channel_id,
+                relay_hint: Some(relay_url),
                 marker: Some(Marker::Root),
                 public_key: None,
-                uppercase: false,
-            },
-        )])
+            }
+            .to_tag(),
+        )
     }
 
     /// Hide message
@@ -1123,9 +1126,6 @@ impl EventBuilder {
                     let badge_award_event_tag: Tag = Tag::from_standardized(TagStandard::Event {
                         event_id: badge_award_event.id,
                         relay_url: relay_url.clone(),
-                        marker: None,
-                        public_key: None,
-                        uppercase: false,
                     });
                     tags.extend_from_slice(&[a_tag.clone(), badge_award_event_tag]);
                 }

@@ -15,7 +15,6 @@ use secp256k1::schnorr::Signature;
 use super::{Error, TagKind};
 use crate::event::id::EventId;
 use crate::nips::nip01::Coordinate;
-use crate::nips::nip10::Marker;
 use crate::nips::nip39::Identity;
 use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
@@ -36,16 +35,9 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum TagStandard {
     /// Event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md> and <https://github.com/nostr-protocol/nips/blob/master/10.md>
     Event {
         event_id: EventId,
         relay_url: Option<RelayUrl>,
-        marker: Option<Marker>,
-        /// Should be the public key of the author of the referenced event
-        public_key: Option<PublicKey>,
-        /// Whether the tag is an uppercase or not
-        uppercase: bool,
     },
     /// Report event
     ///
@@ -477,9 +469,6 @@ impl TagStandard {
         Self::Event {
             event_id,
             relay_url: None,
-            marker: None,
-            public_key: None,
-            uppercase: false,
         }
     }
 
@@ -495,24 +484,12 @@ impl TagStandard {
         }
     }
 
-    /// Check if tag is an event `reply`
-    #[inline]
-    pub fn is_reply(&self) -> bool {
-        matches!(
-            self,
-            Self::Event {
-                marker: Some(Marker::Reply),
-                ..
-            }
-        )
-    }
-
     /// Get tag kind
     pub fn kind(&self) -> TagKind<'_> {
         match self {
-            Self::Event { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
+            Self::Event { .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::E,
-                uppercase: *uppercase,
+                uppercase: false,
             }),
             Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
@@ -644,30 +621,15 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Event {
                 event_id,
                 relay_url,
-                marker,
-                public_key,
                 ..
             } => {
-                // ["e", <event-id>, <relay-url>, <marker>, <pubkey>]
-                // <relay-url>, <marker> and <pubkey> are optional
-                // <relay-url>, if empty, may be set to "" (if there are additional fields later)
-                // <marker> is optional and if present is one of "reply", "root", or "mention" (so not an empty string)
+                // ["e", <event-id>, <relay-url>]
 
                 let mut tag: Vec<String> = vec![tag_kind, event_id.to_hex()];
 
-                // Check if <relay-url> exists or if there are additional fields after
-                match (relay_url, marker.is_some() || public_key.is_some()) {
-                    (Some(relay_url), ..) => tag.push(relay_url.to_string()),
-                    (None, true) => tag.push(String::new()),
-                    (None, false) => {}
-                }
-
-                if let Some(marker) = marker {
-                    tag.push(marker.to_string());
-                }
-
-                if let Some(public_key) = public_key {
-                    tag.push(public_key.to_string());
+                // Check if <relay-url> exists
+                if let Some(relay_url) = relay_url {
+                    tag.push(relay_url.to_string());
                 }
 
                 tag
@@ -923,15 +885,9 @@ where
 
     let event_id: EventId = EventId::from_hex(tag[1].as_ref())?;
 
-    // Try getting indexes 2, 3 and 4 and make sure they are not empty.
-    // If these are empty, they are handled as None.
+    // Try getting indexes 2 and make sure it is not empty.
+    // If this is empty, it is handled as None.
     let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref()).filter(|r| !r.is_empty());
-    // "mention" is a removed marker from NIP-10
-    let tag_3: Option<&str> = tag
-        .get(3)
-        .map(|r| r.as_ref())
-        .filter(|r| !r.is_empty() && *r != "mention");
-    let tag_4: Option<&str> = tag.get(4).map(|r| r.as_ref()).filter(|r| !r.is_empty());
 
     // Check if it's a report
     if let Some(tag_2) = tag_2 {
@@ -951,42 +907,9 @@ where
         None => None,
     };
 
-    // Check if 3rd arg is a marker or a public key
-    let (marker, public_key) = match (tag_3, tag_4) {
-        (Some(marker), Some(public_key)) => {
-            // Parse marker and public key
-            // NOTE: we already checked above if the strings are empty
-            let marker: Marker = Marker::from_str(marker)?;
-            let public_key: PublicKey = PublicKey::from_hex(public_key)?;
-
-            (Some(marker), Some(public_key))
-        }
-        (Some(marker), None) => {
-            // NOTE: we already checked above if the strings are empty
-            // Try parse 3rd arg as a marked (NIP-10)
-            match Marker::from_str(marker) {
-                Ok(marker) => (Some(marker), None),
-                // It's not a marker, try to parse it as a public key (NIP-01)
-                Err(..) => {
-                    let public_key: PublicKey = PublicKey::from_hex(marker)?;
-                    (None, Some(public_key))
-                }
-            }
-        }
-        (None, Some(public_key)) => {
-            // NOTE: we already checked above if the string is empty
-            let public_key = PublicKey::from_hex(public_key)?;
-            (None, Some(public_key))
-        }
-        (None, None) => (None, None),
-    };
-
     Ok(TagStandard::Event {
         event_id,
         relay_url,
-        marker,
-        public_key,
-        uppercase,
     })
 }
 
@@ -1265,55 +1188,6 @@ mod tests {
     use super::*;
     use crate::nips::nip39::ExternalIdentity;
 
-    // Issue: https://gitworkshop.dev/yukikishimoto.com/nostr/issues/note15xl8ae8dnmt26adfw6ec8gshxxs242vrvsa3v36ctwq2x9gglkustlxlwa
-    #[test]
-    fn tag_e_tag_with_blank_values() {
-        let hex = "a3ce0a22c5c25e5a41a17004d38ed2aa8f815dda918c92400c6b611c41acbc78";
-        let id = EventId::from_hex(hex).unwrap();
-
-        let result = TagStandard::parse(&["e", hex, "", "", ""]).unwrap();
-        assert_eq!(
-            result,
-            TagStandard::Event {
-                event_id: id,
-                relay_url: None,
-                marker: None,
-                public_key: None,
-                uppercase: false
-            }
-        )
-    }
-
-    #[test]
-    fn test_tag_standard_is_reply() {
-        let tag = TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap());
-        assert!(!tag.is_reply());
-
-        let tag = TagStandard::Event {
-            event_id: EventId::from_hex(
-                "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45",
-            )
-            .unwrap(),
-            relay_url: None,
-            marker: Some(Marker::Reply),
-            public_key: None,
-            uppercase: false,
-        };
-        assert!(tag.is_reply());
-
-        let tag = TagStandard::Event {
-            event_id: EventId::from_hex(
-                "2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45",
-            )
-            .unwrap(),
-            relay_url: None,
-            marker: Some(Marker::Root),
-            public_key: None,
-            uppercase: false,
-        };
-        assert!(!tag.is_reply());
-    }
-
     #[test]
     fn test_nip73_kind() {
         let tag = TagStandard::Nip73Kind {
@@ -1454,9 +1328,6 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: None,
-                marker: None,
-                public_key: None,
-                uppercase: false,
             }
             .to_vec()
         );
@@ -1473,9 +1344,6 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                marker: None,
-                public_key: None,
-                uppercase: false,
             }
             .to_vec()
         );
@@ -1688,77 +1556,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec![
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "",
-                "reply"
-            ],
-            TagStandard::Event {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: Some(Marker::Reply),
-                public_key: None,
-                uppercase: false,
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "e",
-                "0000000000000000000000000000000000000000000000000000000000000001",
-                "",
-                "root",
-                "0000000000000000000000000000000000000000000000000000000000000001",
-            ],
-            TagStandard::Event {
-                event_id: EventId::from_hex(
-                    "0000000000000000000000000000000000000000000000000000000000000001"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: Some(Marker::Root),
-                public_key: Some(
-                    PublicKey::parse(
-                        "0000000000000000000000000000000000000000000000000000000000000001"
-                    )
-                    .unwrap()
-                ),
-                uppercase: false,
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "e",
-                "0000000000000000000000000000000000000000000000000000000000000001",
-                "",
-                "0000000000000000000000000000000000000000000000000000000000000001",
-            ],
-            TagStandard::Event {
-                event_id: EventId::from_hex(
-                    "0000000000000000000000000000000000000000000000000000000000000001"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: None,
-                public_key: Some(
-                    PublicKey::parse(
-                        "0000000000000000000000000000000000000000000000000000000000000001"
-                    )
-                    .unwrap()
-                ),
-                uppercase: false,
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
             vec!["relay", "wss://relay.damus.io"],
             TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap()).to_vec()
         );
@@ -1864,23 +1661,6 @@ mod tests {
         );
 
         assert_eq!(
-            TagStandard::parse(&[
-                "E",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-            ]),
-            Ok(TagStandard::Event {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: None,
-                public_key: None,
-                uppercase: true
-            })
-        );
-
-        assert_eq!(
             TagStandard::parse(&["content-warning", "reason"]).unwrap(),
             TagStandard::ContentWarning {
                 reason: Some(String::from("reason"))
@@ -1957,25 +1737,6 @@ mod tests {
             TagStandard::parse(&[
                 "e",
                 "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                ""
-            ])
-            .unwrap(),
-            TagStandard::Event {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: None,
-                public_key: None,
-                uppercase: false,
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
                 "wss://relay.damus.io"
             ])
             .unwrap(),
@@ -1985,9 +1746,6 @@ mod tests {
                 )
                 .unwrap(),
                 relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                marker: None,
-                public_key: None,
-                uppercase: false,
             }
         );
 
@@ -2191,77 +1949,6 @@ mod tests {
         );
 
         assert_eq!(
-            TagStandard::parse(&[
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "",
-                "reply"
-            ])
-            .unwrap(),
-            TagStandard::Event {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: Some(Marker::Reply),
-                public_key: None,
-                uppercase: false,
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "",
-                "reply",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ])
-            .unwrap(),
-            TagStandard::Event {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: Some(Marker::Reply),
-                public_key: Some(
-                    PublicKey::from_hex(
-                        "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                    )
-                    .unwrap()
-                ),
-                uppercase: false,
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-            ])
-            .unwrap(),
-            TagStandard::Event {
-                event_id: EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: None,
-                public_key: Some(
-                    PublicKey::from_hex(
-                        "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                    )
-                    .unwrap()
-                ),
-                uppercase: false,
-            }
-        );
-
-        assert_eq!(
             TagStandard::parse(&["relay", "wss://relay.damus.io"]).unwrap(),
             TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap())
         );
@@ -2355,24 +2042,5 @@ mod tests {
         );
         assert!(TagStandard::parse(&["t", "nostr"]).is_ok());
         assert!(TagStandard::parse(&["t", "سلام"]).is_ok());
-    }
-
-    #[test]
-    fn e_tag_with_mention_marker() {
-        let hex = "19bb195b83fd26db217b6feebb444de4808d90eb4375c31c75ba5bb5c5c10cfc";
-        let id = EventId::from_hex(hex).unwrap();
-
-        let result = TagStandard::parse(&["e", hex, "", "mention"]);
-
-        assert_eq!(
-            result,
-            Ok(TagStandard::Event {
-                event_id: id,
-                relay_url: None,
-                marker: None,
-                public_key: None,
-                uppercase: false
-            })
-        );
     }
 }
