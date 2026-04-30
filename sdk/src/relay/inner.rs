@@ -137,7 +137,7 @@ pub(super) struct AtomicPrivateData {
 }
 
 #[derive(Debug, Clone)]
-pub(crate) struct InnerRelay {
+pub struct InnerRelay {
     pub(super) url: RelayUrl,
     pub(super) atomic: Arc<AtomicPrivateData>,
     pub(super) opts: RelayOptions,
@@ -1079,7 +1079,7 @@ impl InnerRelay {
         }
     }
 
-    async fn handle_raw_relay_message(
+    pub async fn handle_raw_relay_message(
         &self,
         msg: &str,
     ) -> Result<Option<RelayMessage<'static>>, Error> {
@@ -1774,46 +1774,18 @@ async fn close_ws(tx: &mut WebSocketSink) -> Result<(), Error> {
 }
 
 #[cfg(bench)]
-mod benches {
-    use std::sync::LazyLock;
-
-    use test::Bencher;
-    use tokio::runtime::Runtime;
-
-    use super::*;
-
-    static RUNTIME: LazyLock<Runtime> = LazyLock::new(|| Runtime::new().unwrap());
-
-    fn relay() -> InnerRelay {
-        let url = RelayUrl::parse("ws://localhost:8080").unwrap();
-        let state = SharedState::default();
-        let opts = RelayOptions::default();
-        InnerRelay::new(url, state, opts)
-    }
-
-    #[bench]
-    fn bench_handle_relay_msg_event(bh: &mut Bencher) {
-        let relay = relay();
-
-        let msg = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"273a9cd5d11455590f4359500bccb7a89428262b96b3ea87a756b770964472f8c3e87f5d5e64d8d2e859a71462a3f477b554565c4f2f326cb01dd7620db71502"}]"#;
-
-        bh.iter(|| {
-            RUNTIME.block_on(async {
-                relay.handle_raw_relay_message(msg).await.unwrap();
-            });
-        });
-    }
-
-    #[bench]
-    fn bench_handle_relay_msg_invalid_event(bh: &mut Bencher) {
-        let relay = relay();
-
-        let msg = r#"["EVENT", "random_string", {"id":"70b10f70c1318967eddf12527799411b1a9780ad9c43858f5e5fcd45486a13a5","pubkey":"379e863e8357163b5bce5d2688dc4f1dcc2d505222fb8d74db600f30535dfdfe","created_at":1612809991,"kind":1,"tags":[],"content":"test","sig":"fa163f5cfb75d77d9b6269011872ee22b34fb48d23251e9879bb1e4ccbdd8aaaf4b6dc5f5084a65ef42c52fbcde8f3178bac3ba207de827ec513a6aa39fa684c"}]"#;
-
-        bh.iter(|| {
-            RUNTIME.block_on(async {
-                let _ = relay.handle_raw_relay_message(msg).await;
-            });
-        });
-    }
+pub fn create_relay() -> InnerRelay {
+    let url = RelayUrl::parse("ws://localhost:8080").unwrap();
+    let builder = super::RelayBuilder::new(url);
+    let state: SharedState = SharedState::new(
+        builder.database,
+        builder.websocket_transport,
+        builder.signer,
+        builder.admit_policy,
+        false,
+        None,
+    );
+    let opts = RelayOptions::default();
+    let cap = RelayCapabilities::default();
+    InnerRelay::new(builder.url, state, cap, opts)
 }

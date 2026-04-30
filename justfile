@@ -47,6 +47,8 @@ coverage package='none':
     @echo
     @echo 'open {{ justfile_directory() }}/target/llvm-cov/html/index.html'
 
-# Run benches (unstable)
-bench:
-    RUSTFLAGS='--cfg=bench' cargo +nightly bench
+# Run benches
+bench benchmark='none':
+    RUSTFLAGS='--cfg=bench -Awarnings' cargo bench -p benches {{ if benchmark == 'none' { '' } else { '"'+benchmark+'"' } }}
+    @echo
+    @echo 'open {{ justfile_directory() }}/target/criterion/report/index.html'

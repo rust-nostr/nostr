@@ -415,24 +415,3 @@ mod tests {
         assert_eq!(kind, Kind::Custom(u16::MAX));
     }
 }
-
-#[cfg(bench)]
-mod benches {
-    use test::{Bencher, black_box};
-
-    use super::*;
-
-    #[bench]
-    pub fn parse_ephemeral_kind(bh: &mut Bencher) {
-        bh.iter(|| {
-            black_box(Kind::from(29_999));
-        });
-    }
-
-    #[bench]
-    pub fn parse_kind(bh: &mut Bencher) {
-        bh.iter(|| {
-            black_box(Kind::from(0));
-        });
-    }
-}

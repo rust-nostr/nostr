@@ -1,39 +1,43 @@
 [workspace]
 members = [
-    "crates/*",
+  "crates/*",
 
-    # Nostr SDK
-    "sdk",
+  # Nostr SDK
+  "sdk",
 
-    # Nostr Database
-    "database/nostr-database",
-    "database/nostr-database-test-suite",
-    "database/nostr-lmdb",
-    "database/nostr-memory",
-    "database/nostr-ndb",
-    "database/nostr-sqlite",
+  # Nostr Database
+  "database/nostr-database",
+  "database/nostr-database-test-suite",
+  "database/nostr-lmdb",
+  "database/nostr-memory",
+  "database/nostr-ndb",
+  "database/nostr-sqlite",
 
-    # Gossip
-    "gossip/nostr-gossip",
-    "gossip/nostr-gossip-memory",
-    "gossip/nostr-gossip-sqlite",
-    "gossip/nostr-gossip-test-suite",
+  # Gossip
+  "gossip/nostr-gossip",
+  "gossip/nostr-gossip-memory",
+  "gossip/nostr-gossip-sqlite",
+  "gossip/nostr-gossip-test-suite",
 
-    # Remote File Storage implementations
-    "rfs/nostr-blossom",
-    "rfs/nostr-http-file-storage",
+  # Remote File Storage implementations
+  "rfs/nostr-blossom",
+  "rfs/nostr-http-file-storage",
 
-    # Signers
-    "signer/nostr-browser-signer",
-    "signer/nostr-browser-signer-proxy",
-    "signer/nostr-connect",
+  # Signers
+  "signer/nostr-browser-signer",
+  "signer/nostr-browser-signer-proxy",
+  "signer/nostr-connect",
+  "benches",
 ]
 default-members = ["crates/*"]
 resolver = "2"
 
 [workspace.package]
 edition = "2024"
-authors = ["Yuki Kishimoto <yukikishimoto@protonmail.com>", "Rust Nostr Developers"]
+authors = [
+  "Yuki Kishimoto <yukikishimoto@protonmail.com>",
+  "Rust Nostr Developers",
+]
 homepage = "https://github.com/rust-nostr/nostr"
 repository = "https://github.com/rust-nostr/nostr.git"
 license = "MIT"
@@ -41,7 +45,7 @@ rust-version = "1.85.0"
 
 [workspace.dependencies]
 async-utility = "0.3"
-async-wsocket = {  git = "https://github.com/shadowylab/async-wsocket", rev = "0fed6c9c6aec7393ee0e9cf3933d76914ab427d3" }
+async-wsocket = { git = "https://github.com/shadowylab/async-wsocket", rev = "0fed6c9c6aec7393ee0e9cf3933d76914ab427d3" }
 atomic-destructor = { version = "0.3", default-features = false }
 base64 = { version = "0.22", default-features = false }
 btreecap = "0.1"

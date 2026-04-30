@@ -295,18 +295,3 @@ mod tests {
         );
     }
 }
-
-#[cfg(bench)]
-mod benches {
-    use test::{Bencher, black_box};
-
-    use super::*;
-
-    #[bench]
-    pub fn timestamp_to_human_datetime(bh: &mut Bencher) {
-        let timestamp = Timestamp::from(1682060685);
-        bh.iter(|| {
-            black_box(timestamp.to_human_datetime());
-        });
-    }
-}
