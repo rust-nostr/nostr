@@ -4,7 +4,6 @@
 
 //! Standardized tags
 
-use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
@@ -20,7 +19,6 @@ use crate::nips::nip48::Protocol;
 use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
 use crate::nips::nip56::Report;
 use crate::nips::nip73::{ExternalContentId, Nip73Kind};
-use crate::nips::nip88::{self, PollOption, PollType};
 use crate::nips::nip90::DataVendingMachineStatus;
 #[cfg(feature = "nip98")]
 use crate::nips::nip98::HttpMethod;
@@ -97,22 +95,6 @@ pub enum TagStandard {
     },
     Relay(RelayUrl),
     Relays(Vec<RelayUrl>),
-    /// Poll end timestamp
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
-    PollEndsAt(Timestamp),
-    /// Poll Option
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
-    PollOption(PollOption),
-    /// Poll response
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
-    PollResponse(String),
-    /// Poll Type
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
-    PollType(PollType),
     /// Proof of Work
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -343,9 +325,6 @@ impl TagStandard {
                 TagKind::Relay => Ok(Self::Relay(RelayUrl::parse(tag_1)?)),
                 TagKind::Extension => Ok(Self::Extension(tag_1.to_string())),
                 TagKind::License => Ok(Self::License(tag_1.to_string())),
-                // TODO: depending on the event kind, handle the tag in the right way.
-                TagKind::Response => Ok(Self::PollResponse(tag_1.to_string())),
-                TagKind::PollType => Ok(Self::PollType(PollType::from_str(tag_1)?)),
                 TagKind::Runtime => Ok(Self::Runtime(tag_1.to_string())),
                 TagKind::Repository => Ok(Self::Repository(tag_1.to_string())),
                 TagKind::Subject => Ok(Self::Subject(tag_1.to_string())),
@@ -370,10 +349,6 @@ impl TagStandard {
                 TagKind::Recording => Ok(Self::Recording(Url::parse(tag_1)?)),
                 TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(tag_1)?)),
                 TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(tag_1)?)),
-                // TODO: at the moment is not possible to use the nip88::ENDS_AT_TAG_KIND const here. Use it when will be possible.
-                TagKind::Custom(Cow::Borrowed(nip88::ENDS_AT_TAG_KIND_STR)) => {
-                    Ok(Self::PollEndsAt(Timestamp::from_str(tag_1)?))
-                }
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
                     Ok(status) => Ok(Self::DataVendingMachineStatus {
                         status,
@@ -398,10 +373,6 @@ impl TagStandard {
             let tag_2: &str = tag[2].as_ref();
 
             return match tag_kind {
-                TagKind::Option => Ok(Self::PollOption(PollOption {
-                    id: tag_1.to_string(),
-                    text: tag_2.to_string(),
-                })),
                 TagKind::Nonce => Ok(Self::POW {
                     nonce: tag_1.parse()?,
                     difficulty: tag_2.parse()?,
@@ -508,10 +479,6 @@ impl TagStandard {
                 })
             }
             Self::Relay(..) => TagKind::Relay,
-            Self::PollEndsAt(..) => nip88::ENDS_AT_TAG_KIND,
-            Self::PollOption { .. } => TagKind::Option,
-            Self::PollResponse(..) => TagKind::Response,
-            Self::PollType(..) => TagKind::PollType,
             Self::POW { .. } => TagKind::Nonce,
             Self::Client { .. } => TagKind::Client,
             Self::ContentWarning { .. } => TagKind::ContentWarning,
@@ -659,10 +626,6 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Nip73Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
-            TagStandard::PollEndsAt(ends_at) => vec![tag_kind, ends_at.to_string()],
-            TagStandard::PollOption(opt) => vec![tag_kind, opt.id, opt.text],
-            TagStandard::PollResponse(response) => vec![tag_kind, response],
-            TagStandard::PollType(t) => vec![tag_kind, t.to_string()],
             TagStandard::POW { nonce, difficulty } => {
                 vec![tag_kind, nonce.to_string(), difficulty.to_string()]
             }
@@ -1345,35 +1308,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec!["endsAt", "1600000000"],
-            TagStandard::PollEndsAt(Timestamp::from(1600000000)).to_vec()
-        );
-
-        assert_eq!(
-            vec!["option", "qj518h583", "Yay"],
-            TagStandard::PollOption(PollOption {
-                id: String::from("qj518h583"),
-                text: String::from("Yay"),
-            })
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec!["response", "qj518h583"],
-            TagStandard::PollResponse(String::from("qj518h583")).to_vec()
-        );
-
-        assert_eq!(
-            vec!["polltype", "singlechoice"],
-            TagStandard::PollType(PollType::SingleChoice).to_vec()
-        );
-
-        assert_eq!(
-            vec!["polltype", "multiplechoice"],
-            TagStandard::PollType(PollType::MultipleChoice).to_vec()
-        );
-
-        assert_eq!(
             vec!["client", "voyage"],
             TagStandard::Client {
                 name: String::from("voyage"),
@@ -1774,34 +1708,6 @@ mod tests {
                 nonce: 1,
                 difficulty: 20
             }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["endsAt", "1600000000"]).unwrap(),
-            TagStandard::PollEndsAt(Timestamp::from(1600000000))
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["option", "qj518h583", "Yay"]).unwrap(),
-            TagStandard::PollOption(PollOption {
-                id: String::from("qj518h583"),
-                text: String::from("Yay"),
-            })
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["response", "qj518h583"]).unwrap(),
-            TagStandard::PollResponse(String::from("qj518h583"))
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["polltype", "singlechoice"]).unwrap(),
-            TagStandard::PollType(PollType::SingleChoice)
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["polltype", "multiplechoice"]).unwrap(),
-            TagStandard::PollType(PollType::MultipleChoice)
         );
 
         assert_eq!(

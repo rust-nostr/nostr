@@ -2,28 +2,38 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP88: Polls
+//! NIP-88: Polls
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/88.md>
 
-use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
+use core::num::ParseIntError;
 use core::str::FromStr;
 
-use crate::{Event, EventBuilder, EventId, Kind, RelayUrl, Tag, TagKind, TagStandard, Timestamp};
+use super::util::{take_and_parse_from_str, take_relay_url, take_string, take_timestamp};
+use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::types::url;
+use crate::{Event, EventBuilder, EventId, Kind, RelayUrl, Timestamp};
 
-pub(crate) const ENDS_AT_TAG_KIND_STR: &str = "endsAt";
-pub(crate) const ENDS_AT_TAG_KIND: TagKind = TagKind::Custom(Cow::Borrowed(ENDS_AT_TAG_KIND_STR));
+const ENDS_AT: &str = "endsAt";
+const POLL_TYPE: &str = "polltype";
+const POLL_OPTION: &str = "option";
+const POLL_RESPONSE: &str = "response";
+const RELAY: &str = "relay";
 
 /// NIP88 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    /// Url error
+    Url(url::Error),
+    /// Parse Int error
+    ParseInt(ParseIntError),
+    /// Codec error
+    Codec(TagCodecError),
     /// Unknown poll type
     UnknownPollType,
-    /// Unexpected tag
-    UnexpectedTag,
 }
 
 impl core::error::Error for Error {}
@@ -31,9 +41,29 @@ impl core::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Url(e) => e.fmt(f),
+            Self::ParseInt(e) => e.fmt(f),
+            Self::Codec(e) => e.fmt(f),
             Self::UnknownPollType => f.write_str("unknown poll type"),
-            Self::UnexpectedTag => f.write_str("unexpected tag"),
         }
+    }
+}
+
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::Url(e)
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseInt(e)
+    }
+}
+
+impl From<TagCodecError> for Error {
+    fn from(e: TagCodecError) -> Self {
+        Self::Codec(e)
     }
 }
 
@@ -83,6 +113,80 @@ pub struct PollOption {
     pub text: String,
 }
 
+/// Standardized NIP-88 tags
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/88.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Nip88Tag {
+    /// Poll option
+    PollOption(PollOption),
+    /// Poll response
+    PollResponse(String),
+    /// Poll type
+    PollType(PollType),
+    /// Relay URL
+    Relay(RelayUrl),
+    /// Poll expiration timestamp
+    PollEndsAt(Timestamp),
+}
+
+impl TagCodec for Nip88Tag {
+    type Error = Error;
+
+    fn parse<I, S>(tag: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let mut iter = tag.into_iter();
+        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+
+        match kind.as_ref() {
+            POLL_OPTION => Ok(Self::PollOption(PollOption {
+                id: take_string(&mut iter, "poll ID")?,
+                text: take_string(&mut iter, "poll option text")?,
+            })),
+            POLL_RESPONSE => Ok(Self::PollResponse(take_string(&mut iter, "poll response")?)),
+            POLL_TYPE => {
+                let poll_type: PollType =
+                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "poll type")?;
+                Ok(Self::PollType(poll_type))
+            }
+            RELAY => {
+                let relay: RelayUrl = take_relay_url::<_, _, Error>(&mut iter)?;
+                Ok(Self::Relay(relay))
+            }
+            ENDS_AT => {
+                let timestamp: Timestamp = take_timestamp::<_, _, Error>(&mut iter)?;
+                Ok(Self::PollEndsAt(timestamp))
+            }
+            _ => Err(TagCodecError::Unknown.into()),
+        }
+    }
+
+    fn to_tag(&self) -> Tag {
+        match self {
+            Self::PollOption(option) => Tag::new(vec![
+                String::from(POLL_OPTION),
+                option.id.clone(),
+                option.text.clone(),
+            ]),
+            Self::PollResponse(response) => {
+                Tag::new(vec![String::from(POLL_RESPONSE), response.clone()])
+            }
+            Self::PollType(poll_type) => {
+                Tag::new(vec![String::from(POLL_TYPE), poll_type.to_string()])
+            }
+            Self::Relay(relay) => Tag::new(vec![String::from(RELAY), relay.to_string()]),
+            Self::PollEndsAt(timestamp) => {
+                Tag::new(vec![String::from(ENDS_AT), timestamp.to_string()])
+            }
+        }
+    }
+}
+
+impl_tag_codec_conversions!(Nip88Tag);
+
 /// Poll
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Poll {
@@ -101,41 +205,23 @@ pub struct Poll {
 impl Poll {
     /// Parse poll data from an [`Event`].
     pub fn from_event(event: &Event) -> Result<Self, Error> {
-        // Search poll type
-        let poll_type: PollType = match event.tags.find_standardized(TagKind::PollType) {
-            Some(TagStandard::PollType(poll_type)) => poll_type,
-            // Found an unexpected tag.
-            Some(..) => return Err(Error::UnexpectedTag),
-            // If no valid "polltype" tag is found, the "singlechoice" will be the default.
-            None => PollType::SingleChoice,
-        };
+        let mut poll_type: PollType = PollType::SingleChoice;
+        let mut options: Vec<PollOption> = Vec::new();
+        let mut relays: Vec<RelayUrl> = Vec::new();
+        let mut ends_at: Option<Timestamp> = None;
 
-        // Search poll options
-        let options: Vec<PollOption> = event
-            .tags
-            .filter_standardized(TagKind::Option)
-            .filter_map(|tag| match tag {
-                TagStandard::PollOption(option) => Some(option.clone()),
-                _ => None,
-            })
-            .collect();
-
-        // Search relays
-        let relays: Vec<RelayUrl> = event
-            .tags
-            .filter_standardized(TagKind::Relay)
-            .filter_map(|tag| match tag {
-                TagStandard::Relay(url) => Some(url.clone()),
-                _ => None,
-            })
-            .collect();
-
-        // Search ends timestamp
-        let ends_at: Option<Timestamp> = match event.tags.find_standardized(ENDS_AT_TAG_KIND) {
-            Some(TagStandard::PollEndsAt(timestamp)) => Some(timestamp),
-            Some(..) => return Err(Error::UnexpectedTag),
-            None => None,
-        };
+        for tag in event.tags.iter() {
+            match Nip88Tag::try_from(tag) {
+                Ok(Nip88Tag::PollType(value)) => poll_type = value,
+                Ok(Nip88Tag::PollOption(option)) => options.push(option),
+                Ok(Nip88Tag::Relay(url)) => relays.push(url),
+                Ok(Nip88Tag::PollEndsAt(timestamp)) => ends_at = Some(timestamp),
+                Ok(Nip88Tag::PollResponse(..)) | Err(Error::Codec(TagCodecError::Unknown)) => (),
+                Err(Error::UnknownPollType)
+                | Err(Error::Codec(TagCodecError::Missing("poll type"))) => (),
+                Err(e) => return Err(e),
+            }
+        }
 
         Ok(Self {
             title: event.content.clone(),
@@ -150,18 +236,18 @@ impl Poll {
     pub(crate) fn to_event_builder(self) -> EventBuilder {
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + self.options.len() + self.relays.len());
 
-        tags.push(Tag::from_standardized(TagStandard::PollType(self.r#type)));
+        tags.push(Nip88Tag::PollType(self.r#type).to_tag());
 
         for option in self.options.into_iter() {
-            tags.push(Tag::from_standardized(TagStandard::PollOption(option)));
+            tags.push(Nip88Tag::PollOption(option).to_tag());
         }
 
         for url in self.relays.into_iter() {
-            tags.push(Tag::relay(url));
+            tags.push(Nip88Tag::Relay(url).to_tag());
         }
 
         if let Some(timestamp) = self.ends_at {
-            tags.push(Tag::custom(ENDS_AT_TAG_KIND, [timestamp.to_string()]));
+            tags.push(Nip88Tag::PollEndsAt(timestamp).to_tag());
         }
 
         EventBuilder::new(Kind::Poll, self.title).tags(tags)
@@ -194,7 +280,7 @@ impl PollResponse {
             Self::SingleChoice { poll_id, response } => {
                 vec![
                     Tag::event(poll_id),
-                    Tag::from_standardized(TagStandard::PollResponse(response)),
+                    Nip88Tag::PollResponse(response).to_tag(),
                 ]
             }
             Self::MultipleChoice { poll_id, responses } => {
@@ -203,7 +289,7 @@ impl PollResponse {
                 tags.push(Tag::event(poll_id));
 
                 for response in responses.into_iter() {
-                    tags.push(Tag::from_standardized(TagStandard::PollResponse(response)));
+                    tags.push(Nip88Tag::PollResponse(response).to_tag());
                 }
 
                 tags
@@ -235,6 +321,54 @@ mod tests {
             PollType::MultipleChoice
         );
         assert!(PollType::from_str("unknown").is_err());
+    }
+
+    #[test]
+    fn test_standardized_poll_tags() {
+        let option = Nip88Tag::parse(["option", "qj518h583", "Yay"]).unwrap();
+        assert_eq!(
+            option,
+            Nip88Tag::PollOption(PollOption {
+                id: "qj518h583".to_string(),
+                text: "Yay".to_string(),
+            })
+        );
+        assert_eq!(
+            option.to_tag(),
+            Tag::parse(["option", "qj518h583", "Yay"]).unwrap()
+        );
+
+        let poll_type = Nip88Tag::parse(["polltype", "multiplechoice"]).unwrap();
+        assert_eq!(poll_type, Nip88Tag::PollType(PollType::MultipleChoice));
+        assert_eq!(
+            poll_type.to_tag(),
+            Tag::parse(["polltype", "multiplechoice"]).unwrap()
+        );
+
+        let relay = RelayUrl::parse("wss://relay.damus.io").unwrap();
+        let relay_tag = Nip88Tag::parse(["relay", "wss://relay.damus.io"]).unwrap();
+        assert_eq!(relay_tag, Nip88Tag::Relay(relay.clone()));
+        assert_eq!(
+            relay_tag.to_tag(),
+            Tag::parse(["relay", relay.as_str()]).unwrap()
+        );
+
+        let ends_at = Nip88Tag::parse(["endsAt", "1788888888"]).unwrap();
+        assert_eq!(
+            ends_at,
+            Nip88Tag::PollEndsAt(Timestamp::from_secs(1788888888))
+        );
+        assert_eq!(
+            ends_at.to_tag(),
+            Tag::parse(["endsAt", "1788888888"]).unwrap()
+        );
+
+        let response = Nip88Tag::parse(["response", "qj518h583"]).unwrap();
+        assert_eq!(response, Nip88Tag::PollResponse("qj518h583".to_string()));
+        assert_eq!(
+            response.to_tag(),
+            Tag::parse(["response", "qj518h583"]).unwrap()
+        );
     }
 
     #[test]
