@@ -51,8 +51,6 @@ pub enum TagKind<'a> {
     MergeBase,
     /// Content warning
     ContentWarning,
-    /// Current participants
-    CurrentParticipants,
     /// Required dependency
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
@@ -63,8 +61,6 @@ pub enum TagKind<'a> {
     Emoji,
     /// Encrypted
     Encrypted,
-    /// Ends
-    Ends,
     /// Expiration
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
@@ -107,8 +103,6 @@ pub enum TagKind<'a> {
     Proxy,
     /// PublishedAt
     PublishedAt,
-    /// Recording
-    Recording,
     /// Relay
     Relay,
     /// Relays
@@ -125,12 +119,8 @@ pub enum TagKind<'a> {
     Runtime,
     /// Server
     Server,
-    /// Starts
-    Starts,
     /// Status
     Status,
-    /// Streaming
-    Streaming,
     /// Subject
     Subject,
     /// Summary
@@ -139,8 +129,6 @@ pub enum TagKind<'a> {
     Title,
     /// Thumbnail
     Thumb,
-    /// Total participants
-    TotalParticipants,
     /// Tracker
     Tracker,
     /// Url
@@ -306,12 +294,10 @@ impl<'a> TagKind<'a> {
             Self::Clone => "clone",
             Self::Commit => "commit",
             Self::ContentWarning => "content-warning",
-            Self::CurrentParticipants => "current_participants",
             Self::Dependency => "dep",
             Self::Description => "description",
             Self::Emoji => "emoji",
             Self::Encrypted => "encrypted",
-            Self::Ends => "ends",
             Self::Expiration => "expiration",
             Self::Extension => "extension",
             Self::File => "file",
@@ -331,21 +317,17 @@ impl<'a> TagKind<'a> {
             Self::Preimage => "preimage",
             Self::Proxy => "proxy",
             Self::PublishedAt => "published_at",
-            Self::Recording => "recording",
             Self::Relay => "relay",
             Self::Relays => "relays",
             Self::Repository => "repo",
             Self::Request => "request",
             Self::Runtime => "runtime",
             Self::Server => "server",
-            Self::Starts => "starts",
             Self::Status => "status",
-            Self::Streaming => "streaming",
             Self::Subject => "subject",
             Self::Summary => "summary",
             Self::Title => "title",
             Self::Thumb => "thumb",
-            Self::TotalParticipants => "total_participants",
             Self::Tracker => "tracker",
             Self::Url => "url",
             Self::Web => "web",
@@ -375,12 +357,10 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "clone" => Self::Clone,
             "commit" => Self::Commit,
             "content-warning" => Self::ContentWarning,
-            "current_participants" => Self::CurrentParticipants,
             "dep" => Self::Dependency,
             "description" => Self::Description,
             "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
-            "ends" => Self::Ends,
             "expiration" => Self::Expiration,
             "extension" => Self::Extension,
             "file" => Self::File,
@@ -399,7 +379,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "preimage" => Self::Preimage,
             "proxy" => Self::Proxy,
             "published_at" => Self::PublishedAt,
-            "recording" => Self::Recording,
             "relay" => Self::Relay,
             "relays" => Self::Relays,
             "repo" => Self::Repository,
@@ -407,14 +386,11 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "runtime" => Self::Runtime,
             "HEAD" => Self::Head,
             "server" => Self::Server,
-            "starts" => Self::Starts,
             "status" => Self::Status,
-            "streaming" => Self::Streaming,
             "subject" => Self::Subject,
             "summary" => Self::Summary,
             "title" => Self::Title,
             "thumb" => Self::Thumb,
-            "total_participants" => Self::TotalParticipants,
             "tracker" => Self::Tracker,
             "url" => Self::Url,
             "web" => Self::Web,

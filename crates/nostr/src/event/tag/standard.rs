@@ -9,14 +9,12 @@ use alloc::vec::Vec;
 use core::str::FromStr;
 
 use hashes::sha256::Hash as Sha256Hash;
-use secp256k1::schnorr::Signature;
 
 use super::{Error, TagKind};
 use crate::event::id::EventId;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip39::Identity;
 use crate::nips::nip48::Protocol;
-use crate::nips::nip53::{LiveEventMarker, LiveEventStatus};
 use crate::nips::nip56::Report;
 use crate::nips::nip73::{ExternalContentId, Nip73Kind};
 use crate::nips::nip90::DataVendingMachineStatus;
@@ -54,12 +52,6 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
     PublicKeyReport(PublicKey, Report),
-    PublicKeyLiveEvent {
-        public_key: PublicKey,
-        relay_url: Option<RelayUrl>,
-        marker: LiveEventMarker,
-        proof: Option<Signature>,
-    },
     Reference(String),
     Hashtag(String),
     Geohash(String),
@@ -132,13 +124,6 @@ pub enum TagStandard {
     PublishedAt(Timestamp),
     Url(Url),
     Server(Url),
-    Streaming(Url),
-    Recording(Url),
-    Starts(Timestamp),
-    Ends(Timestamp),
-    LiveEventStatus(LiveEventStatus),
-    CurrentParticipants(u64),
-    TotalParticipants(u64),
     AbsoluteURL(Url),
     #[cfg(feature = "nip98")]
     Method(HttpMethod),
@@ -345,19 +330,13 @@ impl TagStandard {
                 TagKind::Lnurl => Ok(Self::Lnurl(tag_1.to_string())),
                 TagKind::Name => Ok(Self::Name(tag_1.to_string())),
                 TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
-                TagKind::Streaming => Ok(Self::Streaming(Url::parse(tag_1)?)),
-                TagKind::Recording => Ok(Self::Recording(Url::parse(tag_1)?)),
-                TagKind::Starts => Ok(Self::Starts(Timestamp::from_str(tag_1)?)),
-                TagKind::Ends => Ok(Self::Ends(Timestamp::from_str(tag_1)?)),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
                     Ok(status) => Ok(Self::DataVendingMachineStatus {
                         status,
                         extra_info: None,
                     }),
-                    Err(_) => Ok(Self::LiveEventStatus(LiveEventStatus::from(tag_1))), /* TODO: check if unknown status error? */
+                    Err(_) => Err(Error::UnknownStandardizedTag),
                 },
-                TagKind::CurrentParticipants => Ok(Self::CurrentParticipants(tag_1.parse()?)),
-                TagKind::TotalParticipants => Ok(Self::TotalParticipants(tag_1.parse()?)),
                 #[cfg(feature = "nip98")]
                 TagKind::Method => Ok(Self::Method(HttpMethod::from_str(tag_1)?)),
                 TagKind::Payload => Ok(Self::Payload(Sha256Hash::from_str(tag_1)?)),
@@ -442,12 +421,10 @@ impl TagStandard {
                 character: Alphabet::P,
                 uppercase: *uppercase,
             }),
-            Self::PublicKeyReport(..) | Self::PublicKeyLiveEvent { .. } => {
-                TagKind::SingleLetter(SingleLetterTag {
-                    character: Alphabet::P,
-                    uppercase: false,
-                })
-            }
+            Self::PublicKeyReport(..) => TagKind::SingleLetter(SingleLetterTag {
+                character: Alphabet::P,
+                uppercase: false,
+            }),
             Self::Reference(..) => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::R,
                 uppercase: false,
@@ -503,13 +480,7 @@ impl TagStandard {
             Self::Lnurl(..) => TagKind::Lnurl,
             Self::Url(..) => TagKind::Url,
             Self::Server(..) => TagKind::Server,
-            Self::Streaming(..) => TagKind::Streaming,
-            Self::Recording(..) => TagKind::Recording,
-            Self::Starts(..) => TagKind::Starts,
-            Self::Ends(..) => TagKind::Ends,
-            Self::LiveEventStatus(..) | Self::DataVendingMachineStatus { .. } => TagKind::Status,
-            Self::CurrentParticipants(..) => TagKind::CurrentParticipants,
-            Self::TotalParticipants(..) => TagKind::TotalParticipants,
+            Self::DataVendingMachineStatus { .. } => TagKind::Status,
             Self::AbsoluteURL(..) => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::U,
                 uppercase: false,
@@ -579,23 +550,6 @@ impl From<TagStandard> for Vec<String> {
             }
             TagStandard::PublicKeyReport(pk, report) => {
                 vec![tag_kind, pk.to_string(), report.to_string()]
-            }
-            TagStandard::PublicKeyLiveEvent {
-                public_key,
-                relay_url,
-                marker,
-                proof,
-            } => {
-                let mut tag = vec![
-                    tag_kind,
-                    public_key.to_string(),
-                    relay_url.map(|u| u.to_string()).unwrap_or_default(),
-                    marker.to_string(),
-                ];
-                if let Some(proof) = proof {
-                    tag.push(proof.to_string());
-                }
-                tag
             }
             TagStandard::Reference(r) => vec![tag_kind, r],
             TagStandard::Hashtag(t) => vec![tag_kind, t],
@@ -703,23 +657,6 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Lnurl(lnurl) => vec![tag_kind, lnurl],
             TagStandard::Url(url) => vec![tag_kind, url.to_string()],
             TagStandard::Server(url) => vec![tag_kind, url.to_string()],
-            TagStandard::Streaming(url) => vec![tag_kind, url.to_string()],
-            TagStandard::Recording(url) => vec![tag_kind, url.to_string()],
-            TagStandard::Starts(timestamp) => {
-                vec![tag_kind, timestamp.to_string()]
-            }
-            TagStandard::Ends(timestamp) => {
-                vec![tag_kind, timestamp.to_string()]
-            }
-            TagStandard::LiveEventStatus(s) => {
-                vec![tag_kind, s.to_string()]
-            }
-            TagStandard::CurrentParticipants(num) => {
-                vec![tag_kind, num.to_string()]
-            }
-            TagStandard::TotalParticipants(num) => {
-                vec![tag_kind, num.to_string()]
-            }
             TagStandard::AbsoluteURL(url) => {
                 vec![tag_kind, url.to_string()]
             }
@@ -898,42 +835,6 @@ where
 {
     if tag.len() >= 2 {
         let public_key: PublicKey = PublicKey::from_hex(tag[1].as_ref())?;
-
-        if tag.len() >= 5 && !uppercase {
-            let tag_2: &str = tag[2].as_ref();
-            let tag_3: &str = tag[3].as_ref();
-            let tag_4: &str = tag[4].as_ref();
-
-            return Ok(TagStandard::PublicKeyLiveEvent {
-                public_key,
-                relay_url: if !tag_2.is_empty() {
-                    Some(RelayUrl::parse(tag_2)?)
-                } else {
-                    None
-                },
-                marker: LiveEventMarker::from_str(tag_3)?,
-                proof: Signature::from_str(tag_4).ok(),
-            });
-        }
-
-        if tag.len() >= 4 && !uppercase {
-            let tag_2: &str = tag[2].as_ref();
-            let tag_3: &str = tag[3].as_ref();
-
-            let relay_url: Option<RelayUrl> = if !tag_2.is_empty() {
-                Some(RelayUrl::parse(tag_2)?)
-            } else {
-                None
-            };
-
-            let marker = LiveEventMarker::from_str(tag_3)?;
-            return Ok(TagStandard::PublicKeyLiveEvent {
-                public_key,
-                relay_url,
-                marker,
-                proof: None,
-            });
-        }
 
         if tag.len() >= 3 && !uppercase {
             let tag_2: &str = tag[2].as_ref();
@@ -1407,44 +1308,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec![
-                "p",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io",
-                "Speaker",
-            ],
-            TagStandard::PublicKeyLiveEvent {
-                public_key: PublicKey::from_str(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                marker: LiveEventMarker::Speaker,
-                proof: None
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "p",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "",
-                "Participant",
-            ],
-            TagStandard::PublicKeyLiveEvent {
-                public_key: PublicKey::from_str(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-                relay_url: None,
-                marker: LiveEventMarker::Participant,
-                proof: None
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
             vec!["relay", "wss://relay.damus.io"],
             TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap()).to_vec()
         );
@@ -1452,24 +1315,6 @@ mod tests {
         assert_eq!(
             vec!["lnurl", "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"],
             TagStandard::Lnurl(String::from("lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp")).to_vec(),
-        );
-
-        assert_eq!(
-            vec![
-                "p",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "wss://relay.damus.io",
-                "Host",
-                "a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd"
-            ],
-            TagStandard::PublicKeyLiveEvent {
-                public_key: PublicKey::from_hex(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                ).unwrap(),
-                relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-                marker: LiveEventMarker::Host,
-                proof: Some(Signature::from_str("a5d9290ef9659083c490b303eb7ee41356d8778ff19f2f91776c8dc4443388a64ffcf336e61af4c25c05ac3ae952d1ced889ed655b67790891222aaa15b99fdd").unwrap())
-            }.to_vec()
         );
 
         assert_eq!(
