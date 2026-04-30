@@ -15,8 +15,6 @@ use crate::{Alphabet, SingleLetterTag};
 /// Tag kind
 #[derive(Debug, Clone)]
 pub enum TagKind<'a> {
-    /// AES 256 GCM
-    Aes256Gcm,
     /// Human-readable plaintext summary of what that event is about
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
@@ -25,8 +23,6 @@ pub enum TagKind<'a> {
     Amount,
     /// Anonymous
     Anon,
-    /// Blurhash
-    Blurhash,
     /// Bolt11 invoice
     Bolt11,
     /// Challenge
@@ -63,8 +59,6 @@ pub enum TagKind<'a> {
     Dependency,
     /// Description
     Description,
-    /// Size of the file in pixels
-    Dim,
     /// Emoji
     Emoji,
     /// Encrypted
@@ -89,8 +83,6 @@ pub enum TagKind<'a> {
     License,
     /// Lnurl
     Lnurl,
-    /// Magnet
-    Magnet,
     /// Maintainers
     Maintainers,
     /// HTTP Method Request
@@ -141,8 +133,6 @@ pub enum TagKind<'a> {
     Runtime,
     /// Server
     Server,
-    /// Size of the file in bytes
-    Size,
     /// Starts
     Starts,
     /// Status
@@ -314,11 +304,9 @@ impl<'a> TagKind<'a> {
     /// Convert to `&str`
     pub fn as_str(&self) -> &str {
         match self {
-            Self::Aes256Gcm => "aes-256-gcm",
             Self::Alt => "alt",
             Self::Amount => "amount",
             Self::Anon => "anon",
-            Self::Blurhash => "blurhash",
             Self::Bolt11 => "bolt11",
             Self::BranchName => "branch-name",
             Self::Challenge => "challenge",
@@ -329,7 +317,6 @@ impl<'a> TagKind<'a> {
             Self::CurrentParticipants => "current_participants",
             Self::Dependency => "dep",
             Self::Description => "description",
-            Self::Dim => "dim",
             Self::Emoji => "emoji",
             Self::Encrypted => "encrypted",
             Self::Ends => "ends",
@@ -340,7 +327,6 @@ impl<'a> TagKind<'a> {
             Self::Image => "image",
             Self::License => "license",
             Self::Lnurl => "lnurl",
-            Self::Magnet => "magnet",
             Self::Maintainers => "maintainers",
             Self::MergeBase => "merge-base",
             Self::Method => "method",
@@ -363,7 +349,6 @@ impl<'a> TagKind<'a> {
             Self::Response => "response",
             Self::Runtime => "runtime",
             Self::Server => "server",
-            Self::Size => "size",
             Self::Starts => "starts",
             Self::Status => "status",
             Self::Streaming => "streaming",
@@ -391,11 +376,9 @@ impl fmt::Display for TagKind<'_> {
 impl<'a> From<&'a str> for TagKind<'a> {
     fn from(kind: &'a str) -> Self {
         match kind {
-            "aes-256-gcm" => Self::Aes256Gcm,
             "alt" => Self::Alt,
             "amount" => Self::Amount,
             "anon" => Self::Anon,
-            "blurhash" => Self::Blurhash,
             "bolt11" => Self::Bolt11,
             "branch-name" => Self::BranchName,
             "challenge" => Self::Challenge,
@@ -406,7 +389,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "current_participants" => Self::CurrentParticipants,
             "dep" => Self::Dependency,
             "description" => Self::Description,
-            "dim" => Self::Dim,
             "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
             "ends" => Self::Ends,
@@ -416,7 +398,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "image" => Self::Image,
             "license" => Self::License,
             "lnurl" => Self::Lnurl,
-            "magnet" => Self::Magnet,
             "maintainers" => Self::Maintainers,
             "merge-base" => Self::MergeBase,
             "method" => Self::Method,
@@ -440,7 +421,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "runtime" => Self::Runtime,
             "HEAD" => Self::Head,
             "server" => Self::Server,
-            "size" => Self::Size,
             "starts" => Self::Starts,
             "status" => Self::Status,
             "streaming" => Self::Streaming,
@@ -484,9 +464,6 @@ mod tests {
 
     #[test]
     fn test_de_serialization() {
-        assert_eq!(TagKind::from("aes-256-gcm"), TagKind::Aes256Gcm);
-        assert_eq!(TagKind::Aes256Gcm.as_str(), "aes-256-gcm");
-
         assert_eq!(TagKind::from("alt"), TagKind::Alt);
         assert_eq!(TagKind::Alt.as_str(), "alt");
 

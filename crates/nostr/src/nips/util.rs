@@ -31,6 +31,16 @@ where
     take_and_parse_optional(iter, RelayUrl::parse)
 }
 
+#[inline]
+pub(super) fn take_and_parse_optional_from_str<I, S, T>(iter: &mut I) -> Result<Option<T>, T::Err>
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+    T: FromStr,
+{
+    take_and_parse_optional(iter, T::from_str)
+}
+
 /// Take and parse an **optional** value with the provided parser.
 ///
 /// If the value is missing or empty, `None` is returned.
@@ -122,24 +132,37 @@ where
     Ok(event_id)
 }
 
+#[inline]
 pub(super) fn take_relay_url<T, S, E>(iter: &mut T) -> Result<RelayUrl, E>
 where
     T: Iterator<Item = S>,
     S: AsRef<str>,
     E: From<url::Error> + From<TagCodecError>,
 {
-    let relay_url: S = iter.next().ok_or(TagCodecError::Missing("relay URL"))?;
-    let relay_url: RelayUrl = RelayUrl::parse(relay_url.as_ref())?;
-    Ok(relay_url)
+    take_and_parse_from_str(iter, "relay URL")
 }
 
+#[inline]
 pub(super) fn take_timestamp<T, S, E>(iter: &mut T) -> Result<Timestamp, E>
 where
     T: Iterator<Item = S>,
     S: AsRef<str>,
     E: From<ParseIntError> + From<TagCodecError>,
 {
-    let timestamp: S = iter.next().ok_or(TagCodecError::Missing("timestamp"))?;
-    let timestamp: Timestamp = Timestamp::from_str(timestamp.as_ref())?;
-    Ok(timestamp)
+    take_and_parse_from_str(iter, "timestamp")
+}
+
+pub(super) fn take_and_parse_from_str<O, T, S, E>(
+    iter: &mut T,
+    missing_error: &'static str,
+) -> Result<O, E>
+where
+    T: Iterator<Item = S>,
+    S: AsRef<str>,
+    O: FromStr,
+    E: From<O::Err> + From<TagCodecError>,
+{
+    let value: S = iter.next().ok_or(TagCodecError::Missing(missing_error))?;
+    let value: O = O::from_str(value.as_ref())?;
+    Ok(value)
 }

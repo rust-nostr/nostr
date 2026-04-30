@@ -103,7 +103,9 @@ impl From<BlossomAuthorizationScope> for Vec<Tag> {
         match value {
             BlossomAuthorizationScope::BlobSha256Hashes(hashes) => {
                 for hash in hashes.into_iter() {
-                    tags.push(Tag::from_standardized(TagStandard::Sha256(hash)));
+                    let tag =
+                        Tag::parse(["x".to_string(), hash.to_string()]).expect("BUG: invalid tag");
+                    tags.push(tag);
                 }
             }
             BlossomAuthorizationScope::ServerUrl(url) => {
