@@ -538,8 +538,15 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
     pub fn repost(event: &Event, relay_url: Option<RelayUrl>) -> Self {
+        // As per NIP-18, a repost of NIP-70-protected event should have an empty content.
+        let content: String = if event.is_protected() {
+            String::new()
+        } else {
+            event.as_json()
+        };
+
         if event.kind == Kind::TextNote {
-            Self::new(Kind::Repost, event.as_json()).tags([
+            Self::new(Kind::Repost, content).tags([
                 Tag::from_standardized_without_cell(TagStandard::Event {
                     event_id: event.id,
                     relay_url,
@@ -551,7 +558,7 @@ impl EventBuilder {
                 Tag::public_key(event.pubkey),
             ])
         } else {
-            Self::new(Kind::GenericRepost, event.as_json())
+            Self::new(Kind::GenericRepost, content)
                 .tag_maybe(
                     event
                         .coordinate()
@@ -2252,6 +2259,57 @@ mod tests {
                 uppercase: false
             }
         );
+    }
+
+    #[test]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
+    fn text_note_repost() {
+        let note_keys = Keys::generate();
+        let repost_keys = Keys::generate();
+        let relay_url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let note = EventBuilder::text_note("hello")
+            .sign_with_keys(&note_keys)
+            .unwrap();
+        let repost = EventBuilder::repost(&note, Some(relay_url.clone()))
+            .sign_with_keys(&repost_keys)
+            .unwrap();
+
+        assert_eq!(repost.kind, Kind::Repost);
+        assert_eq!(repost.content, note.as_json());
+        assert_eq!(
+            repost.tags[0].clone().to_standardized().unwrap(),
+            TagStandard::Event {
+                event_id: note.id,
+                relay_url: Some(relay_url),
+                marker: None,
+                public_key: None,
+                uppercase: false
+            }
+        );
+        assert_eq!(
+            repost.tags[1].clone().to_standardized().unwrap(),
+            TagStandard::PublicKey {
+                public_key: note.pubkey,
+                relay_url: None,
+                alias: None,
+                uppercase: false
+            }
+        );
+    }
+
+    #[test]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
+    fn protected_repost_has_empty_content() {
+        let keys = Keys::generate();
+        let protected = EventBuilder::text_note("secret")
+            .tag(Tag::protected())
+            .sign_with_keys(&keys)
+            .unwrap();
+        let repost = EventBuilder::repost(&protected, None)
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        assert!(repost.content.is_empty());
     }
 }
 
