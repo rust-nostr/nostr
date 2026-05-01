@@ -21,6 +21,17 @@ where
 }
 
 #[inline]
+pub(super) fn take_and_parse_optional_coordinate<I, S>(
+    iter: &mut I,
+) -> Result<Option<Coordinate>, nip01::Error>
+where
+    I: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    take_and_parse_optional(iter, Coordinate::from_kpi_format)
+}
+
+#[inline]
 pub(super) fn take_and_parse_optional_relay_url<I, S>(
     iter: &mut I,
 ) -> Result<Option<RelayUrl>, url::Error>

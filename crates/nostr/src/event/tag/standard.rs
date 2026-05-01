@@ -123,12 +123,6 @@ pub enum TagStandard {
         id: String,
         protocol: Protocol,
     },
-    Emoji {
-        /// Name given for the emoji, which MUST consist of only alphanumeric characters and underscores
-        shortcode: String,
-        /// URL to the corresponding image file of the emoji
-        url: Url,
-    },
     Encrypted,
     Request(Event),
     DataVendingMachineStatus {
@@ -341,10 +335,6 @@ impl TagStandard {
                     id: tag_1.to_string(),
                     protocol: Protocol::from(tag_2),
                 }),
-                TagKind::Emoji => Ok(Self::Emoji {
-                    shortcode: tag_1.to_string(),
-                    url: Url::parse(tag_2)?,
-                }),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
                     Ok(status) => Ok(Self::DataVendingMachineStatus {
                         status,
@@ -454,7 +444,6 @@ impl TagStandard {
             Self::Server(..) => TagKind::Server,
             Self::DataVendingMachineStatus { .. } => TagKind::Status,
             Self::Proxy { .. } => TagKind::Proxy,
-            Self::Emoji { .. } => TagKind::Emoji,
             Self::Encrypted => TagKind::Encrypted,
             Self::Request(..) => TagKind::Request,
             Self::LabelNamespace(..) => TagKind::SingleLetter(SingleLetterTag {
@@ -621,9 +610,6 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Server(url) => vec![tag_kind, url.to_string()],
             TagStandard::Proxy { id, protocol } => {
                 vec![tag_kind, id, protocol.to_string()]
-            }
-            TagStandard::Emoji { shortcode, url } => {
-                vec![tag_kind, shortcode, url.to_string()]
             }
             TagStandard::Encrypted => vec![tag_kind],
             TagStandard::Request(event) => vec![tag_kind, event.as_json()],

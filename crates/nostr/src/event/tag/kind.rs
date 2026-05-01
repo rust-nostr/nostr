@@ -55,8 +55,6 @@ pub enum TagKind<'a> {
     Dependency,
     /// Description
     Description,
-    /// Emoji
-    Emoji,
     /// Encrypted
     Encrypted,
     /// Expiration
@@ -285,7 +283,6 @@ impl<'a> TagKind<'a> {
             Self::ContentWarning => "content-warning",
             Self::Dependency => "dep",
             Self::Description => "description",
-            Self::Emoji => "emoji",
             Self::Encrypted => "encrypted",
             Self::Expiration => "expiration",
             Self::Extension => "extension",
@@ -343,7 +340,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "content-warning" => Self::ContentWarning,
             "dep" => Self::Dependency,
             "description" => Self::Description,
-            "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
             "expiration" => Self::Expiration,
             "extension" => Self::Extension,

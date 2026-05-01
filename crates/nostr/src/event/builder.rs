@@ -1649,13 +1649,16 @@ impl EventBuilder {
         I: IntoIterator<Item = (String, Url)>,
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
-        Self::new(Kind::EmojiSet, "").tags(
-            tags.into_iter().chain(
-                emojis.into_iter().map(|(s, url)| {
-                    Tag::from_standardized(TagStandard::Emoji { shortcode: s, url })
-                }),
-            ),
-        )
+        Self::new(Kind::EmojiSet, "").tags(tags.into_iter().chain(emojis.into_iter().map(
+            |(shortcode, image_url)| {
+                Nip30Tag::Emoji {
+                    shortcode,
+                    image_url,
+                    emoji_set: None,
+                }
+                .to_tag()
+            },
+        )))
     }
 
     /// Label
