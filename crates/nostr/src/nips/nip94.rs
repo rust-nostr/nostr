@@ -46,6 +46,8 @@ pub struct FileMetadata {
     pub mime_type: String,
     /// SHA256 of file
     pub hash: Sha256Hash,
+    /// SHA-256 of the original file before any server-side transforms (`ox` tag)
+    pub original_hash: Option<Sha256Hash>,
     /// AES 256 GCM
     pub aes_256_gcm: Option<(String, String)>,
     /// Size in bytes
@@ -56,6 +58,16 @@ pub struct FileMetadata {
     pub magnet: Option<String>,
     /// Blurhash
     pub blurhash: Option<String>,
+    /// Thumbnail URL
+    pub thumb: Option<Url>,
+    /// Preview image URL
+    pub image: Option<Url>,
+    /// Short text summary / description
+    pub summary: Option<String>,
+    /// Alt text for accessibility
+    pub alt: Option<String>,
+    /// Fallback download URLs
+    pub fallback: Vec<Url>,
 }
 
 impl FileMetadata {
@@ -68,11 +80,25 @@ impl FileMetadata {
             url,
             mime_type: mime_type.into(),
             hash,
+            original_hash: None,
             aes_256_gcm: None,
             size: None,
             dim: None,
             magnet: None,
             blurhash: None,
+            thumb: None,
+            image: None,
+            summary: None,
+            alt: None,
+            fallback: Vec::new(),
+        }
+    }
+
+    /// Set SHA-256 of the original file before server-side transforms (`ox` tag)
+    pub fn original_hash(self, hash: Sha256Hash) -> Self {
+        Self {
+            original_hash: Some(hash),
+            ..self
         }
     }
 
@@ -124,6 +150,50 @@ impl FileMetadata {
             ..self
         }
     }
+
+    /// Add thumbnail URL
+    pub fn thumb(self, thumb: Url) -> Self {
+        Self {
+            thumb: Some(thumb),
+            ..self
+        }
+    }
+
+    /// Add preview image URL
+    pub fn image(self, image: Url) -> Self {
+        Self {
+            image: Some(image),
+            ..self
+        }
+    }
+
+    /// Add short text summary / description
+    pub fn summary<S>(self, summary: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            summary: Some(summary.into()),
+            ..self
+        }
+    }
+
+    /// Add alt text for accessibility
+    pub fn alt<S>(self, alt: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self {
+            alt: Some(alt.into()),
+            ..self
+        }
+    }
+
+    /// Add a fallback download URL
+    pub fn add_fallback(mut self, url: Url) -> Self {
+        self.fallback.push(url);
+        self
+    }
 }
 
 impl From<FileMetadata> for Vec<Tag> {
@@ -132,11 +202,17 @@ impl From<FileMetadata> for Vec<Tag> {
             url,
             mime_type,
             hash,
+            original_hash,
             aes_256_gcm,
             size,
             dim,
             magnet,
             blurhash,
+            thumb,
+            image,
+            summary,
+            alt,
+            fallback,
         } = metadata;
 
         let mut tags: Vec<Tag> = Vec::with_capacity(3);
@@ -148,6 +224,12 @@ impl From<FileMetadata> for Vec<Tag> {
         tags.push(Tag::from_standardized_without_cell(TagStandard::Sha256(
             hash,
         )));
+
+        if let Some(ox) = original_hash {
+            tags.push(Tag::from_standardized_without_cell(
+                TagStandard::OriginalHash(ox),
+            ));
+        }
 
         if let Some((key, iv)) = aes_256_gcm {
             tags.push(Tag::from_standardized_without_cell(
@@ -172,6 +254,34 @@ impl From<FileMetadata> for Vec<Tag> {
         if let Some(blurhash) = blurhash {
             tags.push(Tag::from_standardized_without_cell(TagStandard::Blurhash(
                 blurhash,
+            )));
+        }
+
+        if let Some(thumb) = thumb {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Thumb(
+                thumb, None,
+            )));
+        }
+
+        if let Some(image) = image {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Image(
+                image, None,
+            )));
+        }
+
+        if let Some(summary) = summary {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Summary(
+                summary,
+            )));
+        }
+
+        if let Some(alt) = alt {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Alt(alt)));
+        }
+
+        for url in fallback {
+            tags.push(Tag::from_standardized_without_cell(TagStandard::Fallback(
+                url,
             )));
         }
 
@@ -217,6 +327,17 @@ impl TryFrom<Vec<Tag>> for FileMetadata {
         }?;
 
         let mut metadata = FileMetadata::new(url.clone(), mime, *sha256);
+
+        if let Some(TagStandard::OriginalHash(ox)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::OriginalHash(..))) {
+                t
+            } else {
+                None
+            }
+        }) {
+            metadata = metadata.original_hash(*ox);
+        }
 
         if let Some(TagStandard::Aes256Gcm { key, iv }) = value.iter().find_map(|t| {
             let t = t.as_standardized();
@@ -271,6 +392,56 @@ impl TryFrom<Vec<Tag>> for FileMetadata {
             }
         }) {
             metadata = metadata.blurhash(bh);
+        }
+
+        if let Some(TagStandard::Thumb(url, _)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Thumb(..))) {
+                t
+            } else {
+                None
+            }
+        }) {
+            metadata = metadata.thumb(url.clone());
+        }
+
+        if let Some(TagStandard::Image(url, _)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Image(..))) {
+                t
+            } else {
+                None
+            }
+        }) {
+            metadata = metadata.image(url.clone());
+        }
+
+        if let Some(TagStandard::Summary(s)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Summary(..))) {
+                t
+            } else {
+                None
+            }
+        }) {
+            metadata = metadata.summary(s);
+        }
+
+        if let Some(TagStandard::Alt(s)) = value.iter().find_map(|t| {
+            let t = t.as_standardized();
+            if matches!(t, Some(TagStandard::Alt(..))) {
+                t
+            } else {
+                None
+            }
+        }) {
+            metadata = metadata.alt(s);
+        }
+
+        for tag in value.iter() {
+            if let Some(TagStandard::Fallback(url)) = tag.as_standardized() {
+                metadata = metadata.add_fallback(url.clone());
+            }
         }
 
         Ok(metadata)
