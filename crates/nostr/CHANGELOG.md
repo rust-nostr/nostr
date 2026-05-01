@@ -78,6 +78,8 @@
 - Add `UnsignedEvent::mine` and `UnsignedEvent::mine_async` (https://github.com/rust-nostr/nostr/pull/1334)
 - Add `banner`, `self`, `terms_of_service` to `RelayInformationDocument` (https://github.com/rust-nostr/nostr/pull/1336)
 - Add `restricted_writes`, `default_limit` to `Limitation` (https://github.com/rust-nostr/nostr/pull/1336)
+- Add `RelayMonitor`, `RelayDiscovery` event kinds (https://github.com/rust-nostr/nostr/pull/1346)
+- Add `NIP`, `RelayRequirement` to `TagStandard` and `TagKind` (https://github.com/rust-nostr/nostr/pull/1346)
 
 ### Removed
 

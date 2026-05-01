@@ -306,6 +306,8 @@ pub enum TagStandard {
     /// List of web URLs
     Web(Vec<Url>),
     Word(String),
+    NIP(String),
+    RelayRequirement(String),
 }
 
 impl TagStandard {
@@ -517,6 +519,10 @@ impl TagStandard {
                 TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
                 TagKind::Dim => Ok(Self::Dim(ImageDimensions::from_str(tag_1)?)),
+                TagKind::SingleLetter(SingleLetterTag {
+                    character: Alphabet::N,
+                    uppercase: true,
+                }) => Ok(Self::NIP(tag_1.to_string())),
                 _ => Err(Error::UnknownStandardizedTag),
             };
         }
@@ -750,6 +756,8 @@ impl TagStandard {
             Self::Protected => TagKind::Protected,
             Self::Alt(..) => TagKind::Alt,
             Self::Web(..) => TagKind::Web,
+            Self::NIP(..) => TagKind::NIP,
+            Self::RelayRequirement(..) => TagKind::RelayRequirement,
         }
     }
 
@@ -1083,6 +1091,8 @@ impl From<TagStandard> for Vec<String> {
                 tag.extend(urls.into_iter().map(|url| url.to_string()));
                 tag
             }
+            TagStandard::NIP(nip) => vec![tag_kind, nip],
+            TagStandard::RelayRequirement(relay_requirement) => vec![tag_kind, relay_requirement],
         };
 
         // Tag can't be empty, require at least 1 value
@@ -1354,10 +1364,12 @@ where
         };
     }
 
-    if tag.len() >= 2 && !uppercase {
+    if tag.len() >= 2 {
         let tag_1: &str = tag[1].as_ref();
 
-        return if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
+        return if uppercase {
+            Ok(TagStandard::RelayRequirement(tag_1.to_string()))
+        } else if tag_1.starts_with("ws://") || tag_1.starts_with("wss://") {
             Ok(TagStandard::RelayMetadata {
                 relay_url: RelayUrl::parse(tag_1)?,
                 metadata: None,
@@ -3005,6 +3017,22 @@ mod tests {
                 public_key: None,
                 uppercase: false
             })
+        );
+    }
+
+    #[test]
+    fn test_nip66() {
+        assert_eq!(
+            TagStandard::parse(&["N", "66"]),
+            Ok(TagStandard::NIP("66".to_string()))
+        );
+        assert_eq!(
+            TagStandard::parse(&["R", "!payment"]),
+            Ok(TagStandard::RelayRequirement("!payment".to_string()))
+        );
+        assert_eq!(
+            TagStandard::parse(&["g", "ww8p1r4t8"]),
+            Ok(TagStandard::Geohash("ww8p1r4t8".to_string()))
         );
     }
 }

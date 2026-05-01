@@ -175,6 +175,8 @@ kind_variants! {
     ChatMessage => 9, "Chat Message", "<https://github.com/nostr-protocol/nips/blob/master/C7.md>",
     Thread => 11, "Thread", "<https://github.com/nostr-protocol/nips/blob/master/7D.md>",
     WebBookmark => 39701, "Web Bookmark", "<https://github.com/nostr-protocol/nips/blob/master/B0.md>",
+    RelayMonitor => 10166, "Relay Monitor", "<https://github.com/nostr-protocol/nips/blob/master/66.md>",
+    RelayDiscovery => 30166, "Relay Discovery", "<https://github.com/nostr-protocol/nips/blob/master/66.md>",
 }
 
 impl PartialEq for Kind {

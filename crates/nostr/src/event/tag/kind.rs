@@ -103,6 +103,8 @@ pub enum TagKind<'a> {
     MlsExtensions,
     /// Name
     Name,
+    /// NIP
+    NIP,
     /// Nonce
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
@@ -131,6 +133,10 @@ pub enum TagKind<'a> {
     Relay,
     /// Relays
     Relays,
+    /// RelayRequirement
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/66.md>
+    RelayRequirement,
     /// Reference to the origin repository
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
@@ -352,6 +358,7 @@ impl<'a> TagKind<'a> {
             Self::MlsCiphersuite => "mls_ciphersuite",
             Self::MlsExtensions => "mls_extensions",
             Self::Name => "name",
+            Self::NIP => "NIP",
             Self::Nonce => "nonce",
             Self::Option => "option",
             Self::Payload => "payload",
@@ -363,6 +370,7 @@ impl<'a> TagKind<'a> {
             Self::Recording => "recording",
             Self::Relay => "relay",
             Self::Relays => "relays",
+            Self::RelayRequirement => "relay_requirement",
             Self::Repository => "repo",
             Self::Request => "request",
             Self::Response => "response",
