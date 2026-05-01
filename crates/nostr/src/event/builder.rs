@@ -1521,11 +1521,8 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = RelayUrl>,
     {
-        Self::new(Kind::BlockedRelays, "").tags(
-            relay
-                .into_iter()
-                .map(|r| Tag::from_standardized(TagStandard::Relay(r))),
-        )
+        Self::new(Kind::BlockedRelays, "")
+            .tags(relay.into_iter().map(|r| Nip51Tag::Relay(r).to_tag()))
     }
 
     /// Search relays
@@ -1536,11 +1533,8 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = RelayUrl>,
     {
-        Self::new(Kind::SearchRelays, "").tags(
-            relay
-                .into_iter()
-                .map(|r| Tag::from_standardized(TagStandard::Relay(r))),
-        )
+        Self::new(Kind::SearchRelays, "")
+            .tags(relay.into_iter().map(|r| Nip51Tag::Relay(r).to_tag()))
     }
 
     /// Interests
@@ -1586,11 +1580,8 @@ impl EventBuilder {
     {
         let tags: Vec<Tag> = vec![Tag::identifier(identifier)];
         Self::new(Kind::RelaySet, "").tags(
-            tags.into_iter().chain(
-                relays
-                    .into_iter()
-                    .map(|r| Tag::from_standardized(TagStandard::Relay(r))),
-            ),
+            tags.into_iter()
+                .chain(relays.into_iter().map(|r| Nip51Tag::Relay(r).to_tag())),
         )
     }
 

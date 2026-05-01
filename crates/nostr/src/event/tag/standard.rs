@@ -174,7 +174,6 @@ pub enum TagStandard {
     Alt(String),
     /// List of web URLs
     Web(Vec<Url>),
-    Word(String),
 }
 
 impl TagStandard {
@@ -316,7 +315,6 @@ impl TagStandard {
                     Err(_) => Err(Error::UnknownStandardizedTag),
                 },
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
-                TagKind::Word => Ok(Self::Word(tag_1.to_string())),
                 TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
                 _ => Err(Error::UnknownStandardizedTag),
             };
@@ -459,7 +457,6 @@ impl TagStandard {
             Self::Emoji { .. } => TagKind::Emoji,
             Self::Encrypted => TagKind::Encrypted,
             Self::Request(..) => TagKind::Request,
-            Self::Word(..) => TagKind::Word,
             Self::LabelNamespace(..) => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::L,
                 uppercase: true,
@@ -637,7 +634,6 @@ impl From<TagStandard> for Vec<String> {
                 }
                 tag
             }
-            TagStandard::Word(word) => vec![tag_kind, word],
             TagStandard::LabelNamespace(n) => vec![tag_kind, n],
             TagStandard::Label { value, namespace } => {
                 let mut tag: Vec<String> = vec![tag_kind, value];

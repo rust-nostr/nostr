@@ -127,8 +127,6 @@ pub enum TagKind<'a> {
     Url,
     /// Web
     Web,
-    /// Word
-    Word,
     /// Single letter
     SingleLetter(SingleLetterTag),
     /// Custom
@@ -319,7 +317,6 @@ impl<'a> TagKind<'a> {
             Self::Tracker => "tracker",
             Self::Url => "url",
             Self::Web => "web",
-            Self::Word => "word",
             Self::SingleLetter(s) => s.as_str(),
             Self::Custom(tag) => tag.as_ref(),
         }
@@ -378,7 +375,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "tracker" => Self::Tracker,
             "url" => Self::Url,
             "web" => Self::Web,
-            "word" => Self::Word,
             k => match SingleLetterTag::from_str(k) {
                 Ok(s) => Self::SingleLetter(s),
                 Err(..) => Self::Custom(Cow::Borrowed(k)),
