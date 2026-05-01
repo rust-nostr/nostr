@@ -2,13 +2,15 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP57: Lightning Zaps
+//! NIP-57: Lightning Zaps
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/57.md>
 
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
+use core::num::ParseIntError;
 
 use aes::Aes256;
 #[cfg(feature = "rand")]
@@ -33,14 +35,17 @@ use rand::{CryptoRng, RngCore};
 use secp256k1::{Secp256k1, Signing, Verification};
 
 use super::nip01::Coordinate;
+use super::util::{
+    take_and_parse_from_str, take_and_parse_optional_from_str, take_optional_string,
+    take_public_key, take_relay_url, take_string,
+};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::SECP256K1;
 use crate::event::builder::Error as BuilderError;
+use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::key::Error as KeyError;
-use crate::{
-    Event, EventId, JsonUtil, PublicKey, RelayUrl, SecretKey, Tag, TagStandard, Timestamp, event,
-    util,
-};
+use crate::types::url;
+use crate::{Event, EventId, JsonUtil, PublicKey, RelayUrl, SecretKey, Timestamp, event, util};
 #[cfg(feature = "rand")]
 use crate::{EventBuilder, Keys, Kind};
 
@@ -50,6 +55,15 @@ type Aes256CbcDec = Decryptor<Aes256>;
 
 const PRIVATE_ZAP_MSG_BECH32_PREFIX: Hrp = Hrp::parse_unchecked("pzap");
 const PRIVATE_ZAP_IV_BECH32_PREFIX: Hrp = Hrp::parse_unchecked("iv");
+const ANON: &str = "anon";
+const AMOUNT: &str = "amount";
+const BOLT11: &str = "bolt11";
+const DESCRIPTION: &str = "description";
+const LNURL: &str = "lnurl";
+const PREIMAGE: &str = "preimage";
+const RELAYS: &str = "relays";
+const SENDER: &str = "P";
+const ZAP: &str = "zap";
 
 #[allow(missing_docs)]
 #[derive(Debug)]
@@ -57,8 +71,12 @@ pub enum Error {
     Key(KeyError),
     Builder(BuilderError),
     Event(event::Error),
+    Url(url::Error),
+    ParseInt(ParseIntError),
     Bech32Decode(bech32::DecodeError),
     Bech32Encode(bech32::EncodeError),
+    /// Codec error
+    Codec(TagCodecError),
     InvalidPrivateZapMessage,
     PrivateZapMessageNotFound,
     /// Wrong prefix or variant
@@ -75,8 +93,11 @@ impl fmt::Display for Error {
             Self::Key(e) => e.fmt(f),
             Self::Builder(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
+            Self::Url(e) => e.fmt(f),
+            Self::ParseInt(e) => e.fmt(f),
             Self::Bech32Decode(e) => e.fmt(f),
             Self::Bech32Encode(e) => e.fmt(f),
+            Self::Codec(e) => e.fmt(f),
             Self::InvalidPrivateZapMessage => f.write_str("Invalid private zap message"),
             Self::PrivateZapMessageNotFound => f.write_str("Private zap message not found"),
             Self::WrongBech32Prefix => f.write_str("Wrong bech32 prefix"),
@@ -105,6 +126,18 @@ impl From<event::Error> for Error {
     }
 }
 
+impl From<url::Error> for Error {
+    fn from(e: url::Error) -> Self {
+        Self::Url(e)
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseInt(e)
+    }
+}
+
 impl From<bech32::DecodeError> for Error {
     fn from(e: bech32::DecodeError) -> Self {
         Self::Bech32Decode(e)
@@ -115,6 +148,181 @@ impl From<bech32::EncodeError> for Error {
     fn from(e: bech32::EncodeError) -> Self {
         Self::Bech32Encode(e)
     }
+}
+
+impl From<TagCodecError> for Error {
+    fn from(e: TagCodecError) -> Self {
+        Self::Codec(e)
+    }
+}
+
+/// Standardized NIP-57 tags
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/57.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Nip57Tag {
+    /// `relays` tag
+    Relays(Vec<RelayUrl>),
+    /// `amount` tag
+    Amount {
+        /// Amount in millisats
+        millisats: u64,
+        /// Optional bolt11 invoice
+        bolt11: Option<String>,
+    },
+    /// `lnurl` tag
+    Lnurl(String),
+    /// `anon` tag
+    Anon {
+        /// Optional private zap payload
+        msg: Option<String>,
+    },
+    /// `bolt11` tag
+    Bolt11(String),
+    /// `description` tag
+    Description(String),
+    /// `preimage` tag
+    Preimage(String),
+    /// `P` tag
+    Sender(PublicKey),
+    /// `zap` tag
+    Zap {
+        /// Receiver public key
+        public_key: PublicKey,
+        /// Relay used to fetch the receiver metadata
+        relay_url: RelayUrl,
+        /// Optional split weight
+        weight: Option<u64>,
+    },
+}
+
+impl TagCodec for Nip57Tag {
+    type Error = Error;
+
+    fn parse<I, S>(tag: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let mut iter = tag.into_iter();
+        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+
+        match kind.as_ref() {
+            RELAYS => Ok(Self::Relays(parse_relays(iter)?)),
+            AMOUNT => {
+                let (millisats, bolt11) = parse_amount_tag(iter)?;
+                Ok(Self::Amount { millisats, bolt11 })
+            }
+            LNURL => Ok(Self::Lnurl(take_string(&mut iter, "LNURL")?)),
+            ANON => Ok(Self::Anon {
+                msg: take_optional_string(&mut iter),
+            }),
+            BOLT11 => Ok(Self::Bolt11(take_string(&mut iter, "BOLT11")?)),
+            DESCRIPTION => Ok(Self::Description(take_string(&mut iter, "description")?)),
+            PREIMAGE => Ok(Self::Preimage(take_string(&mut iter, "preimage")?)),
+            SENDER => {
+                let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
+                Ok(Self::Sender(public_key))
+            }
+            ZAP => {
+                let (public_key, relay_url, weight) = parse_zap_tag(iter)?;
+                Ok(Self::Zap {
+                    public_key,
+                    relay_url,
+                    weight,
+                })
+            }
+            _ => Err(TagCodecError::Unknown.into()),
+        }
+    }
+
+    fn to_tag(&self) -> Tag {
+        match self {
+            Self::Relays(relays) => {
+                let mut tag: Vec<String> = Vec::with_capacity(relays.len() + 1);
+                tag.push(String::from(RELAYS));
+                tag.extend(relays.iter().map(ToString::to_string));
+                Tag::new(tag)
+            }
+            Self::Amount { millisats, bolt11 } => {
+                let mut tag: Vec<String> = vec![String::from(AMOUNT), millisats.to_string()];
+                if let Some(bolt11) = bolt11 {
+                    tag.push(bolt11.clone());
+                }
+                Tag::new(tag)
+            }
+            Self::Lnurl(lnurl) => Tag::new(vec![String::from(LNURL), lnurl.clone()]),
+            Self::Anon { msg } => {
+                let mut tag: Vec<String> = vec![String::from(ANON)];
+                if let Some(msg) = msg {
+                    tag.push(msg.clone());
+                }
+                Tag::new(tag)
+            }
+            Self::Bolt11(bolt11) => Tag::new(vec![String::from(BOLT11), bolt11.clone()]),
+            Self::Description(description) => {
+                Tag::new(vec![String::from(DESCRIPTION), description.clone()])
+            }
+            Self::Preimage(preimage) => Tag::new(vec![String::from(PREIMAGE), preimage.clone()]),
+            Self::Sender(public_key) => Tag::new(vec![String::from(SENDER), public_key.to_hex()]),
+            Self::Zap {
+                public_key,
+                relay_url,
+                weight,
+            } => {
+                let mut tag: Vec<String> = vec![
+                    String::from(ZAP),
+                    public_key.to_hex(),
+                    relay_url.to_string(),
+                ];
+
+                if let Some(weight) = weight {
+                    tag.push(weight.to_string());
+                }
+
+                Tag::new(tag)
+            }
+        }
+    }
+}
+
+impl_tag_codec_conversions!(Nip57Tag);
+
+fn parse_relays<T, S>(iter: T) -> Result<Vec<RelayUrl>, Error>
+where
+    T: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut relays: Vec<RelayUrl> = Vec::new();
+
+    for relay in iter {
+        relays.push(RelayUrl::parse(relay.as_ref())?);
+    }
+
+    Ok(relays)
+}
+
+fn parse_amount_tag<T, S>(mut iter: T) -> Result<(u64, Option<String>), Error>
+where
+    T: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    let millisats: u64 = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "amount")?;
+    let bolt11: Option<String> = iter.next().map(|bolt11| bolt11.as_ref().to_string());
+
+    Ok((millisats, bolt11))
+}
+
+fn parse_zap_tag<T, S>(mut iter: T) -> Result<(PublicKey, RelayUrl, Option<u64>), Error>
+where
+    T: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
+    let relay_url: RelayUrl = take_relay_url::<_, _, Error>(&mut iter)?;
+    let weight: Option<u64> = take_and_parse_optional_from_str(&mut iter)?;
+
+    Ok((public_key, relay_url, weight))
 }
 
 /// Zap Type
@@ -226,7 +434,7 @@ impl From<ZapRequestData> for Vec<Tag> {
         let mut tags: Vec<Tag> = vec![Tag::public_key(public_key)];
 
         if !relays.is_empty() {
-            tags.push(Tag::from_standardized(TagStandard::Relays(relays)));
+            tags.push(Nip57Tag::Relays(relays).into());
         }
 
         if let Some(event_id) = event_id {
@@ -238,14 +446,17 @@ impl From<ZapRequestData> for Vec<Tag> {
         }
 
         if let Some(amount) = amount {
-            tags.push(Tag::from_standardized(TagStandard::Amount {
-                millisats: amount,
-                bolt11: None,
-            }));
+            tags.push(
+                Nip57Tag::Amount {
+                    millisats: amount,
+                    bolt11: None,
+                }
+                .into(),
+            );
         }
 
         if let Some(lnurl) = lnurl {
-            tags.push(Tag::from_standardized(TagStandard::Lnurl(lnurl)));
+            tags.push(Nip57Tag::Lnurl(lnurl).into());
         }
 
         tags
@@ -258,7 +469,7 @@ pub fn anonymous_zap_request(data: ZapRequestData) -> Result<Event, Error> {
     let keys = Keys::generate();
     let message: String = data.message.clone();
     let mut tags: Vec<Tag> = data.into();
-    tags.push(Tag::from_standardized(TagStandard::Anon { msg: None }));
+    tags.push(Nip57Tag::Anon { msg: None }.into());
     Ok(EventBuilder::new(Kind::ZapRequest, message)
         .tags(tags)
         .sign_with_keys(&keys)?)
@@ -302,7 +513,7 @@ where
 
     // Compose event
     let mut tags: Vec<Tag> = data.into();
-    tags.push(Tag::from_standardized(TagStandard::Anon { msg: Some(msg) }));
+    tags.push(Nip57Tag::Anon { msg: Some(msg) }.into());
     let private_zap_keys: Keys = Keys::new_with_ctx(secp, secret_key);
     Ok(EventBuilder::new(Kind::ZapRequest, "")
         .tags(tags)
@@ -354,7 +565,7 @@ where
 
 fn extract_anon_tag_message(event: &Event) -> Result<String, Error> {
     for tag in event.tags.iter() {
-        if let Some(TagStandard::Anon { msg }) = tag.standardized() {
+        if let Ok(Nip57Tag::Anon { msg }) = Nip57Tag::try_from(tag) {
             return msg.ok_or(Error::InvalidPrivateZapMessage);
         }
     }
@@ -419,6 +630,115 @@ fn decrypt_private_zap_message(key: [u8; 32], private_zap_event: &Event) -> Resu
 #[cfg(all(feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_relays_tag() {
+        let tag = vec!["relays", "wss://relay.damus.io", "wss://relay.primal.net"];
+        let parsed = Nip57Tag::parse(tag).unwrap();
+
+        assert_eq!(
+            parsed,
+            Nip57Tag::Relays(vec![
+                RelayUrl::parse("wss://relay.damus.io").unwrap(),
+                RelayUrl::parse("wss://relay.primal.net").unwrap(),
+            ])
+        );
+        assert_eq!(
+            parsed.to_tag(),
+            Tag::parse(["relays", "wss://relay.damus.io", "wss://relay.primal.net"]).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_amount_tag() {
+        let tag = vec!["amount", "21000", "lnbc21u1p0test"];
+        let parsed = Nip57Tag::parse(tag).unwrap();
+
+        assert_eq!(
+            parsed,
+            Nip57Tag::Amount {
+                millisats: 21000,
+                bolt11: Some(String::from("lnbc21u1p0test")),
+            }
+        );
+        assert_eq!(
+            parsed.to_tag(),
+            Tag::parse(["amount", "21000", "lnbc21u1p0test"]).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_anon_tag() {
+        let tag = vec!["anon", "encrypted-message"];
+        let parsed = Nip57Tag::parse(tag).unwrap();
+
+        assert_eq!(
+            parsed,
+            Nip57Tag::Anon {
+                msg: Some(String::from("encrypted-message")),
+            }
+        );
+        assert_eq!(
+            parsed.to_tag(),
+            Tag::parse(["anon", "encrypted-message"]).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_sender_tag() {
+        let public_key =
+            PublicKey::from_hex("97c70a44366a6535c145b333f973ea86dfdc2d7a99da618c40c64705ad98e322")
+                .unwrap();
+        let parsed = Nip57Tag::parse([
+            "P",
+            "97c70a44366a6535c145b333f973ea86dfdc2d7a99da618c40c64705ad98e322",
+        ])
+        .unwrap();
+
+        assert_eq!(parsed, Nip57Tag::Sender(public_key));
+        assert_eq!(
+            parsed.to_tag(),
+            Tag::parse([
+                "P",
+                "97c70a44366a6535c145b333f973ea86dfdc2d7a99da618c40c64705ad98e322",
+            ])
+            .unwrap()
+        );
+    }
+
+    #[test]
+    fn test_zap_tag() {
+        let public_key =
+            PublicKey::from_hex("82341f882b6eabcd2ba7f1ef90aad961cf074af15b9ef44a09f9d2a8fbfbe6a2")
+                .unwrap();
+        let relay_url = RelayUrl::parse("wss://nostr.oxtr.dev").unwrap();
+        let parsed = Nip57Tag::parse([
+            "zap",
+            "82341f882b6eabcd2ba7f1ef90aad961cf074af15b9ef44a09f9d2a8fbfbe6a2",
+            "wss://nostr.oxtr.dev",
+            "2",
+        ])
+        .unwrap();
+
+        assert_eq!(
+            parsed,
+            Nip57Tag::Zap {
+                public_key,
+                relay_url,
+                weight: Some(2),
+            }
+        );
+        assert_eq!(
+            parsed.to_tag(),
+            Tag::parse([
+                "zap",
+                "82341f882b6eabcd2ba7f1ef90aad961cf074af15b9ef44a09f9d2a8fbfbe6a2",
+                "wss://nostr.oxtr.dev",
+                "2",
+            ])
+            .unwrap()
+        );
+    }
 
     #[test]
     fn test_encrypt_decrypt_private_zap_message() {

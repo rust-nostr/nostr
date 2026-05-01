@@ -884,15 +884,13 @@ impl EventBuilder {
         S2: Into<String>,
     {
         let mut tags: Vec<Tag> = vec![
-            Tag::from_standardized(TagStandard::Bolt11(bolt11.into())),
-            Tag::from_standardized(TagStandard::Description(zap_request.as_json())),
+            Nip57Tag::Bolt11(bolt11.into()).to_tag(),
+            Nip57Tag::Description(zap_request.as_json()).to_tag(),
         ];
 
         // add preimage tag if provided
         if let Some(pre_image_tag) = preimage {
-            tags.push(Tag::from_standardized(TagStandard::Preimage(
-                pre_image_tag.into(),
-            )))
+            tags.push(Nip57Tag::Preimage(pre_image_tag.into()).to_tag())
         }
 
         // add e tag
@@ -944,11 +942,7 @@ impl EventBuilder {
         }
 
         // add P tag
-        tags.push(Tag::from_standardized(TagStandard::PublicKey {
-            public_key: zap_request.pubkey,
-            relay_url: None,
-            uppercase: true,
-        }));
+        tags.push(Nip57Tag::Sender(zap_request.pubkey).to_tag());
 
         Self::new(Kind::ZapReceipt, "").tags(tags)
     }

@@ -115,14 +115,10 @@ pub enum TagStandard {
         millisats: u64,
         bolt11: Option<String>,
     },
-    Lnurl(String),
     Name(String),
     PublishedAt(Timestamp),
     Url(Url),
     Server(Url),
-    Anon {
-        msg: Option<String>,
-    },
     Proxy {
         id: String,
         protocol: Protocol,
@@ -261,11 +257,6 @@ impl TagStandard {
                 }
                 _ => (), // Covered later
             },
-            TagKind::Anon => {
-                return Ok(Self::Anon {
-                    msg: extract_optional_string(tag, 1).map(|s| s.to_string()),
-                });
-            }
             TagKind::Client => return parse_client_tag(tag),
             TagKind::ContentWarning => {
                 return Ok(Self::ContentWarning {
@@ -315,7 +306,6 @@ impl TagStandard {
                     millisats: tag_1.parse()?,
                     bolt11: None,
                 }),
-                TagKind::Lnurl => Ok(Self::Lnurl(tag_1.to_string())),
                 TagKind::Name => Ok(Self::Name(tag_1.to_string())),
                 TagKind::Url => Ok(Self::Url(Url::parse(tag_1)?)),
                 TagKind::Status => match DataVendingMachineStatus::from_str(tag_1) {
@@ -462,11 +452,9 @@ impl TagStandard {
             Self::License(..) => TagKind::License,
             Self::Runtime(..) => TagKind::Runtime,
             Self::Repository(..) => TagKind::Repository,
-            Self::Lnurl(..) => TagKind::Lnurl,
             Self::Url(..) => TagKind::Url,
             Self::Server(..) => TagKind::Server,
             Self::DataVendingMachineStatus { .. } => TagKind::Status,
-            Self::Anon { .. } => TagKind::Anon,
             Self::Proxy { .. } => TagKind::Proxy,
             Self::Emoji { .. } => TagKind::Emoji,
             Self::Encrypted => TagKind::Encrypted,
@@ -632,16 +620,8 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::License(license) => vec![tag_kind, license],
             TagStandard::Runtime(runtime) => vec![tag_kind, runtime],
             TagStandard::Repository(repo) => vec![tag_kind, repo],
-            TagStandard::Lnurl(lnurl) => vec![tag_kind, lnurl],
             TagStandard::Url(url) => vec![tag_kind, url.to_string()],
             TagStandard::Server(url) => vec![tag_kind, url.to_string()],
-            TagStandard::Anon { msg } => {
-                let mut tag = vec![tag_kind];
-                if let Some(msg) = msg {
-                    tag.push(msg);
-                }
-                tag
-            }
             TagStandard::Proxy { id, protocol } => {
                 vec![tag_kind, id, protocol.to_string()]
             }
@@ -1280,11 +1260,6 @@ mod tests {
         assert_eq!(
             vec!["relay", "wss://relay.damus.io"],
             TagStandard::Relay(RelayUrl::parse("wss://relay.damus.io").unwrap()).to_vec()
-        );
-
-        assert_eq!(
-            vec!["lnurl", "lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp"],
-            TagStandard::Lnurl(String::from("lnurl1dp68gurn8ghj7um5v93kketj9ehx2amn9uh8wetvdskkkmn0wahz7mrww4excup0dajx2mrv92x9xp")).to_vec(),
         );
 
         assert_eq!(

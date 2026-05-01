@@ -21,8 +21,6 @@ pub enum TagKind<'a> {
     Alt,
     /// Amount
     Amount,
-    /// Anonymous
-    Anon,
     /// Bolt11 invoice
     Bolt11,
     /// Challenge
@@ -77,8 +75,6 @@ pub enum TagKind<'a> {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
     License,
-    /// Lnurl
-    Lnurl,
     /// Maintainers
     Maintainers,
     /// MLS Protocol Version
@@ -282,7 +278,6 @@ impl<'a> TagKind<'a> {
         match self {
             Self::Alt => "alt",
             Self::Amount => "amount",
-            Self::Anon => "anon",
             Self::Bolt11 => "bolt11",
             Self::BranchName => "branch-name",
             Self::Challenge => "challenge",
@@ -300,7 +295,6 @@ impl<'a> TagKind<'a> {
             Self::Head => "HEAD",
             Self::Image => "image",
             Self::License => "license",
-            Self::Lnurl => "lnurl",
             Self::Maintainers => "maintainers",
             Self::MergeBase => "merge-base",
             Self::MlsProtocolVersion => "mls_protocol_version",
@@ -343,7 +337,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
         match kind {
             "alt" => Self::Alt,
             "amount" => Self::Amount,
-            "anon" => Self::Anon,
             "bolt11" => Self::Bolt11,
             "branch-name" => Self::BranchName,
             "challenge" => Self::Challenge,
@@ -360,7 +353,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "file" => Self::File,
             "image" => Self::Image,
             "license" => Self::License,
-            "lnurl" => Self::Lnurl,
             "maintainers" => Self::Maintainers,
             "merge-base" => Self::MergeBase,
             "mls_protocol_version" => Self::MlsProtocolVersion,
@@ -423,9 +415,6 @@ mod tests {
 
         assert_eq!(TagKind::from("amount"), TagKind::Amount);
         assert_eq!(TagKind::Amount.as_str(), "amount");
-
-        assert_eq!(TagKind::from("anon"), TagKind::Anon);
-        assert_eq!(TagKind::Anon.as_str(), "anon");
 
         assert_eq!(TagKind::from("clone"), TagKind::Clone);
         assert_eq!(TagKind::Clone.as_str(), "clone");
