@@ -19,7 +19,6 @@ The project is split up into several crates:
     - [**nostr-gossip-sqlite**](./gossip/nostr-gossip-sqlite): SQLite storage for gossip
 - Remote File Storage implementations:
     - [**nostr-blossom**](./rfs/nostr-blossom): A library for interacting with the Blossom protocol
-    - [**nostr-http-file-storage**](./rfs/nostr-http-file-storage): HTTP File Storage client (NIP-96)
 - [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
 - [**nostr-relay-builder**](./crates/nostr-relay-builder): Build your own custom nostr relay
 - [**nostr-sdk**](./sdk): A full-featured SDK for building high-performance and reliable nostr applications
@@ -124,7 +123,6 @@ Some features are behind crate flags or only available when using a specific cra
 |     ✅     | [90 - Data Vending Machine](https://github.com/nostr-protocol/nips/blob/master/90.md)                           |
 |     ❌     | [92 - Media Attachments](https://github.com/nostr-protocol/nips/blob/master/92.md)                              |
 |     ✅     | [94 - File Metadata](https://github.com/nostr-protocol/nips/blob/master/94.md)                                  |
-|     ✅     | [96 - HTTP File Storage Integration](https://github.com/nostr-protocol/nips/blob/master/96.md)                  |
 |     ✅     | [98 - HTTP Auth](https://github.com/nostr-protocol/nips/blob/master/98.md)                                      |
 |     ❌     | [99 - Classified Listings](https://github.com/nostr-protocol/nips/blob/master/99.md)                            |
 |     ✅     | [A0 - Voice Messages](https://github.com/nostr-protocol/nips/blob/master/A0.md)                                 |

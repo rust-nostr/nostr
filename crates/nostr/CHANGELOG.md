@@ -40,6 +40,7 @@
 - Remove `Copy` trait from `MachineReadablePrefix` enum (https://github.com/rust-nostr/nostr/pull/1258)
 - Remove `EventBuilder::pow` in favor of `UnsignedEvent::mine` and `UnsignedEvent::mine_async` (https://github.com/rust-nostr/nostr/pull/1334)
 - Replace `kinds: Option<Vec<String>>` in `FeeSchedule` with `kinds: Option<Vec<u16>>` in `RelayInformationDocument` (https://github.com/rust-nostr/nostr/pull/1336)
+- Drop support for NIP-96
 
 ### Changed
 

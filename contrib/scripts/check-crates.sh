@@ -16,7 +16,6 @@ buildargs=(
     "-p nostr-browser-signer --target wasm32-unknown-unknown"
     "-p nostr-browser-signer-proxy"
     "-p nostr-blossom"
-    "-p nostr-http-file-storage"
     "-p nostr-database"
     "-p nostr-database-test-suite"
     "-p nostr-memory"

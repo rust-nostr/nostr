@@ -42,7 +42,6 @@ jobs:
           - nostr-browser-signer --target wasm32-unknown-unknown
           - nostr-browser-signer-proxy
           - nostr-blossom
-          - nostr-http-file-storage
           - nostr-database
           - nostr-database-test-suite
           - nostr-memory
