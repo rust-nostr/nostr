@@ -155,10 +155,6 @@ pub enum TagStandard {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
     Repository(String),
-    /// A short human-readable plaintext summary of what that event is about
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
-    Alt(String),
     /// List of web URLs
     Web(Vec<Url>),
 }
@@ -302,7 +298,6 @@ impl TagStandard {
                     Err(_) => Err(Error::UnknownStandardizedTag),
                 },
                 TagKind::Request => Ok(Self::Request(Event::from_json(tag_1)?)),
-                TagKind::Alt => Ok(Self::Alt(tag_1.to_string())),
                 _ => Err(Error::UnknownStandardizedTag),
             };
         }
@@ -442,7 +437,6 @@ impl TagStandard {
                 character: Alphabet::L,
                 uppercase: false,
             }),
-            Self::Alt(..) => TagKind::Alt,
             Self::Web(..) => TagKind::Web,
         }
     }
@@ -613,7 +607,6 @@ impl From<TagStandard> for Vec<String> {
                 }
                 tag
             }
-            TagStandard::Alt(summary) => vec![tag_kind, summary],
             TagStandard::Web(urls) => {
                 let mut tag: Vec<String> = Vec::with_capacity(1 + urls.len());
                 tag.push(tag_kind);
@@ -986,11 +979,6 @@ mod tests {
     #[test]
     fn test_tag_standard_serialization() {
         assert_eq!(
-            vec!["alt", "something"],
-            TagStandard::Alt(String::from("something")).to_vec()
-        );
-
-        assert_eq!(
             vec!["content-warning"],
             TagStandard::ContentWarning { reason: None }.to_vec()
         );
@@ -1259,11 +1247,6 @@ mod tests {
 
     #[test]
     fn test_tag_standard_parsing() {
-        assert_eq!(
-            TagStandard::parse(&["alt", "something"]).unwrap(),
-            TagStandard::Alt(String::from("something"))
-        );
-
         assert_eq!(
             TagStandard::parse(&["content-warning"]).unwrap(),
             TagStandard::ContentWarning { reason: None }

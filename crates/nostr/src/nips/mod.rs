@@ -24,6 +24,7 @@ pub mod nip21;
 pub mod nip22;
 pub mod nip25;
 pub mod nip30;
+pub mod nip31;
 pub mod nip34;
 pub mod nip35;
 pub mod nip38;

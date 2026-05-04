@@ -31,6 +31,7 @@ pub use self::standard::TagStandard;
 use super::id::EventId;
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip13::Nip13Tag;
+use crate::nips::nip31::Nip31Tag;
 use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip56::Report;
 use crate::nips::nip70::Nip70Tag;
@@ -420,7 +421,7 @@ impl Tag {
     where
         T: Into<String>,
     {
-        Self::from_standardized(TagStandard::Alt(summary.into()))
+        Nip31Tag::Alt(summary.into()).to_tag()
     }
 
     /// Compose custom tag
