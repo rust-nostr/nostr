@@ -2,14 +2,126 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIPC0: Code Snippets
+//! NIP-C0: Code Snippets
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/C0.md>
 
 use alloc::string::String;
+use alloc::vec;
 use alloc::vec::Vec;
+use core::fmt;
 
-use crate::{EventBuilder, Kind, Tag, TagStandard};
+use super::util::take_string;
+use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::{EventBuilder, Kind};
+
+const LANGUAGE: &str = "l";
+const NAME: &str = "name";
+const EXTENSION: &str = "extension";
+const DESCRIPTION: &str = "description";
+const RUNTIME: &str = "runtime";
+const LICENSE: &str = "license";
+const DEPENDENCY: &str = "dep";
+const REPOSITORY: &str = "repo";
+
+/// NIP-C0 error
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    /// Codec error
+    Codec(TagCodecError),
+}
+
+impl core::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Codec(err) => err.fmt(f),
+        }
+    }
+}
+
+impl From<TagCodecError> for Error {
+    fn from(err: TagCodecError) -> Self {
+        Self::Codec(err)
+    }
+}
+
+/// Standardized NIP-C0 tags
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum NipC0Tag {
+    /// `l` tag used as programming language
+    Language(String),
+    /// `name` tag
+    Name(String),
+    /// `extension` tag
+    Extension(String),
+    /// `description` tag
+    Description(String),
+    /// `runtime` tag
+    Runtime(String),
+    /// `license` tag
+    License(String),
+    /// `dep` tag
+    Dependency(String),
+    /// `repo` tag
+    Repository(String),
+}
+
+impl TagCodec for NipC0Tag {
+    type Error = Error;
+
+    fn parse<I, S>(tag: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let mut iter = tag.into_iter();
+
+        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+
+        match kind.as_ref() {
+            LANGUAGE => Ok(Self::Language(
+                take_string(&mut iter, "language")?.to_lowercase(),
+            )),
+            NAME => Ok(Self::Name(take_string(&mut iter, "name")?)),
+            EXTENSION => Ok(Self::Extension(take_string(&mut iter, "extension")?)),
+            DESCRIPTION => Ok(Self::Description(take_string(&mut iter, "description")?)),
+            RUNTIME => Ok(Self::Runtime(take_string(&mut iter, "runtime")?)),
+            LICENSE => Ok(Self::License(take_string(&mut iter, "license")?)),
+            DEPENDENCY => Ok(Self::Dependency(take_string(&mut iter, "dependency")?)),
+            REPOSITORY => Ok(Self::Repository(take_string(&mut iter, "repository")?)),
+            _ => Err(TagCodecError::Unknown.into()),
+        }
+    }
+
+    fn to_tag(&self) -> Tag {
+        match self {
+            Self::Language(language) => {
+                Tag::new(vec![String::from(LANGUAGE), language.to_lowercase()])
+            }
+            Self::Name(name) => Tag::new(vec![String::from(NAME), name.clone()]),
+            Self::Extension(extension) => {
+                Tag::new(vec![String::from(EXTENSION), extension.clone()])
+            }
+            Self::Description(description) => {
+                Tag::new(vec![String::from(DESCRIPTION), description.clone()])
+            }
+            Self::Runtime(runtime) => Tag::new(vec![String::from(RUNTIME), runtime.clone()]),
+            Self::License(license) => Tag::new(vec![String::from(LICENSE), license.clone()]),
+            Self::Dependency(dependency) => {
+                Tag::new(vec![String::from(DEPENDENCY), dependency.clone()])
+            }
+            Self::Repository(repository) => {
+                Tag::new(vec![String::from(REPOSITORY), repository.clone()])
+            }
+        }
+    }
+}
+
+impl_tag_codec_conversions!(NipC0Tag);
 
 /// Code snippet
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -139,29 +251,99 @@ impl CodeSnippet {
     pub(crate) fn to_event_builder(self) -> EventBuilder {
         let mut tags: Vec<Tag> = Vec::new();
 
-        let mut add_if_some = |tag: Option<TagStandard>| {
+        let mut add_if_some = |tag: Option<NipC0Tag>| {
             if let Some(tag) = tag {
-                tags.push(Tag::from_standardized(tag));
+                tags.push(tag.into());
             }
         };
 
-        // `l` tag used for label in all event kinds except Code Snippets (1337)
-        // is used as the programming language
-        add_if_some(self.language.map(|l| TagStandard::Label {
-            value: l,
-            namespace: None,
-        }));
-        add_if_some(self.name.map(TagStandard::Name));
-        add_if_some(self.extension.map(TagStandard::Extension));
-        add_if_some(self.description.map(TagStandard::Description));
-        add_if_some(self.runtime.map(TagStandard::Runtime));
-        add_if_some(self.license.map(TagStandard::License));
-        add_if_some(self.repo.map(TagStandard::Repository));
+        add_if_some(self.language.map(NipC0Tag::Language));
+        add_if_some(self.name.map(NipC0Tag::Name));
+        add_if_some(self.extension.map(NipC0Tag::Extension));
+        add_if_some(self.description.map(NipC0Tag::Description));
+        add_if_some(self.runtime.map(NipC0Tag::Runtime));
+        add_if_some(self.license.map(NipC0Tag::License));
+        add_if_some(self.repo.map(NipC0Tag::Repository));
 
         for dep in self.dependencies.into_iter() {
-            tags.push(TagStandard::Dependency(dep).into());
+            tags.push(NipC0Tag::Dependency(dep).into());
         }
 
         EventBuilder::new(Kind::CodeSnippet, self.snippet).tags(tags)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_language_tag() {
+        let tag = vec!["l", "Rust"];
+        let parsed = NipC0Tag::parse(&tag).unwrap();
+        assert_eq!(parsed, NipC0Tag::Language(String::from("rust")));
+        assert_eq!(parsed.to_tag(), Tag::parse(vec!["l", "rust"]).unwrap());
+    }
+
+    #[test]
+    fn test_parse_name_tag() {
+        let tag = vec!["name", "hello-world.rs"];
+        let parsed = NipC0Tag::parse(&tag).unwrap();
+        assert_eq!(parsed, NipC0Tag::Name(String::from("hello-world.rs")));
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
+    }
+
+    #[test]
+    fn test_parse_extension_tag() {
+        let tag = vec!["extension", "rs"];
+        let parsed = NipC0Tag::parse(&tag).unwrap();
+        assert_eq!(parsed, NipC0Tag::Extension(String::from("rs")));
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
+    }
+
+    #[test]
+    fn test_parse_description_tag() {
+        let tag = vec!["description", "Prints Hello, Nostr!"];
+        let parsed = NipC0Tag::parse(&tag).unwrap();
+        assert_eq!(
+            parsed,
+            NipC0Tag::Description(String::from("Prints Hello, Nostr!"))
+        );
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
+    }
+
+    #[test]
+    fn test_parse_runtime_tag() {
+        let tag = vec!["runtime", "rustc 1.70.0"];
+        let parsed = NipC0Tag::parse(&tag).unwrap();
+        assert_eq!(parsed, NipC0Tag::Runtime(String::from("rustc 1.70.0")));
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
+    }
+
+    #[test]
+    fn test_parse_license_tag() {
+        let tag = vec!["license", "MIT"];
+        let parsed = NipC0Tag::parse(&tag).unwrap();
+        assert_eq!(parsed, NipC0Tag::License(String::from("MIT")));
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
+    }
+
+    #[test]
+    fn test_parse_dependency_tag() {
+        let tag = vec!["dep", "serde"];
+        let parsed = NipC0Tag::parse(&tag).unwrap();
+        assert_eq!(parsed, NipC0Tag::Dependency(String::from("serde")));
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
+    }
+
+    #[test]
+    fn test_parse_repository_tag() {
+        let tag = vec!["repo", "https://github.com/nostr-protocol/nostr"];
+        let parsed = NipC0Tag::parse(&tag).unwrap();
+        assert_eq!(
+            parsed,
+            NipC0Tag::Repository(String::from("https://github.com/nostr-protocol/nostr"))
+        );
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
     }
 }
