@@ -1672,11 +1672,12 @@ impl EventBuilder {
         let namespace: String = namespace.into();
         let label: String = label.into();
         Self::new(Kind::Label, "").tags([
-            Tag::from_standardized(TagStandard::LabelNamespace(namespace.clone())),
-            Tag::from_standardized(TagStandard::Label {
+            Nip32Tag::LabelNamespace(namespace.clone()).to_tag(),
+            Nip32Tag::Label {
                 value: label,
-                namespace: Some(namespace),
-            }),
+                namespace,
+            }
+            .to_tag(),
         ])
     }
 
