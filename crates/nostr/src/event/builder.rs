@@ -1830,7 +1830,7 @@ impl EventBuilder {
     {
         let mut builder = Self::new(Kind::Thread, content);
         if let Some(t) = title {
-            builder = builder.tag(Tag::from_standardized(TagStandard::Title(t)));
+            builder = builder.tag(Nip7DTag::Title(t).to_tag());
         }
         builder
     }

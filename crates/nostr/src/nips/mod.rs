@@ -54,6 +54,7 @@ pub mod nip62;
 pub mod nip65;
 pub mod nip70;
 pub mod nip73;
+pub mod nip7d;
 pub mod nip88;
 pub mod nip89;
 pub mod nip90;
