@@ -33,7 +33,6 @@ use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip13::Nip13Tag;
 use crate::nips::nip31::Nip31Tag;
 use crate::nips::nip40::Nip40Tag;
-use crate::nips::nip56::Report;
 use crate::nips::nip70::Nip70Tag;
 use crate::types::Url;
 use crate::{ImageDimensions, PublicKey, RelayUrl, SingleLetterTag, Timestamp};
@@ -322,22 +321,6 @@ impl Tag {
     #[inline]
     pub fn expiration(timestamp: Timestamp) -> Self {
         Nip40Tag::Expiration(timestamp).to_tag()
-    }
-
-    /// Compose `["e", "<event-id>", "<report>"]` tag
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    #[inline]
-    pub fn event_report(event_id: EventId, report: Report) -> Self {
-        Self::from_standardized(TagStandard::EventReport(event_id, report))
-    }
-
-    /// Compose `["p", "<public-key>", "<report>"]` tag
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    #[inline]
-    pub fn public_key_report(public_key: PublicKey, report: Report) -> Self {
-        Self::from_standardized(TagStandard::PublicKeyReport(public_key, report))
     }
 
     /// Relay url

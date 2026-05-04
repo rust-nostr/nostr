@@ -13,7 +13,6 @@ use crate::event::id::EventId;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip39::Identity;
 use crate::nips::nip48::Protocol;
-use crate::nips::nip56::Report;
 use crate::nips::nip73::{ExternalContentId, Nip73Kind};
 use crate::nips::nip90::DataVendingMachineStatus;
 use crate::types::{RelayUrl, Url};
@@ -31,10 +30,6 @@ pub enum TagStandard {
         event_id: EventId,
         relay_url: Option<RelayUrl>,
     },
-    /// Report event
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    EventReport(EventId, Report),
     /// Public Key
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
@@ -44,10 +39,6 @@ pub enum TagStandard {
         /// Whether the tag is an uppercase or not
         uppercase: bool,
     },
-    /// Report public key
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/56.md>
-    PublicKeyReport(PublicKey, Report),
     Reference(String),
     Hashtag(String),
     Geohash(String),
@@ -363,14 +354,9 @@ impl TagStandard {
                 character: Alphabet::E,
                 uppercase: false,
             }),
-            Self::EventReport(..) => TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::E)),
             Self::PublicKey { uppercase, .. } => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::P,
                 uppercase: *uppercase,
-            }),
-            Self::PublicKeyReport(..) => TagKind::SingleLetter(SingleLetterTag {
-                character: Alphabet::P,
-                uppercase: false,
             }),
             Self::Reference(..) => TagKind::SingleLetter(SingleLetterTag {
                 character: Alphabet::R,
@@ -478,12 +464,6 @@ impl From<TagStandard> for Vec<String> {
                     tag.push(relay_url.to_string());
                 }
                 tag
-            }
-            TagStandard::EventReport(id, report) => {
-                vec![tag_kind, id.to_hex(), report.to_string()]
-            }
-            TagStandard::PublicKeyReport(pk, report) => {
-                vec![tag_kind, pk.to_string(), report.to_string()]
             }
             TagStandard::Reference(r) => vec![tag_kind, r],
             TagStandard::Hashtag(t) => vec![tag_kind, t],
@@ -640,7 +620,7 @@ where
     }
 }
 
-fn parse_e_tag<S>(tag: &[S], uppercase: bool) -> Result<TagStandard, Error>
+fn parse_e_tag<S>(tag: &[S], _uppercase: bool) -> Result<TagStandard, Error>
 where
     S: AsRef<str>,
 {
@@ -653,18 +633,6 @@ where
     // Try getting indexes 2 and make sure it is not empty.
     // If this is empty, it is handled as None.
     let tag_2: Option<&str> = tag.get(2).map(|r| r.as_ref()).filter(|r| !r.is_empty());
-
-    // Check if it's a report
-    if let Some(tag_2) = tag_2 {
-        if let Ok(report) = Report::from_str(tag_2) {
-            if uppercase {
-                // Uppercase report, invalid!
-                return Err(Error::UnknownStandardizedTag);
-            }
-
-            return Ok(TagStandard::EventReport(event_id, report));
-        }
-    }
 
     // Parse 2nd arg
     let relay_url: Option<RelayUrl> = match tag_2 {
@@ -756,14 +724,11 @@ where
                     uppercase,
                 })
             } else {
-                match Report::from_str(tag_2) {
-                    Ok(report) => Ok(TagStandard::PublicKeyReport(public_key, report)),
-                    Err(_) => Ok(TagStandard::PublicKey {
-                        public_key,
-                        relay_url: Some(RelayUrl::parse(tag_2)?),
-                        uppercase,
-                    }),
-                }
+                Ok(TagStandard::PublicKey {
+                    public_key,
+                    relay_url: Some(RelayUrl::parse(tag_2)?),
+                    uppercase,
+                })
             };
         }
 
@@ -1073,38 +1038,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec![
-                "p",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "spam"
-            ],
-            TagStandard::PublicKeyReport(
-                PublicKey::from_str(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-                Report::Spam
-            )
-            .to_vec()
-        );
-
-        assert_eq!(
-            vec![
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "nudity"
-            ],
-            TagStandard::EventReport(
-                EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                Report::Nudity,
-            )
-            .to_vec()
-        );
-
-        assert_eq!(
             vec!["client", "voyage"],
             TagStandard::Client {
                 name: String::from("voyage"),
@@ -1367,70 +1300,6 @@ mod tests {
                 .unwrap(),
                 relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
             }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "p",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "impersonation"
-            ])
-            .unwrap(),
-            TagStandard::PublicKeyReport(
-                PublicKey::from_str(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-                Report::Impersonation
-            )
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "p",
-                "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
-                "other"
-            ])
-            .unwrap(),
-            TagStandard::PublicKeyReport(
-                PublicKey::from_str(
-                    "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d"
-                )
-                .unwrap(),
-                Report::Other
-            )
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "profanity"
-            ])
-            .unwrap(),
-            TagStandard::EventReport(
-                EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                Report::Profanity
-            )
-        );
-
-        assert_eq!(
-            TagStandard::parse(&[
-                "e",
-                "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-                "malware"
-            ])
-            .unwrap(),
-            TagStandard::EventReport(
-                EventId::from_hex(
-                    "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7"
-                )
-                .unwrap(),
-                Report::Malware
-            )
         );
 
         assert_eq!(
