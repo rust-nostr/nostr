@@ -132,7 +132,7 @@ pub mod tests {
     use std::time::Duration;
 
     use super::*;
-    use crate::event::{EventBuilder, TagKind};
+    use crate::event::EventBuilder;
     use crate::key::PublicKey;
     use crate::nips::nip13::get_leading_zero_bits;
 
@@ -145,7 +145,7 @@ pub mod tests {
             .mine(&MultiThreadPow, NonZeroU8::new(2).unwrap())
             .unwrap();
 
-        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+        let Some(nonce_tag) = unsigned.tags.iter().find(|t| t.kind() == "nonce") else {
             panic!("nonce tag should be exist")
         };
 

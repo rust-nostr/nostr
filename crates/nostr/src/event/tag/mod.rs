@@ -30,6 +30,7 @@ pub use self::list::Tags;
 pub use self::standard::TagStandard;
 use super::id::EventId;
 use crate::nips::nip01::{Coordinate, Nip01Tag};
+use crate::nips::nip13::Nip13Tag;
 use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip56::Report;
 use crate::nips::nip70::Nip70Tag;
@@ -298,7 +299,7 @@ impl Tag {
     /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
     #[inline]
     pub fn pow(nonce: u128, difficulty: u8) -> Self {
-        Self::from_standardized(TagStandard::POW { nonce, difficulty })
+        Nip13Tag::Nonce { nonce, difficulty }.to_tag()
     }
 
     /// Construct `["client", "<name>"]` tag

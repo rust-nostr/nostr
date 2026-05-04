@@ -7,11 +7,13 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/13.md>
 
-use alloc::string::String;
+use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 use core::any::Any;
+use core::fmt;
 use core::fmt::Debug;
-use core::num::NonZeroU8;
+use core::num::{NonZeroU8, ParseIntError};
 
 #[cfg(feature = "std")]
 mod blocking_wrapper;
@@ -22,8 +24,103 @@ mod single_thread;
 #[cfg(feature = "pow-multi-thread")]
 pub use self::multi_thread::*;
 pub use self::single_thread::*;
+use super::util::take_and_parse_from_str;
 use crate::UnsignedEvent;
+use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::util::BoxedFuture;
+
+const NONCE: &str = "nonce";
+
+/// NIP-13 error
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    /// Parse Int error
+    ParseInt(ParseIntError),
+    /// Codec error
+    Codec(TagCodecError),
+}
+
+impl core::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::ParseInt(e) => fmt::Display::fmt(e, f),
+            Self::Codec(e) => fmt::Display::fmt(e, f),
+        }
+    }
+}
+
+impl From<ParseIntError> for Error {
+    fn from(e: ParseIntError) -> Self {
+        Self::ParseInt(e)
+    }
+}
+
+impl From<TagCodecError> for Error {
+    fn from(e: TagCodecError) -> Self {
+        Self::Codec(e)
+    }
+}
+
+/// Standardized NIP-13 tags
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/13.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Nip13Tag {
+    /// `nonce` tag
+    Nonce {
+        /// Nonce
+        nonce: u128,
+        /// Target difficulty
+        difficulty: u8,
+    },
+}
+
+impl TagCodec for Nip13Tag {
+    type Error = Error;
+
+    fn parse<I, S>(tag: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let mut iter = tag.into_iter();
+
+        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+
+        match kind.as_ref() {
+            NONCE => {
+                let (nonce, difficulty) = parse_nonce_tag(iter)?;
+                Ok(Self::Nonce { nonce, difficulty })
+            }
+            _ => Err(TagCodecError::Unknown.into()),
+        }
+    }
+
+    fn to_tag(&self) -> Tag {
+        match self {
+            Self::Nonce { nonce, difficulty } => Tag::new(vec![
+                String::from(NONCE),
+                nonce.to_string(),
+                difficulty.to_string(),
+            ]),
+        }
+    }
+}
+
+impl_tag_codec_conversions!(Nip13Tag);
+
+fn parse_nonce_tag<T, S>(mut iter: T) -> Result<(u128, u8), Error>
+where
+    T: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    let nonce: u128 = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "nonce")?;
+    let difficulty: u8 = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "difficulty")?;
+
+    Ok((nonce, difficulty))
+}
 
 /// Gets the number of leading zero bits. Result is between 0 and 255.
 #[inline]
@@ -111,8 +208,30 @@ pub mod tests {
     use hashes::sha256::Hash as Sha256Hash;
 
     use super::*;
+    use crate::Tag;
     #[cfg(feature = "std")]
-    use crate::{EventBuilder, PublicKey, Tag, TagKind};
+    use crate::{EventBuilder, PublicKey, TagKind};
+
+    #[test]
+    fn test_parse_nonce_tag() {
+        let tag = vec!["nonce", "776797", "20"];
+        let parsed = Nip13Tag::parse(&tag).unwrap();
+        assert_eq!(
+            parsed,
+            Nip13Tag::Nonce {
+                nonce: 776797,
+                difficulty: 20
+            }
+        );
+        assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
+    }
+
+    #[test]
+    fn test_parse_nonce_tag_missing_difficulty() {
+        let tag = vec!["nonce", "776797"];
+        let err = Nip13Tag::parse(&tag).unwrap_err();
+        assert_eq!(err, Error::Codec(TagCodecError::Missing("difficulty")));
+    }
 
     #[test]
     fn check_get_leading_zeroes() {

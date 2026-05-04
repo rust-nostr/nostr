@@ -83,13 +83,6 @@ pub enum TagStandard {
     },
     Relay(RelayUrl),
     Relays(Vec<RelayUrl>),
-    /// Proof of Work
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/13.md>
-    POW {
-        nonce: u128,
-        difficulty: u8,
-    },
     /// Client
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
@@ -319,10 +312,6 @@ impl TagStandard {
             let tag_2: &str = tag[2].as_ref();
 
             return match tag_kind {
-                TagKind::Nonce => Ok(Self::POW {
-                    nonce: tag_1.parse()?,
-                    difficulty: tag_2.parse()?,
-                }),
                 TagKind::Image => Ok(Self::Image(
                     Url::parse(tag_1)?,
                     Some(ImageDimensions::from_str(tag_2)?),
@@ -419,7 +408,6 @@ impl TagStandard {
                 })
             }
             Self::Relay(..) => TagKind::Relay,
-            Self::POW { .. } => TagKind::Nonce,
             Self::Client { .. } => TagKind::Client,
             Self::ContentWarning { .. } => TagKind::ContentWarning,
             Self::Subject(..) => TagKind::Subject,
@@ -532,9 +520,6 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Nip73Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
-            TagStandard::POW { nonce, difficulty } => {
-                vec![tag_kind, nonce.to_string(), difficulty.to_string()]
-            }
             TagStandard::Client { name, address } => {
                 let mut tag: Vec<String> = vec![tag_kind, name];
 
@@ -1132,15 +1117,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec!["nonce", "1", "20"],
-            TagStandard::POW {
-                nonce: 1,
-                difficulty: 20
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
             vec!["client", "voyage"],
             TagStandard::Client {
                 name: String::from("voyage"),
@@ -1472,14 +1448,6 @@ mod tests {
                 .unwrap(),
                 Report::Malware
             )
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["nonce", "1", "20"]).unwrap(),
-            TagStandard::POW {
-                nonce: 1,
-                difficulty: 20
-            }
         );
 
         assert_eq!(
