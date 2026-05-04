@@ -127,10 +127,6 @@ name = "nip15"
 required-features = ["std", "rand", "os-rng"]
 
 [[example]]
-name = "nip96"
-required-features = ["std", "rand", "os-rng", "nip96"]
-
-[[example]]
 name = "nip98"
 required-features = ["std", "rand", "os-rng", "nip98"]
 
