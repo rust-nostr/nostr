@@ -25,10 +25,6 @@ pub enum TagKind<'a> {
     Bolt11,
     /// Challenge
     Challenge,
-    /// Client
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
-    Client,
     /// Clone
     Clone,
     /// Commit
@@ -277,7 +273,6 @@ impl<'a> TagKind<'a> {
             Self::Bolt11 => "bolt11",
             Self::BranchName => "branch-name",
             Self::Challenge => "challenge",
-            Self::Client => "client",
             Self::Clone => "clone",
             Self::Commit => "commit",
             Self::ContentWarning => "content-warning",
@@ -334,7 +329,6 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "bolt11" => Self::Bolt11,
             "branch-name" => Self::BranchName,
             "challenge" => Self::Challenge,
-            "client" => Self::Client,
             "clone" => Self::Clone,
             "commit" => Self::Commit,
             "content-warning" => Self::ContentWarning,

@@ -74,15 +74,6 @@ pub enum TagStandard {
     },
     Relay(RelayUrl),
     Relays(Vec<RelayUrl>),
-    /// Client
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
-    Client {
-        /// Client name
-        name: String,
-        /// Client address and optional hint
-        address: Option<(Coordinate, Option<RelayUrl>)>,
-    },
     ContentWarning {
         reason: Option<String>,
     },
@@ -230,7 +221,6 @@ impl TagStandard {
                 }
                 _ => (), // Covered later
             },
-            TagKind::Client => return parse_client_tag(tag),
             TagKind::ContentWarning => {
                 return Ok(Self::ContentWarning {
                     reason: extract_optional_string(tag, 1).map(|s| s.to_string()),
@@ -389,7 +379,6 @@ impl TagStandard {
                 })
             }
             Self::Relay(..) => TagKind::Relay,
-            Self::Client { .. } => TagKind::Client,
             Self::ContentWarning { .. } => TagKind::ContentWarning,
             Self::Subject(..) => TagKind::Subject,
             Self::Challenge(..) => TagKind::Challenge,
@@ -494,23 +483,6 @@ impl From<TagStandard> for Vec<String> {
             TagStandard::Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Nip73Kind { kind, .. } => vec![tag_kind, kind.to_string()],
             TagStandard::Relay(url) => vec![tag_kind, url.to_string()],
-            TagStandard::Client { name, address } => {
-                let mut tag: Vec<String> = vec![tag_kind, name];
-
-                match address {
-                    Some((coordinate, Some(hint))) => {
-                        tag.reserve_exact(2);
-                        tag.push(coordinate.to_string());
-                        tag.push(hint.to_string());
-                    }
-                    Some((coordinate, None)) => {
-                        tag.push(coordinate.to_string());
-                    }
-                    _ => {}
-                }
-
-                tag
-            }
             TagStandard::ContentWarning { reason } => {
                 let mut tag = vec![tag_kind];
                 if let Some(reason) = reason {
@@ -795,51 +767,6 @@ where
     }
 }
 
-fn parse_client_tag<S>(tag: &[S]) -> Result<TagStandard, Error>
-where
-    S: AsRef<str>,
-{
-    // Possible cases:
-    // - ["client", "My Client"]
-    // - ["client", "My Client", "31990:app1-pubkey:<d-identifier>"]
-    // - ["client", "My Client", "31990:app1-pubkey:<d-identifier>", "wss://relay1"]
-
-    // Require at least 2 values
-    if tag.len() < 2 {
-        return Err(Error::UnknownStandardizedTag);
-    }
-
-    // The client name
-    let tag_1: &str = tag[1].as_ref();
-
-    // Optionally, the coordinate and the relay hint
-    let tag_2: Option<&str> = tag.get(2).map(|t| t.as_ref());
-    let tag_3: Option<&str> = tag.get(3).map(|t| t.as_ref());
-
-    // Since the address is optional,
-    // don't return an error if the coordinate or relay hint parsing fails.
-    let address: Option<(Coordinate, Option<RelayUrl>)> = match tag_2 {
-        // Try to parse the coordinate
-        Some(coordinate) => match Coordinate::parse(coordinate) {
-            // Coordinate parsing success
-            Ok(coordinate) => {
-                let relay_url: Option<RelayUrl> = tag_3.and_then(|url| RelayUrl::parse(url).ok());
-                Some((coordinate, relay_url))
-            }
-            // Failed to parse the coordinate
-            Err(..) => None,
-        },
-        // Nothing to parse
-        None => None,
-    };
-
-    // Construct tag
-    Ok(TagStandard::Client {
-        name: tag_1.to_string(),
-        address,
-    })
-}
-
 #[inline]
 fn extract_optional_string<S>(tag: &[S], index: usize) -> Option<&str>
 where
@@ -1038,15 +965,6 @@ mod tests {
         );
 
         assert_eq!(
-            vec!["client", "voyage"],
-            TagStandard::Client {
-                name: String::from("voyage"),
-                address: None
-            }
-            .to_vec()
-        );
-
-        assert_eq!(
             vec!["dep", "nostr"],
             TagStandard::Dependency(String::from("nostr")).to_vec()
         );
@@ -1069,30 +987,6 @@ mod tests {
         assert_eq!(
             vec!["repo", "https://github.com/rust-nostr/nostr"],
             TagStandard::Repository(String::from("https://github.com/rust-nostr/nostr")).to_vec()
-        );
-
-        assert_eq!(
-            vec!["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"],
-            TagStandard::Client {
-                name: String::from("voyage"),
-                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), None))
-            }.to_vec()
-        );
-
-        assert_eq!(
-            vec!["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"],
-            TagStandard::Client {
-                name: String::from("voyage"),
-                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), None))
-            }.to_vec()
-        );
-
-        assert_eq!(
-            vec!["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum", "wss://relay.damus.io"],
-            TagStandard::Client {
-                name: String::from("voyage"),
-                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), Some(RelayUrl::parse("wss://relay.damus.io").unwrap())))
-            }.to_vec()
         );
 
         assert_eq!(
@@ -1303,14 +1197,6 @@ mod tests {
         );
 
         assert_eq!(
-            TagStandard::parse(&["client", "voyage"]).unwrap(),
-            TagStandard::Client {
-                name: String::from("voyage"),
-                address: None
-            }
-        );
-
-        assert_eq!(
             TagStandard::parse(&["dep", "nostr"]).unwrap(),
             TagStandard::Dependency(String::from("nostr"))
         );
@@ -1333,30 +1219,6 @@ mod tests {
         assert_eq!(
             TagStandard::parse(&["repo", "https://github.com/rust-nostr/nostr"]).unwrap(),
             TagStandard::Repository(String::from("https://github.com/rust-nostr/nostr"))
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum"]).unwrap(),
-            TagStandard::Client {
-                name: String::from("voyage"),
-                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), None))
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum", ""]).unwrap(),
-            TagStandard::Client {
-                name: String::from("voyage"),
-                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), None))
-            }
-        );
-
-        assert_eq!(
-            TagStandard::parse(&["client", "voyage", "30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum", "wss://relay.damus.io"]).unwrap(),
-            TagStandard::Client {
-                name: String::from("voyage"),
-                address: Some((Coordinate::parse("30023:a695f6b60119d9521934a691347d9f78e8770b56da16bb255ee286ddf9fda919:ipsum").unwrap(), Some(RelayUrl::parse("wss://relay.damus.io").unwrap())))
-            }
         );
 
         assert_eq!(

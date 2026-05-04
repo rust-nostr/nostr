@@ -302,19 +302,6 @@ impl Tag {
         Nip13Tag::Nonce { nonce, difficulty }.to_tag()
     }
 
-    /// Construct `["client", "<name>"]` tag
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/89.md>
-    pub fn client<S>(name: S) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::from_standardized(TagStandard::Client {
-            name: name.into(),
-            address: None,
-        })
-    }
-
     /// Compose `["expiration", "<timestamp>"]` tag
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
@@ -653,16 +640,6 @@ mod tests {
                     ""
                 ]
             )
-        );
-
-        assert_eq!(
-            vec!["client", "rust-nostr"],
-            Tag::custom(TagKind::Client, ["rust-nostr"]).to_vec()
-        );
-
-        assert_eq!(
-            Tag::parse(["client", "nostr-sdk"]).unwrap(),
-            Tag::custom(TagKind::Client, ["nostr-sdk"])
         );
     }
 
