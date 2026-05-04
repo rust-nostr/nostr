@@ -491,11 +491,11 @@ impl EventBuilder {
     /// let event_id = EventId::from_hex("b3e392b11f5d4f28321cedd09303a748acfd0487aea5a7450b3481c60b6e4f87").unwrap();
     /// let content: &str = "Lorem [ipsum][4] dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.\n\nRead more at #[3].";
     /// let tags = &[
-    ///     Tag::identifier("lorem-ipsum".to_string()),
-    ///     Tag::from_standardized(TagStandard::Title("Lorem Ipsum".to_string())),
-    ///     Tag::from_standardized(TagStandard::PublishedAt(Timestamp::from(1296962229))),
-    ///     Tag::hashtag("placeholder".to_string()),
-    ///     Tag::event(event_id),
+    ///     Nip01Tag::Identifier("lorem-ipsum".to_string()).to_tag(),
+    ///     Nip23Tag::Title("Lorem Ipsum".to_string()).to_tag(),
+    ///     Nip23Tag::PublishedAt(Timestamp::from(1296962229)).to_tag(),
+    ///     Nip23Tag::Hashtag("placeholder".to_string()).to_tag(),
+    ///     Nip01Tag::Event { id: event_id, relay_hint: None, public_key: None }.to_tag(),
     /// ];
     /// let builder = EventBuilder::long_form_text_note("My first text note from rust-nostr!");
     /// ```
