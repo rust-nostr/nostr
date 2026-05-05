@@ -1085,9 +1085,7 @@ impl EventBuilder {
             return Err(Error::NIP58(nip58::Error::InvalidKind));
         }
 
-        // Add identifier `d` tag
-        let id_tag: Tag = Tag::identifier("profile_badges");
-        let mut tags: Vec<Tag> = vec![id_tag];
+        let mut tags: Vec<Tag> = Vec::new();
 
         let badge_definitions_identifiers = badge_definitions.iter().filter_map(|event| {
             let id: String = event.tags.identifier()?;
@@ -2129,12 +2127,11 @@ mod tests {
             r#"{{
             "content":"",
             "id": "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
-            "kind": 30008,
+            "kind": 10008,
             "pubkey": "{pub_key}",
             "sig":"fd0954de564cae9923c2d8ee9ab2bf35bc19757f8e328a978958a2fcc950eaba0754148a203adec29b7b64080d0cf5a32bebedd768ea6eb421a6b751bb4584a8",
             "created_at":1671739153,
             "tags":[
-                ["d", "profile_badges"],
                 ["a", "30009:{badge_one_pubkey}:bravery"],
                 ["e", "{}"],
                 ["a", "30009:{badge_two_pubkey}:honor"],
