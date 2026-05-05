@@ -28,7 +28,7 @@ use super::{Error, Tag};
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip42::Nip42Tag;
-use crate::{EventId, PublicKey, SingleLetterTag, TagKind, Timestamp};
+use crate::{EventId, PublicKey, SingleLetterTag, Timestamp};
 
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
@@ -270,7 +270,7 @@ impl Tags {
     /// # Policy
     ///
     /// - Two tags are considered duplicates if:
-    ///   1) They have the same [`TagKind`]
+    ///   1) They have the same tag kind
     ///   2) They contain the same content (if applicable)
     ///
     /// - Among duplicates, the longest tag is retained; shorter ones are discarded.
@@ -309,15 +309,15 @@ impl Tags {
 
         // Construct the dedup map
         #[cfg(feature = "std")]
-        let mut map: HashMap<(TagKind, Option<&str>), DedupVal> =
+        let mut map: HashMap<(&str, Option<&str>), DedupVal> =
             HashMap::with_capacity(self.list.len());
         #[cfg(not(feature = "std"))]
-        let mut map: BTreeMap<(TagKind, Option<&str>), DedupVal> = BTreeMap::new();
+        let mut map: BTreeMap<(&str, Option<&str>), DedupVal> = BTreeMap::new();
 
         // Figure out which tags to keep
         for (idx, tag) in self.list.iter().enumerate() {
             // Construct dedup key
-            let key: (TagKind, Option<&str>) = (tag.kind(), tag.content());
+            let key: (&str, Option<&str>) = (tag.kind(), tag.content());
 
             // Check if key exists or not
             match map.entry(key) {
@@ -377,18 +377,6 @@ impl Tags {
         self.list.iter()
     }
 
-    /// Get first tag that match [`TagKind`].
-    #[inline]
-    pub fn find(&self, kind: TagKind) -> Option<&Tag> {
-        self.list.iter().find(|t| t.kind() == kind)
-    }
-
-    /// Filter tags that match [`TagKind`].
-    #[inline]
-    pub fn filter<'a>(&'a self, kind: TagKind<'a>) -> impl Iterator<Item = &'a Tag> {
-        self.list.iter().filter(move |t| t.kind() == kind)
-    }
-
     /// Get as slice of tags
     #[inline]
     pub fn as_slice(&self) -> &[Tag] {
@@ -404,7 +392,7 @@ impl Tags {
     /// Extract identifier (`d` tag), if exists.
     #[inline]
     pub fn identifier(&self) -> Option<String> {
-        let tag: &Tag = self.find(TagKind::d())?;
+        let tag: &Tag = self.iter().find(|t| t.kind() == "d")?;
 
         match Nip01Tag::try_from(tag) {
             Ok(Nip01Tag::Identifier(identifier)) => Some(identifier),
@@ -416,7 +404,7 @@ impl Tags {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/40.md>
     pub fn expiration(&self) -> Option<Timestamp> {
-        let tag: &Tag = self.find(TagKind::Expiration)?;
+        let tag: &Tag = self.iter().find(|t| t.kind() == "expiration")?;
 
         match Nip40Tag::try_from(tag) {
             Ok(Nip40Tag::Expiration(expiration)) => Some(expiration),
@@ -427,7 +415,7 @@ impl Tags {
     /// Extract NIP42 challenge, if exists.
     #[inline]
     pub fn challenge(&self) -> Option<String> {
-        let tag: &Tag = self.find(TagKind::Challenge)?;
+        let tag: &Tag = self.iter().find(|t| t.kind() == "challenge")?;
 
         match Nip42Tag::try_from(tag) {
             Ok(Nip42Tag::Challenge(challenge)) => Some(challenge),
@@ -438,7 +426,11 @@ impl Tags {
     /// Extract public keys from `p` tags.
     #[inline]
     pub fn public_keys(&self) -> impl Iterator<Item = PublicKey> + '_ {
-        self.filter(TagKind::p()).filter_map(|t| {
+        self.iter().filter_map(|t| {
+            if t.kind() != "p" {
+                return None;
+            }
+
             let content = t.content()?;
             PublicKey::from_hex(content).ok()
         })
@@ -447,7 +439,11 @@ impl Tags {
     /// Extract event IDs from `e` tags.
     #[inline]
     pub fn event_ids(&self) -> impl Iterator<Item = EventId> + '_ {
-        self.filter(TagKind::e()).filter_map(|t| {
+        self.iter().filter_map(|t| {
+            if t.kind() != "e" {
+                return None;
+            }
+
             let content = t.content()?;
             EventId::from_hex(content).ok()
         })
@@ -456,7 +452,11 @@ impl Tags {
     /// Extract coordinates from `a` tags.
     #[inline]
     pub fn coordinates(&self) -> impl Iterator<Item = Coordinate> + '_ {
-        self.filter(TagKind::a()).filter_map(|t| {
+        self.iter().filter_map(|t| {
+            if t.kind() != "a" {
+                return None;
+            }
+
             let content = t.content()?;
             Coordinate::from_kpi_format(content).ok()
         })
@@ -465,7 +465,13 @@ impl Tags {
     /// Extract hashtags from `t` tags.
     #[inline]
     pub fn hashtags(&self) -> impl Iterator<Item = &str> + '_ {
-        self.filter(TagKind::t()).filter_map(|t| t.content())
+        self.iter().filter_map(|t| {
+            if t.kind() != "t" {
+                return None;
+            }
+
+            t.content()
+        })
     }
 
     fn build_indexes(&self) -> TagsIndexes {
@@ -605,7 +611,7 @@ mod tests {
 
         let list = vec![
             Tag::protected(),
-            Tag::custom(TagKind::p(), empty_list.clone()), // Non standard p tag
+            Tag::custom("p", empty_list.clone()), // Non standard p tag
             Tag::public_key(pubkey1),
             Tag::public_key(pubkey2),
             Tag::event(event1),
@@ -626,7 +632,7 @@ mod tests {
 
         let expected = vec![
             Tag::protected(),
-            Tag::custom(TagKind::p(), empty_list), // Non standard p tag
+            Tag::custom("p", empty_list), // Non standard p tag
             long_p_tag_1.to_tag(),
             Tag::public_key(pubkey2),
             Tag::event(event1),

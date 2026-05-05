@@ -101,7 +101,7 @@ pub mod tests {
             .mine(&SingleThreadPow, NonZeroU8::new(2).unwrap())
             .unwrap();
 
-        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+        let Some(nonce_tag) = unsigned.tags.iter().find(|t| t.kind() == "nonce") else {
             panic!("nonce tag should be exist")
         };
 

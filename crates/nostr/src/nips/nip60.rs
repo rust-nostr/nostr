@@ -10,7 +10,7 @@ use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use super::nip44;
-use crate::event::{self, Event, EventId, TagKind, tag};
+use crate::event::{self, Event, EventId, tag};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::event::{EventBuilder, Kind, Tag};
 use crate::key::{PublicKey, SecretKey};
@@ -449,7 +449,7 @@ impl SpendingHistory {
         // Add created event references (encrypted)
         for event_id in &self.created {
             let tag: Tag = Tag::custom(
-                TagKind::e(),
+                "e",
                 [
                     event_id.to_hex(),
                     String::new(),
@@ -462,7 +462,7 @@ impl SpendingHistory {
         // Add destroyed event references (encrypted)
         for event_id in &self.destroyed {
             let tag: Tag = Tag::custom(
-                TagKind::e(),
+                "e",
                 [
                     event_id.to_hex(),
                     String::new(),
@@ -542,7 +542,8 @@ impl QuoteEvent {
         // Extract mint URL from tags
         let mint: Url = event
             .tags
-            .find(TagKind::custom(MINT))
+            .iter()
+            .find(|t| t.kind() == MINT)
             .and_then(|tag| tag.content())
             .ok_or(Error::MissingMintTag)?
             .parse()
@@ -590,7 +591,7 @@ impl QuoteEvent {
         let mut tags: Vec<Tag> = Vec::with_capacity(2);
 
         // Add mint tag
-        tags.push(Tag::custom(TagKind::custom(MINT), [self.mint.as_str()]));
+        tags.push(Tag::custom(MINT, [self.mint.as_str()]));
 
         // Add NIP-40 expiration tag (current time + 2 weeks)
         let expiration: Timestamp = Timestamp::now() + 14 * 24 * 60 * 60; // 2 weeks in seconds

@@ -210,7 +210,7 @@ pub mod tests {
     use super::*;
     use crate::Tag;
     #[cfg(feature = "std")]
-    use crate::{EventBuilder, PublicKey, TagKind};
+    use crate::{EventBuilder, PublicKey};
 
     #[test]
     fn test_parse_nonce_tag() {
@@ -635,7 +635,7 @@ pub mod tests {
             .mine(&TestAdapter, NonZeroU8::new(2).unwrap())
             .unwrap();
 
-        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+        let Some(nonce_tag) = unsigned.tags.iter().find(|t| t.kind() == "nonce") else {
             panic!("nonce tag should be exist")
         };
 
@@ -680,7 +680,7 @@ pub mod tests {
             .await
             .unwrap();
 
-        let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
+        let Some(nonce_tag) = unsigned.tags.iter().find(|t| t.kind() == "nonce") else {
             panic!("nonce tag should be exist")
         };
 

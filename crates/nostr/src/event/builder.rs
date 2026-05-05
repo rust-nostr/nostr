@@ -255,7 +255,7 @@ impl EventBuilder {
         if !self.allow_self_tagging {
             let public_key_hex: String = public_key.to_hex();
             self.tags.retain(|t| {
-                if t.kind() == TagKind::p() {
+                if t.kind() == "p" {
                     if let Some(content) = t.content() {
                         if content == public_key_hex {
                             return false; // Remove `p` tag that match author
@@ -895,50 +895,17 @@ impl EventBuilder {
         }
 
         // add e tag
-        if let Some(tag) = zap_request
-            .tags
-            .iter()
-            .find(|t| {
-                t.kind()
-                    == TagKind::SingleLetter(SingleLetterTag {
-                        character: Alphabet::E,
-                        uppercase: false,
-                    })
-            })
-            .cloned()
-        {
+        if let Some(tag) = zap_request.tags.iter().find(|t| t.kind() == "e").cloned() {
             tags.push(tag);
         }
 
         // add a tag
-        if let Some(tag) = zap_request
-            .tags
-            .iter()
-            .find(|t| {
-                t.kind()
-                    == TagKind::SingleLetter(SingleLetterTag {
-                        character: Alphabet::A,
-                        uppercase: false,
-                    })
-            })
-            .cloned()
-        {
+        if let Some(tag) = zap_request.tags.iter().find(|t| t.kind() == "a").cloned() {
             tags.push(tag);
         }
 
         // add p tag
-        if let Some(tag) = zap_request
-            .tags
-            .iter()
-            .find(|t| {
-                t.kind()
-                    == TagKind::SingleLetter(SingleLetterTag {
-                        character: Alphabet::P,
-                        uppercase: false,
-                    })
-            })
-            .cloned()
-        {
+        if let Some(tag) = zap_request.tags.iter().find(|t| t.kind() == "p").cloned() {
             tags.push(tag);
         }
 
@@ -1172,12 +1139,7 @@ impl EventBuilder {
             .tags
             .iter()
             .filter_map(|t| {
-                if t.kind()
-                    == TagKind::SingleLetter(SingleLetterTag {
-                        character: Alphabet::I,
-                        uppercase: false,
-                    })
-                {
+                if t.kind() == "i" {
                     Some(t.clone())
                 } else {
                     None
@@ -1956,7 +1918,7 @@ mod tests {
             .tags
             .clone()
             .iter()
-            .any(|t| t.kind() == TagKind::Preimage);
+            .any(|t| t.kind() == "preimage");
 
         assert!(has_preimage_tag);
     }
@@ -1977,7 +1939,7 @@ mod tests {
             .tags
             .clone()
             .iter()
-            .any(|t| t.kind() == TagKind::Preimage);
+            .any(|t| t.kind() == "preimage");
 
         assert!(!has_preimage_tag);
     }
@@ -1988,10 +1950,7 @@ mod tests {
         let event_builder =
             EventBuilder::define_badge(badge_id, None, None, None, None, Vec::new());
 
-        let has_id =
-            event_builder.tags.clone().iter().any(|t| {
-                t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D))
-            });
+        let has_id = event_builder.tags.clone().iter().any(|t| t.kind() == "d");
         assert!(has_id);
 
         assert_eq!(Kind::BadgeDefinition, event_builder.kind);
@@ -2012,10 +1971,7 @@ mod tests {
         let event_builder =
             EventBuilder::define_badge(badge_id, name, description, image_url, image_size, thumbs);
 
-        let has_id =
-            event_builder.tags.clone().iter().any(|t| {
-                t.kind() == TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::D))
-            });
+        let has_id = event_builder.tags.clone().iter().any(|t| t.kind() == "d");
         assert!(has_id);
 
         assert_eq!(Kind::BadgeDefinition, event_builder.kind);
@@ -2207,7 +2163,8 @@ mod tests {
         assert_eq!(
             repost
                 .tags
-                .find(TagKind::single_letter(Alphabet::A, false))
+                .iter()
+                .find(|t| t.kind() == "a")
                 .and_then(|t| Nip01Tag::try_from(t).ok())
                 .unwrap(),
             Nip01Tag::Coordinate {
@@ -2232,7 +2189,8 @@ mod tests {
         assert_eq!(
             repost
                 .tags
-                .find(TagKind::single_letter(Alphabet::A, false))
+                .iter()
+                .find(|t| t.kind() == "a")
                 .and_then(|t| Nip01Tag::try_from(t).ok())
                 .unwrap(),
             Nip01Tag::Coordinate {

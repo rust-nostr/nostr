@@ -28,7 +28,7 @@ pub use self::builder::EventBuilder;
 pub use self::error::Error;
 pub use self::id::EventId;
 pub use self::kind::Kind;
-pub use self::tag::{Tag, TagKind, Tags};
+pub use self::tag::{Tag, Tags};
 pub use self::unsigned::UnsignedEvent;
 #[cfg(feature = "std")]
 use crate::SECP256K1;

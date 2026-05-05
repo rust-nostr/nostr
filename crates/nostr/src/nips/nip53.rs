@@ -25,7 +25,7 @@ use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions
 use crate::key::{self, PublicKey};
 use crate::types::image;
 use crate::types::url::{self, RelayUrl, Url};
-use crate::{Event, EventId, ImageDimensions, Kind, TagKind, Timestamp, event};
+use crate::{Event, EventId, ImageDimensions, Kind, Timestamp, event};
 
 const TITLE: &str = "title";
 const SUMMARY: &str = "summary";
@@ -876,7 +876,7 @@ impl TryFrom<Vec<Tag>> for LiveEvent {
     fn try_from(tags: Vec<Tag>) -> Result<Self, Self::Error> {
         let id: String = tags
             .iter()
-            .find(|t| t.kind() == TagKind::d())
+            .find(|t| t.kind() == "d")
             .and_then(|t| t.content())
             .map(|value| value.to_string())
             .ok_or(Error::DescriptionMissing)?;

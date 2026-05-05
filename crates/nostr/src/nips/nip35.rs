@@ -15,7 +15,7 @@ use alloc::vec::Vec;
 use hashes::sha1::Hash as Sha1Hash;
 
 use crate::types::url::Url;
-use crate::{EventBuilder, Kind, Tag, TagKind};
+use crate::{EventBuilder, Kind, Tag};
 
 /// Represents a file within a torrent.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -57,21 +57,18 @@ impl Torrent {
 
         tags.push(Tag::new(vec![String::from("title"), self.title]));
 
-        tags.push(Tag::custom(TagKind::x(), [self.info_hash.to_string()]));
+        tags.push(Tag::custom("x", [self.info_hash.to_string()]));
 
         for file in self.files.into_iter() {
-            tags.push(Tag::custom(
-                TagKind::File,
-                [file.name, file.size.to_string()],
-            ));
+            tags.push(Tag::custom("file", [file.name, file.size.to_string()]));
         }
 
         for tracker in self.trackers.into_iter() {
-            tags.push(Tag::custom(TagKind::Tracker, [tracker.to_string()]));
+            tags.push(Tag::custom("tracker", [tracker.to_string()]));
         }
 
         for cat in self.categories.into_iter() {
-            tags.push(Tag::custom(TagKind::i(), [format!("tcat:{cat}")]));
+            tags.push(Tag::custom("i", [format!("tcat:{cat}")]));
         }
 
         for tag in self.hashtags.into_iter() {

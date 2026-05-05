@@ -9,7 +9,7 @@ use nostr::nips::nip01::Nip01Tag;
 use nostr::nips::nip17;
 use nostr::nips::nip65::{self, RelayMetadata};
 use nostr::util::BoxedFuture;
-use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, Timestamp};
+use nostr::{Event, Kind, PublicKey, RelayUrl, Timestamp};
 use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{
@@ -557,11 +557,13 @@ where
 }
 
 fn update_hints(tx: &Transaction<'_>, event: &Event) -> Result<(), Error> {
-    for tag in event
-        .tags
-        .filter(TagKind::p())
-        .filter_map(|t| Nip01Tag::try_from(t).ok())
-    {
+    for tag in event.tags.iter().filter_map(|t| {
+        if t.kind() != "p" {
+            return None;
+        }
+
+        Nip01Tag::try_from(t).ok()
+    }) {
         if let Nip01Tag::PublicKey {
             public_key,
             relay_hint: Some(relay_url),

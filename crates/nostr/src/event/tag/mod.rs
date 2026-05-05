@@ -4,13 +4,14 @@
 
 //! Tag
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
 use alloc::vec;
 use alloc::vec::{IntoIter, Vec};
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::ops::{Index, IndexMut};
+use core::str::FromStr;
 
 use serde::de::Error as DeserializerError;
 use serde::ser::SerializeSeq;
@@ -19,13 +20,11 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 mod codec;
 pub mod cow;
 mod error;
-pub mod kind;
 pub mod list;
 
 pub use self::codec::*;
 pub use self::cow::CowTag;
 pub use self::error::Error;
-pub use self::kind::TagKind;
 pub use self::list::Tags;
 use super::id::EventId;
 use crate::nips::nip01::{Coordinate, Nip01Tag};
@@ -119,10 +118,9 @@ impl Tag {
 
     /// Get tag kind
     #[inline]
-    pub fn kind(&self) -> TagKind<'_> {
+    pub fn kind(&self) -> &str {
         // SAFETY: `buf` must not be empty, checked during parsing.
-        let key: &str = &self.buf[0];
-        TagKind::from(key)
+        &self.buf[0]
     }
 
     /// Return the **first** tag value (index `1`), if exists.
@@ -134,10 +132,7 @@ impl Tag {
     /// Get [`SingleLetterTag`]
     #[inline]
     pub fn single_letter_tag(&self) -> Option<SingleLetterTag> {
-        match self.kind() {
-            TagKind::SingleLetter(s) => Some(s),
-            _ => None,
-        }
+        SingleLetterTag::from_str(self.kind()).ok()
     }
 
     /// Get tag len
@@ -331,14 +326,15 @@ impl Tag {
     /// Compose custom tag
     ///
     /// JSON: `["<kind>", "<value-1>", "<value-2>", ...]`
-    pub fn custom<I, S>(kind: TagKind, values: I) -> Self
+    pub fn custom<K, I, S>(kind: K, values: I) -> Self
     where
+        K: Into<String>,
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
         // Compose tag
         let mut buf: Vec<String> = Vec::with_capacity(1);
-        buf.push(kind.to_string());
+        buf.push(kind.into());
         buf.extend(values.into_iter().map(|v| v.into()));
 
         Self::new(buf)
@@ -394,7 +390,7 @@ mod tests {
     use secp256k1::schnorr::Signature;
 
     use super::*;
-    use crate::{Alphabet, Event, JsonUtil, Kind, Timestamp};
+    use crate::{Event, JsonUtil, Kind, Timestamp};
 
     #[test]
     fn test_parse_empty_tag() {
@@ -523,19 +519,12 @@ mod tests {
     fn test_tag_custom() {
         assert_eq!(
             vec!["r", "wss://atlas.nostr.land", ""],
-            Tag::custom(
-                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
-                ["wss://atlas.nostr.land", ""]
-            )
-            .to_vec()
+            Tag::custom("r", ["wss://atlas.nostr.land", ""]).to_vec()
         );
 
         assert_eq!(
             Tag::parse(["r", "wss://atlas.nostr.land", ""]).unwrap(),
-            Tag::custom(
-                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
-                ["wss://atlas.nostr.land", ""]
-            )
+            Tag::custom("r", ["wss://atlas.nostr.land", ""])
         );
 
         assert_eq!(
@@ -545,7 +534,7 @@ mod tests {
                 ""
             ],
             Tag::custom(
-                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
+                "r",
                 [
                     "3dbee968d1ddcdf07521e246e405e1fbb549080f1f4ef4e42526c4528f124220",
                     ""
@@ -562,7 +551,7 @@ mod tests {
             ])
             .unwrap(),
             Tag::custom(
-                TagKind::SingleLetter(SingleLetterTag::lowercase(Alphabet::R)),
+                "r",
                 [
                     "3dbee968d1ddcdf07521e246e405e1fbb549080f1f4ef4e42526c4528f124220",
                     ""
@@ -575,9 +564,9 @@ mod tests {
     fn test_hashtag() {
         assert_eq!(
             Tag::parse(["t", "Nostr"]).unwrap(),
-            Tag::custom(TagKind::t(), ["Nostr"])
+            Tag::custom("t", ["Nostr"])
         );
-        assert_eq!(Tag::hashtag("Nostr"), Tag::custom(TagKind::t(), ["nostr"]));
+        assert_eq!(Tag::hashtag("Nostr"), Tag::custom("t", ["nostr"]));
     }
 }
 
