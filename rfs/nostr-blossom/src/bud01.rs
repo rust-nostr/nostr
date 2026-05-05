@@ -2,8 +2,10 @@
 
 use std::fmt;
 
+use nostr::event::tag::TagCodec;
 use nostr::hashes::sha256::Hash as Sha256Hash;
-use nostr::{EventBuilder, Kind, Tag, TagStandard, Timestamp, Url};
+use nostr::nips::nipb7::NipB7Tag;
+use nostr::{EventBuilder, Kind, Tag, Timestamp, Url};
 
 /// Represents the authorization data for accessing a Blossom server.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -109,7 +111,7 @@ impl From<BlossomAuthorizationScope> for Vec<Tag> {
                 }
             }
             BlossomAuthorizationScope::ServerUrl(url) => {
-                tags.push(Tag::from_standardized(TagStandard::Server(url)));
+                tags.push(NipB7Tag::Server(url).to_tag());
             }
         }
         tags

@@ -1490,11 +1490,8 @@ impl EventBuilder {
     where
         I: IntoIterator<Item = Url>,
     {
-        Self::new(Kind::BlossomServerList, "").tags(
-            servers
-                .into_iter()
-                .map(|s| Tag::from_standardized(TagStandard::Server(s))),
-        )
+        Self::new(Kind::BlossomServerList, "")
+            .tags(servers.into_iter().map(|s| NipB7Tag::Server(s).to_tag()))
     }
 
     /// Communities
