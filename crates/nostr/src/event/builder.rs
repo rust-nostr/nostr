@@ -1186,8 +1186,8 @@ impl EventBuilder {
         tags.extend_from_slice(&[
             Tag::event(job_request.id),
             Tag::public_key(job_request.pubkey),
-            Tag::from_standardized(TagStandard::Request(job_request)),
-            Tag::from_standardized(TagStandard::Amount { millisats, bolt11 }),
+            Nip90Tag::Request(job_request).to_tag(),
+            Nip90Tag::Amount { millisats, bolt11 }.to_tag(),
         ]);
 
         Ok(Self::new(kind, payload).tags(tags))
@@ -1201,18 +1201,22 @@ impl EventBuilder {
 
         tags.push(Tag::event(data.job_request_id));
         tags.push(Tag::public_key(data.customer_public_key));
-        tags.push(Tag::from_standardized(
-            TagStandard::DataVendingMachineStatus {
+        tags.push(
+            Nip90Tag::Status {
                 status: data.status,
                 extra_info: data.extra_info,
-            },
-        ));
+            }
+            .to_tag(),
+        );
 
         if let Some(millisats) = data.amount_msat {
-            tags.push(Tag::from_standardized(TagStandard::Amount {
-                millisats,
-                bolt11: data.bolt11,
-            }));
+            tags.push(
+                Nip90Tag::Amount {
+                    millisats,
+                    bolt11: data.bolt11,
+                }
+                .to_tag(),
+            );
         }
 
         Self::new(Kind::JobFeedback, data.payload.unwrap_or_default()).tags(tags)
