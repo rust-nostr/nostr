@@ -19,6 +19,7 @@ use rand::{CryptoRng, RngCore};
 use secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{Value, json};
 
+use crate::nips::nip58::Nip58Tag;
 use crate::nips::nip62::VanishTarget;
 use crate::prelude::*;
 
@@ -982,26 +983,24 @@ impl EventBuilder {
         let mut tags: Vec<Tag> = Vec::new();
 
         // Set identifier tag
-        tags.push(Tag::identifier(badge_id.into()));
+        tags.push(Nip58Tag::Identifier(badge_id.into()).to_tag());
 
         // Set name tag
         if let Some(name) = name {
-            tags.push(Tag::from_standardized(TagStandard::Name(name.into())));
+            tags.push(Nip58Tag::Name(name.into()).to_tag());
         }
 
         // Set description tag
         if let Some(description) = description {
-            tags.push(Tag::from_standardized(TagStandard::Description(
-                description.into(),
-            )));
+            tags.push(Nip58Tag::Description(description.into()).to_tag());
         }
 
         // Set image tag
         if let Some(image) = image {
             let image_tag = if let Some(dimensions) = image_dimensions {
-                Tag::from_standardized(TagStandard::Image(image, Some(dimensions)))
+                Nip58Tag::Image(image, Some(dimensions)).to_tag()
             } else {
-                Tag::from_standardized(TagStandard::Image(image, None))
+                Nip58Tag::Image(image, None).to_tag()
             };
             tags.push(image_tag);
         }
@@ -1009,9 +1008,9 @@ impl EventBuilder {
         // Set thumbnail tags
         for (thumb, dimensions) in thumbnails.into_iter() {
             let thumb_tag = if let Some(dimensions) = dimensions {
-                Tag::from_standardized(TagStandard::Thumb(thumb, Some(dimensions)))
+                Nip58Tag::Thumb(thumb, Some(dimensions)).to_tag()
             } else {
-                Tag::from_standardized(TagStandard::Thumb(thumb, None))
+                Nip58Tag::Thumb(thumb, None).to_tag()
             };
             tags.push(thumb_tag);
         }
@@ -1039,12 +1038,14 @@ impl EventBuilder {
         let mut tags = Vec::with_capacity(1);
 
         // Add identity tag
-        tags.push(Tag::from_standardized(TagStandard::Coordinate {
-            coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.pubkey)
-                .identifier(badge_id),
-            relay_url: None,
-            uppercase: false,
-        }));
+        tags.push(
+            Nip01Tag::Coordinate {
+                coordinate: Coordinate::new(Kind::BadgeDefinition, badge_definition.pubkey)
+                    .identifier(badge_id),
+                relay_hint: None,
+            }
+            .to_tag(),
+        );
 
         // Add awarded public keys
         tags.extend(awarded_public_keys.into_iter().map(Tag::public_key));
@@ -1071,8 +1072,8 @@ impl EventBuilder {
         }
 
         for award in badge_awards.iter() {
-            if !award.tags.iter().any(|t| match t.standardized() {
-                Some(TagStandard::PublicKey { public_key, .. }) => public_key == *pubkey_awarded,
+            if !award.tags.iter().any(|t| match Nip01Tag::try_from(t) {
+                Ok(Nip01Tag::PublicKey { public_key, .. }) => public_key == *pubkey_awarded,
                 _ => false,
             }) {
                 return Err(Error::NIP58(nip58::Error::BadgeAwardsLackAwardedPublicKey));
@@ -1095,12 +1096,13 @@ impl EventBuilder {
         let badge_awards_identifiers = badge_awards.iter().filter_map(|event| {
             let (_, relay_url) =
                 nip58::extract_awarded_public_key(event.tags.as_slice(), *pubkey_awarded)?;
-            let (id, a_tag) = event.tags.iter().find_map(|t| match t.standardized() {
-                Some(TagStandard::Coordinate { coordinate, .. }) => {
-                    Some((coordinate.identifier, t))
-                }
-                _ => None,
-            })?;
+            let (id, a_tag) = event
+                .tags
+                .iter()
+                .find_map(|t| match Nip01Tag::try_from(t) {
+                    Ok(Nip01Tag::Coordinate { coordinate, .. }) => Some((coordinate.identifier, t)),
+                    _ => None,
+                })?;
             Some((event, id, a_tag, relay_url))
         });
 
@@ -1115,10 +1117,12 @@ impl EventBuilder {
                 ((_, identifier), (badge_award_event, badge_id, a_tag, relay_url))
                     if badge_id == identifier =>
                 {
-                    let badge_award_event_tag: Tag = Tag::from_standardized(TagStandard::Event {
-                        event_id: badge_award_event.id,
-                        relay_url: relay_url.clone(),
-                    });
+                    let badge_award_event_tag: Tag = Nip01Tag::Event {
+                        id: badge_award_event.id,
+                        relay_hint: relay_url.clone(),
+                        public_key: None,
+                    }
+                    .into();
                     tags.extend_from_slice(&[a_tag.clone(), badge_award_event_tag]);
                 }
                 _ => {}
