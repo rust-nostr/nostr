@@ -2,17 +2,25 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP39: External Identities in Profiles
+//! NIP-39: External Identities in Profiles
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/39.md>
 
 use alloc::string::{String, ToString};
+use alloc::vec;
 use core::fmt;
 use core::str::FromStr;
 
-/// NIP56 error
+use super::util::take_string;
+use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+
+const IDENTITY: &str = "i";
+
+/// NIP-39 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    /// Codec error
+    Codec(TagCodecError),
     /// Invalid identity
     InvalidIdentity,
 }
@@ -22,8 +30,15 @@ impl core::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Codec(e) => e.fmt(f),
             Self::InvalidIdentity => f.write_str("Invalid identity tag"),
         }
+    }
+}
+
+impl From<TagCodecError> for Error {
+    fn from(e: TagCodecError) -> Self {
+        Self::Codec(e)
     }
 }
 
@@ -105,7 +120,101 @@ impl Identity {
     }
 
     #[inline]
-    pub(crate) fn tag_platform_identity(&self) -> String {
+    fn tag_platform_identity(&self) -> String {
         format!("{}:{}", self.platform, self.ident)
+    }
+}
+
+/// Standardized NIP-39 tags
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/39.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Nip39Tag {
+    /// `i` tag
+    Identity(Identity),
+}
+
+impl TagCodec for Nip39Tag {
+    type Error = Error;
+
+    fn parse<I, S>(tag: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let mut iter = tag.into_iter();
+        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+
+        match kind.as_ref() {
+            IDENTITY => {
+                let platform_ident: String = take_string(&mut iter, "identity")?;
+                let proof: String = take_string(&mut iter, "proof")?;
+
+                Ok(Self::Identity(Identity::new(platform_ident, proof)?))
+            }
+            _ => Err(TagCodecError::Unknown.into()),
+        }
+    }
+
+    fn to_tag(&self) -> Tag {
+        match self {
+            Self::Identity(identity) => Tag::new(vec![
+                String::from(IDENTITY),
+                identity.tag_platform_identity(),
+                identity.proof.clone(),
+            ]),
+        }
+    }
+}
+
+impl_tag_codec_conversions!(Nip39Tag);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_identity_tag() {
+        let parsed =
+            Nip39Tag::parse(["i", "github:semisol", "9721ce4ee4fceb91c9711ca2a6c9a5ab"]).unwrap();
+
+        assert_eq!(
+            parsed,
+            Nip39Tag::Identity(Identity {
+                platform: ExternalIdentity::GitHub,
+                ident: String::from("semisol"),
+                proof: String::from("9721ce4ee4fceb91c9711ca2a6c9a5ab"),
+            })
+        );
+        assert_eq!(
+            parsed.to_tag(),
+            Tag::parse(["i", "github:semisol", "9721ce4ee4fceb91c9711ca2a6c9a5ab",]).unwrap()
+        );
+    }
+
+    #[test]
+    fn test_identity_tag_with_extra_values() {
+        let parsed = Nip39Tag::parse([
+            "i",
+            "twitter:semisol_public",
+            "1619358434134196225",
+            "extra",
+        ])
+        .unwrap();
+
+        assert_eq!(
+            parsed,
+            Nip39Tag::Identity(Identity {
+                platform: ExternalIdentity::Twitter,
+                ident: String::from("semisol_public"),
+                proof: String::from("1619358434134196225"),
+            })
+        );
+    }
+
+    #[test]
+    fn test_identity_tag_missing_proof() {
+        let err = Nip39Tag::parse(["i", "github:semisol"]).unwrap_err();
+        assert_eq!(err, Error::Codec(TagCodecError::Missing("proof")));
     }
 }
