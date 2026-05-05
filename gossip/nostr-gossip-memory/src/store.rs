@@ -6,10 +6,11 @@ use std::num::NonZeroUsize;
 
 use indexmap::IndexMap;
 use lru::LruCache;
+use nostr::nips::nip01::Nip01Tag;
 use nostr::nips::nip17;
 use nostr::nips::nip65::{self, RelayMetadata};
 use nostr::util::BoxedFuture;
-use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Timestamp};
+use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, Timestamp};
 use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{
@@ -125,16 +126,19 @@ impl NostrGossipMemory {
             }
             // Extract hints
             _ => {
-                for tag in event.tags.filter_standardized(TagKind::p()) {
-                    if let TagStandard::PublicKey {
+                for tag in event
+                    .tags
+                    .filter(TagKind::p())
+                    .filter_map(|t| Nip01Tag::try_from(t).ok())
+                {
+                    if let Nip01Tag::PublicKey {
                         public_key,
-                        relay_url: Some(relay_url),
-                        ..
+                        relay_hint: Some(relay_hint),
                     } = tag
                     {
                         let pk_data: &mut PkData =
                             public_keys.get_or_insert_mut(public_key, PkData::default);
-                        update_relay_per_user(pk_data, relay_url.clone(), GossipFlags::HINT);
+                        update_relay_per_user(pk_data, relay_hint, GossipFlags::HINT);
                     }
                 }
             }

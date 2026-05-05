@@ -530,16 +530,16 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/03.md>
     #[cfg(feature = "nip03")]
-    pub fn opentimestamps(event_id: EventId, relay_url: Option<RelayUrl>) -> Result<Self, Error> {
+    pub fn opentimestamps(event_id: EventId, relay_hint: Option<RelayUrl>) -> Result<Self, Error> {
         let ots: String = nostr_ots::timestamp_event(&event_id.to_hex())?;
-        Ok(
-            Self::new(Kind::OpenTimestamps, ots).tags([Tag::from_standardized(
-                TagStandard::Event {
-                    event_id,
-                    relay_url,
-                },
-            )]),
-        )
+        Ok(Self::new(Kind::OpenTimestamps, ots).tag(
+            Nip01Tag::Event {
+                id: event_id,
+                relay_hint,
+                public_key: None,
+            }
+            .to_tag(),
+        ))
     }
 
     /// Repost
@@ -811,19 +811,19 @@ impl EventBuilder {
         live_event_id: S,
         live_event_host: PublicKey,
         content: S,
-        relay_url: Option<RelayUrl>,
+        relay_hint: Option<RelayUrl>,
     ) -> Self
     where
         S: Into<String>,
     {
-        Self::new(Kind::LiveEventMessage, content).tag(Tag::from_standardized(
-            TagStandard::Coordinate {
+        Self::new(Kind::LiveEventMessage, content).tag(
+            Nip01Tag::Coordinate {
                 coordinate: Coordinate::new(Kind::LiveEvent, live_event_host)
                     .identifier(live_event_id),
-                relay_url,
-                uppercase: false,
-            },
-        ))
+                relay_hint,
+            }
+            .to_tag(),
+        )
     }
 
     /// Reporting
@@ -2207,12 +2207,12 @@ mod tests {
         assert_eq!(
             repost
                 .tags
-                .find_standardized(TagKind::single_letter(Alphabet::A, false))
+                .find(TagKind::single_letter(Alphabet::A, false))
+                .and_then(|t| Nip01Tag::try_from(t).ok())
                 .unwrap(),
-            TagStandard::Coordinate {
+            Nip01Tag::Coordinate {
                 coordinate: Coordinate::new(replaceable.kind, replaceable.pubkey),
-                relay_url: None,
-                uppercase: false
+                relay_hint: None,
             }
         );
     }
@@ -2232,13 +2232,13 @@ mod tests {
         assert_eq!(
             repost
                 .tags
-                .find_standardized(TagKind::single_letter(Alphabet::A, false))
+                .find(TagKind::single_letter(Alphabet::A, false))
+                .and_then(|t| Nip01Tag::try_from(t).ok())
                 .unwrap(),
-            TagStandard::Coordinate {
+            Nip01Tag::Coordinate {
                 coordinate: Coordinate::new(addressable.kind, addressable.pubkey)
                     .identifier("lorem"),
-                relay_url: None,
-                uppercase: false
+                relay_hint: None,
             }
         );
     }

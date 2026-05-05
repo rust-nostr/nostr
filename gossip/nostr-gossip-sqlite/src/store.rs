@@ -5,10 +5,11 @@ use std::collections::{BTreeSet, HashSet};
 use std::num::NonZeroUsize;
 use std::path::Path;
 
+use nostr::nips::nip01::Nip01Tag;
 use nostr::nips::nip17;
 use nostr::nips::nip65::{self, RelayMetadata};
 use nostr::util::BoxedFuture;
-use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, TagStandard, Timestamp};
+use nostr::{Event, Kind, PublicKey, RelayUrl, TagKind, Timestamp};
 use nostr_gossip::error::GossipError;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{
@@ -556,11 +557,14 @@ where
 }
 
 fn update_hints(tx: &Transaction<'_>, event: &Event) -> Result<(), Error> {
-    for tag in event.tags.filter_standardized(TagKind::p()) {
-        if let TagStandard::PublicKey {
+    for tag in event
+        .tags
+        .filter(TagKind::p())
+        .filter_map(|t| Nip01Tag::try_from(t).ok())
+    {
+        if let Nip01Tag::PublicKey {
             public_key,
-            relay_url: Some(relay_url),
-            ..
+            relay_hint: Some(relay_url),
         } = tag
         {
             let p_tag_pk_id: i32 = get_or_save_public_key(tx, &public_key)?;

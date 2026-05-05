@@ -95,11 +95,10 @@ macro_rules! gossip_unit_tests {
 
             let keys = Keys::generate();
             let event = EventBuilder::text_note("test")
-                .tag(Tag::from_standardized(
-                    TagStandard::PublicKey {
+                .tag(Tag::from(
+                    Nip01Tag::PublicKey {
                         public_key,
-                        relay_url: Some(relay_url.clone()),
-                        uppercase: false,
+                        relay_hint: Some(relay_url.clone()),
                     },
                 ))
                 .sign_with_keys(&keys)

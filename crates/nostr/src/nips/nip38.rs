@@ -82,7 +82,7 @@ impl From<LiveStatus> for Vec<Tag> {
         }
 
         if let Some(content) = reference {
-            tags.push(Tag::reference(content));
+            tags.push(Tag::new(vec![String::from("r"), content]));
         }
 
         tags

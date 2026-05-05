@@ -28,7 +28,7 @@ use super::{Error, Tag};
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip42::Nip42Tag;
-use crate::{EventId, PublicKey, SingleLetterTag, TagKind, TagStandard, Timestamp};
+use crate::{EventId, PublicKey, SingleLetterTag, TagKind, Timestamp};
 
 /// Tags Indexes
 pub type TagsIndexes = BTreeMap<SingleLetterTag, BTreeSet<String>>;
@@ -383,25 +383,10 @@ impl Tags {
         self.list.iter().find(|t| t.kind() == kind)
     }
 
-    /// Get the first tag that match [`TagKind`] and that is standardized.
-    #[inline]
-    pub fn find_standardized(&self, kind: TagKind) -> Option<TagStandard> {
-        self.find(kind).and_then(|t| t.standardized())
-    }
-
     /// Filter tags that match [`TagKind`].
     #[inline]
     pub fn filter<'a>(&'a self, kind: TagKind<'a>) -> impl Iterator<Item = &'a Tag> {
         self.list.iter().filter(move |t| t.kind() == kind)
-    }
-
-    /// Get the first tag that match [`TagKind`] and that is standardized.
-    #[inline]
-    pub fn filter_standardized<'a>(
-        &'a self,
-        kind: TagKind<'a>,
-    ) -> impl Iterator<Item = TagStandard> + 'a {
-        self.filter(kind).filter_map(|t| t.standardized())
     }
 
     /// Get as slice of tags
@@ -478,15 +463,9 @@ impl Tags {
     }
 
     /// Extract hashtags from `t` tags.
-    ///
-    /// This method extract only [`TagStandard::Hashtag`] variant.
     #[inline]
-    pub fn hashtags(&self) -> impl Iterator<Item = String> + '_ {
-        self.filter_standardized(TagKind::t())
-            .filter_map(|t| match t {
-                TagStandard::Hashtag(hashtag) => Some(hashtag),
-                _ => None,
-            })
+    pub fn hashtags(&self) -> impl Iterator<Item = &str> + '_ {
+        self.filter(TagKind::t()).filter_map(|t| t.content())
     }
 
     fn build_indexes(&self) -> TagsIndexes {
@@ -611,16 +590,16 @@ mod tests {
             EventId::from_hex("2be17aa3031bdcb006f0fce80c146dea9c1c0268b0af2398bb673365c6444d45")
                 .unwrap();
 
-        let long_p_tag_1 = Tag::from_standardized(TagStandard::PublicKey {
+        let long_p_tag_1 = Nip01Tag::PublicKey {
             public_key: pubkey1,
-            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-            uppercase: false,
-        });
+            relay_hint: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+        };
 
-        let long_e_tag_2 = Tag::from_standardized(TagStandard::Event {
-            event_id: event2,
-            relay_url: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
-        });
+        let long_e_tag_2 = Nip01Tag::Event {
+            id: event2,
+            relay_hint: Some(RelayUrl::parse("wss://relay.damus.io").unwrap()),
+            public_key: None,
+        };
 
         let empty_list: Vec<String> = Vec::new();
 
@@ -634,10 +613,10 @@ mod tests {
             Tag::identifier("test"),
             Tag::alt("testing deduplication"),
             Tag::alt("test"),
-            long_e_tag_2.clone(),
+            long_e_tag_2.to_tag(),
             Tag::event(event2),
             Tag::protected(),
-            long_p_tag_1.clone(),
+            long_p_tag_1.to_tag(),
             Tag::public_key(pubkey2),
             Tag::identifier("test"),
         ];
@@ -648,10 +627,10 @@ mod tests {
         let expected = vec![
             Tag::protected(),
             Tag::custom(TagKind::p(), empty_list), // Non standard p tag
-            long_p_tag_1,
+            long_p_tag_1.to_tag(),
             Tag::public_key(pubkey2),
             Tag::event(event1),
-            long_e_tag_2,
+            long_e_tag_2.to_tag(),
             Tag::identifier("test"),
             Tag::alt("testing deduplication"),
             Tag::alt("test"),

@@ -9,6 +9,7 @@
 //! <https://github.com/nostr-protocol/nips/blob/master/35.md>
 
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::Vec;
 
 use hashes::sha1::Hash as Sha1Hash;
@@ -54,7 +55,7 @@ impl Torrent {
                 + self.hashtags.len(),
         );
 
-        tags.push(Tag::title(self.title));
+        tags.push(Tag::new(vec![String::from("title"), self.title]));
 
         tags.push(Tag::custom(TagKind::x(), [self.info_hash.to_string()]));
 

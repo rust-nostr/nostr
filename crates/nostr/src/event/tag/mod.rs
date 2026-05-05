@@ -5,6 +5,7 @@
 //! Tag
 
 use alloc::string::{String, ToString};
+use alloc::vec;
 use alloc::vec::{IntoIter, Vec};
 use core::cmp::Ordering;
 use core::fmt;
@@ -20,22 +21,19 @@ pub mod cow;
 mod error;
 pub mod kind;
 pub mod list;
-pub mod standard;
 
 pub use self::codec::*;
 pub use self::cow::CowTag;
 pub use self::error::Error;
 pub use self::kind::TagKind;
 pub use self::list::Tags;
-pub use self::standard::TagStandard;
 use super::id::EventId;
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip13::Nip13Tag;
 use crate::nips::nip31::Nip31Tag;
 use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip70::Nip70Tag;
-use crate::types::Url;
-use crate::{ImageDimensions, PublicKey, RelayUrl, SingleLetterTag, Timestamp};
+use crate::{PublicKey, RelayUrl, SingleLetterTag, Timestamp};
 
 /// Tag
 #[derive(Clone)]
@@ -119,12 +117,6 @@ impl Tag {
         Ok(Self::new(tag))
     }
 
-    /// Construct from standardized tag
-    #[inline]
-    pub fn from_standardized(standardized: TagStandard) -> Self {
-        Self::new(standardized.to_vec())
-    }
-
     /// Get tag kind
     #[inline]
     pub fn kind(&self) -> TagKind<'_> {
@@ -146,12 +138,6 @@ impl Tag {
             TagKind::SingleLetter(s) => Some(s),
             _ => None,
         }
-    }
-
-    /// Attempt to parse as a standardized tag
-    #[inline]
-    pub fn standardized(&self) -> Option<TagStandard> {
-        TagStandard::parse(self.as_slice()).ok()
     }
 
     /// Get tag len
@@ -310,25 +296,6 @@ impl Tag {
         Nip40Tag::Expiration(timestamp).to_tag()
     }
 
-    /// Relay url
-    ///
-    /// JSON: `["relay", "<relay-url>"]`
-    #[inline]
-    pub fn relay(url: RelayUrl) -> Self {
-        Self::from_standardized(TagStandard::Relay(url))
-    }
-
-    /// Relay URLs
-    ///
-    /// JSON: `["relays", "<relay-url>", "<relay-url>"]`
-    #[inline]
-    pub fn relays<I>(urls: I) -> Self
-    where
-        I: IntoIterator<Item = RelayUrl>,
-    {
-        Self::from_standardized(TagStandard::Relays(urls.into_iter().collect()))
-    }
-
     /// Compose `["t", "<hashtag>"]` tag
     ///
     /// This will convert the hashtag to lowercase.
@@ -337,40 +304,7 @@ impl Tag {
     where
         T: AsRef<str>,
     {
-        Self::from_standardized(TagStandard::Hashtag(hashtag.as_ref().to_lowercase()))
-    }
-
-    /// Compose `["r", "<value>"]` tag
-    #[inline]
-    pub fn reference<T>(reference: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self::from_standardized(TagStandard::Reference(reference.into()))
-    }
-
-    /// Compose `["title", "<title>"]` tag
-    #[inline]
-    pub fn title<T>(title: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self::from_standardized(TagStandard::Title(title.into()))
-    }
-
-    /// Compose image tag
-    #[inline]
-    pub fn image(url: Url, dimensions: Option<ImageDimensions>) -> Self {
-        Self::from_standardized(TagStandard::Image(url, dimensions))
-    }
-
-    /// Compose `["description", "<description>"]` tag
-    #[inline]
-    pub fn description<T>(description: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Self::from_standardized(TagStandard::Description(description.into()))
+        Self::new(vec![String::from("t"), hashtag.as_ref().to_lowercase()])
     }
 
     /// Protected event
@@ -450,12 +384,6 @@ impl<'de> Deserialize<'de> for Tag {
         type Data = Vec<String>;
         let tag: Data = Data::deserialize(deserializer)?;
         Self::parse(tag).map_err(DeserializerError::custom)
-    }
-}
-
-impl From<TagStandard> for Tag {
-    fn from(standard: TagStandard) -> Self {
-        Self::from_standardized(standard)
     }
 }
 
