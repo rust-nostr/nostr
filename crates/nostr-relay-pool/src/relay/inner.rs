@@ -1182,16 +1182,19 @@ impl InnerRelay {
                 }
             }
 
-            // Check if the filter matches the event
-            for filter in filters.iter() {
-                if !filter.match_event(&event, MATCH_EVENT_OPTS) {
-                    // Ban the relay
-                    if self.opts.ban_relay_on_mismatch {
-                        self.ban();
-                    }
-
-                    return Err(Error::EventNotMatchFilter);
+            // NIP-01 treats multiple filters in the same REQ as OR: an event is
+            // valid for the subscription if it matches at least one filter. Requiring every
+            // filter to match would reject valid events and may incorrectly ban the relay.
+            if !filters
+                .iter()
+                .any(|f| f.match_event(&event, MATCH_EVENT_OPTS))
+            {
+                // Ban the relay
+                if self.opts.ban_relay_on_mismatch {
+                    self.ban();
                 }
+
+                return Err(Error::EventNotMatchFilter);
             }
         }
 
