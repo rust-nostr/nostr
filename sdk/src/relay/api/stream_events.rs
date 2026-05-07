@@ -161,10 +161,14 @@ impl Stream for SubscriptionActivityEventStream {
 mod tests {
     use std::time::Duration;
 
+    use futures::StreamExt;
+    use nostr::event::EventBuilder;
+    use nostr::key::Keys;
     use nostr::{Filter, Kind, SubscriptionId};
     use nostr_relay_builder::MockRelay;
 
     use super::*;
+    use crate::relay::{Relay, RelayOptions};
 
     #[tokio::test]
     async fn test_stream_terminates_on_drop() {
@@ -203,5 +207,76 @@ mod tests {
         // Now the subscription must not exist anymore
         let exists: bool = relay.subscription(&id).await.is_some();
         assert!(!exists);
+    }
+
+    #[tokio::test]
+    async fn test_stream_with_subscription_verification_single_filter() {
+        let keys = Keys::generate();
+        let event = EventBuilder::text_note("test")
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        mock.add_event(event.clone()).await.unwrap();
+
+        let opts = RelayOptions::default()
+            .verify_subscriptions(true)
+            .ban_relay_on_mismatch(true);
+        let relay = Relay::builder(url).opts(opts).build();
+
+        relay.connect();
+
+        let filter = Filter::new().author(event.pubkey).kind(Kind::TextNote);
+
+        let mut stream = relay
+            .stream_events(filter)
+            .timeout(Duration::from_secs(3))
+            .await
+            .unwrap();
+
+        let streamed_event = stream
+            .next()
+            .await
+            .expect("Received None instead of the event")
+            .unwrap();
+        assert_eq!(streamed_event.id, event.id);
+    }
+
+    #[tokio::test]
+    async fn test_stream_with_subscription_verification_multiple_filters() {
+        let keys = Keys::generate();
+        let event = EventBuilder::text_note("test")
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        mock.add_event(event.clone()).await.unwrap();
+
+        let opts = RelayOptions::default()
+            .verify_subscriptions(true)
+            .ban_relay_on_mismatch(true);
+        let relay = Relay::builder(url).opts(opts).build();
+
+        relay.connect();
+
+        let matching_filter = Filter::new().author(event.pubkey).kind(Kind::TextNote);
+        let non_matching_filter = Filter::new().author(event.pubkey).kind(Kind::Repost);
+
+        let mut stream = relay
+            .stream_events([matching_filter, non_matching_filter])
+            .timeout(Duration::from_secs(3))
+            .await
+            .unwrap();
+
+        let streamed_event = stream
+            .next()
+            .await
+            .expect("Received None instead of the event")
+            .unwrap();
+        assert_eq!(streamed_event.id, event.id);
     }
 }

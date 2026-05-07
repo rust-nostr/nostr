@@ -1182,16 +1182,19 @@ impl InnerRelay {
                 }
             }
 
-            // Check if the filter matches the event
-            for filter in filters.iter() {
-                if !filter.match_event(&event, MATCH_EVENT_OPTS) {
-                    // Ban the relay
-                    if self.opts.ban_relay_on_mismatch {
-                        self.ban();
-                    }
-
-                    return Err(Error::EventNotMatchFilter);
+            // NIP-01 treats multiple filters in the same REQ as OR: an event is
+            // valid for the subscription if it matches at least one filter. Requiring every
+            // filter to match would reject valid events and may incorrectly ban the relay.
+            if !filters
+                .iter()
+                .any(|f| f.match_event(&event, MATCH_EVENT_OPTS))
+            {
+                // Ban the relay
+                if self.opts.ban_relay_on_mismatch {
+                    self.ban();
                 }
+
+                return Err(Error::EventNotMatchFilter);
             }
         }
 
@@ -1770,6 +1773,64 @@ async fn close_ws(tx: &mut WebSocketSink) -> Result<(), Error> {
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
         Some(res) => Ok(res?),
         None => Err(Error::Timeout),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use nostr::{EventBuilder, Filter, Keys, Kind, RelayUrl, SubscriptionId};
+
+    use super::*;
+    use crate::relay::{Relay, RelayOptions};
+
+    #[tokio::test]
+    async fn test_subscription_verification_accepts_event_matching_any_filter() {
+        let keys = Keys::generate();
+        let event = EventBuilder::text_note("test")
+            .sign_with_keys(&keys)
+            .unwrap();
+
+        let filter = Filter::new().kind(Kind::TextNote).since(event.created_at);
+        let matching_filter = filter.clone().author(event.pubkey);
+        let non_matching_filter = filter.pubkey(event.pubkey);
+
+        assert!(matching_filter.match_event(&event, MATCH_EVENT_OPTS));
+        assert!(!non_matching_filter.match_event(&event, MATCH_EVENT_OPTS));
+
+        let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let opts = RelayOptions::default()
+            .verify_subscriptions(true)
+            .ban_relay_on_mismatch(true);
+        let relay = Relay::builder(url).opts(opts).build();
+
+        // Manually add the subscription
+        let subscription_id = SubscriptionId::new("test");
+        relay
+            .inner
+            .update_subscription(
+                subscription_id.clone(),
+                vec![matching_filter, non_matching_filter],
+                true,
+            )
+            .await;
+
+        // Handle manually the event message
+        let message = relay
+            .inner
+            .handle_event_msg(subscription_id.clone(), event.clone())
+            .await
+            .unwrap();
+
+        match message {
+            Some(RelayMessage::Event {
+                subscription_id: received_subscription_id,
+                event: received_event,
+            }) => {
+                assert_eq!(received_subscription_id.as_ref(), &subscription_id);
+                assert_eq!(received_event.id, event.id);
+            }
+            other => panic!("unexpected message: {other:?}"),
+        }
     }
 }
 

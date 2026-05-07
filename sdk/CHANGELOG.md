@@ -93,6 +93,10 @@
 - Add gossip background refresher (https://github.com/rust-nostr/nostr/pull/1260)
 - Add `AdmitPolicy::admit_relay` (https://github.com/rust-nostr/nostr/pull/1339)
 
+### Fixed
+
+- Fix subscription verification for multi-filter REQs (https://github.com/rust-nostr/nostr/pull/1349)
+
 ## v0.44.1 - 2025/11/09
 
 ### Fixed
