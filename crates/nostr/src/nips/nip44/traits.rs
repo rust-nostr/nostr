@@ -10,7 +10,7 @@ use crate::key::PublicKey;
 use crate::util::BoxedFuture;
 
 /// Synchronous NIP-44
-pub trait Nip44: Any + Debug {
+pub trait Nip44: Any + Debug + Send + Sync {
     /// NIP-44 error
     type Error: core::error::Error;
 

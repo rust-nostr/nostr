@@ -157,13 +157,13 @@ where
 }
 
 /// Get public key
-pub trait GetPublicKey: Any + Debug {
+pub trait GetPublicKey: Any + Debug + Send + Sync {
     /// Get signer public key
     fn get_public_key(&self) -> Result<PublicKey, SignerError>;
 }
 
 /// Sign event
-pub trait SignEvent: Any + Debug {
+pub trait SignEvent: Any + Debug + Send + Sync {
     /// Sign an unsigned event
     fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError>;
 }
@@ -178,7 +178,7 @@ pub trait NostrSigner:
 
 impl<T> GetPublicKey for T
 where
-    T: AsRef<dyn NostrSigner> + Debug + 'static,
+    T: AsRef<dyn NostrSigner> + Debug + Send + Sync + 'static,
 {
     #[inline]
     fn get_public_key(&self) -> Result<PublicKey, SignerError> {
@@ -188,7 +188,7 @@ where
 
 impl<T> SignEvent for T
 where
-    T: AsRef<dyn NostrSigner> + Debug + 'static,
+    T: AsRef<dyn NostrSigner> + Debug + Send + Sync + 'static,
 {
     #[inline]
     fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
@@ -198,7 +198,7 @@ where
 
 impl<T> Nip04 for T
 where
-    T: AsRef<dyn NostrSigner> + Debug + 'static,
+    T: AsRef<dyn NostrSigner> + Debug + Send + Sync + 'static,
 {
     type Error = SignerError;
 
@@ -219,7 +219,7 @@ where
 
 impl<T> Nip44 for T
 where
-    T: AsRef<dyn NostrSigner> + Debug + 'static,
+    T: AsRef<dyn NostrSigner> + Debug + Send + Sync + 'static,
 {
     type Error = SignerError;
 
