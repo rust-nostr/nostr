@@ -513,7 +513,7 @@ pub mod tests {
         .build(PublicKey::from_slice(&[0; 32]).unwrap());
 
         let unsigned = unsigned
-            .mine(TestAdapter, NonZeroU8::new(2).unwrap())
+            .mine(&TestAdapter, NonZeroU8::new(2).unwrap())
             .unwrap();
 
         let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {
@@ -557,7 +557,7 @@ pub mod tests {
         .build(PublicKey::from_slice(&[0; 32]).unwrap());
 
         let unsigned = unsigned
-            .mine_async(AsyncTestAdapter, NonZeroU8::new(2).unwrap())
+            .mine_async(&AsyncTestAdapter, NonZeroU8::new(2).unwrap())
             .await
             .unwrap();
 

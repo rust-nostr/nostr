@@ -142,7 +142,7 @@ pub mod tests {
             .build(PublicKey::from_slice(&[0; 32]).unwrap());
 
         let unsigned = unsigned
-            .mine(MultiThreadPow, NonZeroU8::new(2).unwrap())
+            .mine(&MultiThreadPow, NonZeroU8::new(2).unwrap())
             .unwrap();
 
         let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {

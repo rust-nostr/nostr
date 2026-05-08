@@ -15,11 +15,13 @@ fn main() -> Result<()> {
     // Build unsigned event
     let unsigned: UnsignedEvent = EventBuilder::text_note(msg_content).build(keys.public_key);
 
-    // Compute POW
     #[cfg(not(feature = "pow-multi-thread"))]
-    let unsigned = unsigned.mine(SingleThreadPow, difficulty)?;
+    let adapter = SingleThreadPow;
     #[cfg(feature = "pow-multi-thread")]
-    let unsigned = unsigned.mine(MultiThreadPow, difficulty)?;
+    let adapter = MultiThreadPow;
+
+    // Compute POW
+    let unsigned: UnsignedEvent = unsigned.mine(&adapter, difficulty)?;
 
     // Sign event
     let event: Event = unsigned.sign_with_keys(&keys)?;

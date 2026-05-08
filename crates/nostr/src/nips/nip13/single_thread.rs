@@ -98,7 +98,7 @@ pub mod tests {
 
         // Mine the event
         let unsigned = unsigned
-            .mine(SingleThreadPow, NonZeroU8::new(2).unwrap())
+            .mine(&SingleThreadPow, NonZeroU8::new(2).unwrap())
             .unwrap();
 
         let Some(nonce_tag) = unsigned.tags.find(TagKind::Nonce) else {

@@ -113,7 +113,7 @@ impl UnsignedEvent {
 
     /// Mine an unsigned event synchronously
     #[inline]
-    pub fn mine<T>(self, adapter: T, difficulty: NonZeroU8) -> Result<Self, T::Error>
+    pub fn mine<T>(self, adapter: &T, difficulty: NonZeroU8) -> Result<Self, T::Error>
     where
         T: PowAdapter,
     {
@@ -122,7 +122,7 @@ impl UnsignedEvent {
 
     /// Mine an unsigned event asynchronously
     #[inline]
-    pub async fn mine_async<T>(self, adapter: T, difficulty: NonZeroU8) -> Result<Self, T::Error>
+    pub async fn mine_async<T>(self, adapter: &T, difficulty: NonZeroU8) -> Result<Self, T::Error>
     where
         T: AsyncPowAdapter,
     {
