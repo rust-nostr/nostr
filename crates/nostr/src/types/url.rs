@@ -152,6 +152,36 @@ impl RelayUrl {
         self.scheme
     }
 
+    /// Check if the host is localhost.
+    ///
+    /// Returns `true` for the `localhost` domain and loopback IP addresses.
+    /// Private network addresses, such as `10.0.0.0/8` or `192.168.0.0/16`,
+    /// are not considered localhost. Use [`Self::is_local_addr`] to check for
+    /// local network addresses.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use nostr::types::url::RelayUrl;
+    /// let url = RelayUrl::parse("ws://localhost:7777").unwrap();
+    /// assert!(url.is_localhost());
+    ///
+    /// let url = RelayUrl::parse("ws://127.0.0.1:7777").unwrap();
+    /// assert!(url.is_localhost());
+    ///
+    /// let url = RelayUrl::parse("ws://192.168.1.10:7777").unwrap();
+    /// assert!(!url.is_localhost());
+    /// ```
+    #[inline]
+    pub fn is_localhost(&self) -> bool {
+        match self.url.host() {
+            Some(Host::Domain(host)) => host == "localhost",
+            Some(Host::Ipv4(host)) => host.is_loopback(),
+            Some(Host::Ipv6(host)) => host.is_loopback(),
+            None => false,
+        }
+    }
+
     /// Check if the host is a local network address.
     ///
     /// IPv4 address ranges:
@@ -430,6 +460,31 @@ mod tests {
         let serialized = serde_json::to_string(&relay_url).unwrap();
         let deserialized: RelayUrl = serde_json::from_str(&serialized).unwrap();
         assert_eq!(relay_url, deserialized);
+    }
+
+    #[test]
+    fn test_is_localhost() {
+        // Localhost
+        let url = RelayUrl::parse("ws://localhost:7777").unwrap();
+        assert!(url.is_localhost());
+        let url = RelayUrl::parse("ws://LOCALHOST:7777").unwrap();
+        assert!(url.is_localhost());
+        let url = RelayUrl::parse("ws://127.0.0.1:7777").unwrap();
+        assert!(url.is_localhost());
+        let url = RelayUrl::parse("ws://127.1.2.3:7777").unwrap();
+        assert!(url.is_localhost());
+        let url = RelayUrl::parse("ws://[::1]:7777").unwrap();
+        assert!(url.is_localhost());
+
+        // Non localhost
+        let url = RelayUrl::parse("ws://10.10.10.10:7777").unwrap();
+        assert!(!url.is_localhost());
+        let url = RelayUrl::parse("ws://192.168.1.10:7777").unwrap();
+        assert!(!url.is_localhost());
+        let url = RelayUrl::parse("ws://localhost.example:7777").unwrap();
+        assert!(!url.is_localhost());
+        let url = RelayUrl::parse("wss://relay.damus.io").unwrap();
+        assert!(!url.is_localhost());
     }
 
     #[test]
