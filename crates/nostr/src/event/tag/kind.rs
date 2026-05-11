@@ -69,6 +69,10 @@ pub enum TagKind<'a> {
     Emoji,
     /// Encrypted
     Encrypted,
+    /// End (singular, NIP-52)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+    End,
     /// Ends
     Ends,
     /// Expiration
@@ -83,6 +87,10 @@ pub enum TagKind<'a> {
     File,
     /// Image
     Image,
+    /// Location
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+    Location,
     /// License of the shared content
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
@@ -147,6 +155,10 @@ pub enum TagKind<'a> {
     Server,
     /// Size of the file in bytes
     Size,
+    /// Start (singular, NIP-52)
+    ///
+    /// <https://github.com/nostr-protocol/nips/blob/master/52.md>
+    Start,
     /// Starts
     Starts,
     /// Status
@@ -336,12 +348,14 @@ impl<'a> TagKind<'a> {
             Self::Dim => "dim",
             Self::Emoji => "emoji",
             Self::Encrypted => "encrypted",
+            Self::End => "end",
             Self::Ends => "ends",
             Self::Expiration => "expiration",
             Self::Extension => "extension",
             Self::File => "file",
             Self::Head => "HEAD",
             Self::Image => "image",
+            Self::Location => "location",
             Self::License => "license",
             Self::Lnurl => "lnurl",
             Self::Magnet => "magnet",
@@ -369,6 +383,7 @@ impl<'a> TagKind<'a> {
             Self::Runtime => "runtime",
             Self::Server => "server",
             Self::Size => "size",
+            Self::Start => "start",
             Self::Starts => "starts",
             Self::Status => "status",
             Self::Streaming => "streaming",
@@ -415,11 +430,13 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "dim" => Self::Dim,
             "emoji" => Self::Emoji,
             "encrypted" => Self::Encrypted,
+            "end" => Self::End,
             "ends" => Self::Ends,
             "expiration" => Self::Expiration,
             "extension" => Self::Extension,
             "file" => Self::File,
             "image" => Self::Image,
+            "location" => Self::Location,
             "license" => Self::License,
             "lnurl" => Self::Lnurl,
             "magnet" => Self::Magnet,
@@ -447,6 +464,7 @@ impl<'a> From<&'a str> for TagKind<'a> {
             "HEAD" => Self::Head,
             "server" => Self::Server,
             "size" => Self::Size,
+            "start" => Self::Start,
             "starts" => Self::Starts,
             "status" => Self::Status,
             "streaming" => Self::Streaming,
