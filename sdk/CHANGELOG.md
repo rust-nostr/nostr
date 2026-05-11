@@ -59,6 +59,7 @@
 - Remove `Event::is_expired_with_supplier` (https://github.com/rust-nostr/nostr/pull/1266)
 - Remove `Timestamp::now_with_supplier` and `Timestamp::tweaked_with_supplier_and_rng` (https://github.com/rust-nostr/nostr/pull/1266)
 - Box `RelayMessage` in `RelayNotification` and `ClientNotification` (https://github.com/rust-nostr/nostr/pull/1299)
+- Replace `Connection` and `ConnectionTarget` with `Proxy` (https://github.com/rust-nostr/nostr/pull/1351)
 
 ### Changed
 
@@ -92,6 +93,7 @@
 - Add `AdmitPolicy::admit_auth` to control relay authentication (https://github.com/rust-nostr/nostr/pull/1218)
 - Add gossip background refresher (https://github.com/rust-nostr/nostr/pull/1260)
 - Add `AdmitPolicy::admit_relay` (https://github.com/rust-nostr/nostr/pull/1339)
+- Add `Proxy` with global, onion-only and custom relay proxy policies (https://github.com/rust-nostr/nostr/pull/1351)
 
 ### Fixed
 

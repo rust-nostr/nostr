@@ -31,10 +31,8 @@ async fn main() -> Result<()> {
 
     // Configure client to use proxy for `.onion` relays
     let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
-    let connection: Connection = Connection::new()
-        .proxy(addr) // Use `.embedded_tor()` instead to enable the embedded tor client (require `tor` feature)
-        .target(ConnectionTarget::Onion);
-    let client = Client::builder().signer(keys).connection(connection).build();
+    let proxy: Proxy = Proxy::onion(addr);
+    let client = Client::builder().signer(keys).proxy(proxy).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;

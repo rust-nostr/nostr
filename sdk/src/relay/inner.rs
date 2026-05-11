@@ -1,12 +1,14 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
+use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 use std::time::Duration;
 
 use async_utility::{task, time};
-use async_wsocket::{ConnectionMode, Message};
+use async_wsocket::Message;
 use futures::{self, SinkExt, StreamExt};
 #[cfg(not(target_arch = "wasm32"))]
 use nostr::rand::RngCore;
@@ -176,8 +178,9 @@ impl InnerRelay {
     }
 
     #[inline]
-    pub fn connection_mode(&self) -> &ConnectionMode {
-        &self.opts.connection_mode
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(super) fn proxy(&self) -> Option<SocketAddr> {
+        self.opts.proxy.as_ref().and_then(|p| p.get_addr(&self.url))
     }
 
     /// Check if the connection task is running
@@ -655,7 +658,7 @@ impl InnerRelay {
         let connect_fut = self
             .state
             .transport
-            .connect((&self.url).into(), &self.opts.connection_mode);
+            .connect((&self.url).into(), self.proxy());
         let fut = time::timeout(Some(timeout), connect_fut);
 
         // Try to connect

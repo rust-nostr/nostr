@@ -5,6 +5,7 @@
 //! WebSocket transport
 
 use std::fmt;
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::task::{Context, Poll};
@@ -68,7 +69,7 @@ pub trait WebSocketTransport: fmt::Debug + Send + Sync {
     fn connect<'a>(
         &'a self,
         url: &'a Url,
-        mode: &'a ConnectionMode,
+        proxy: Option<SocketAddr>,
     ) -> BoxedFuture<'a, Result<(WebSocketSink, WebSocketStream), TransportError>>;
 }
 
@@ -84,11 +85,16 @@ impl WebSocketTransport for DefaultWebsocketTransport {
     fn connect<'a>(
         &'a self,
         url: &'a Url,
-        mode: &'a ConnectionMode,
+        proxy: Option<SocketAddr>,
     ) -> BoxedFuture<'a, Result<(WebSocketSink, WebSocketStream), TransportError>> {
         Box::pin(async move {
+            let mode: ConnectionMode = match proxy {
+                Some(proxy) => ConnectionMode::Proxy(proxy),
+                None => ConnectionMode::Direct,
+            };
+
             // Connect
-            let socket: WebSocket = WebSocket::connect(url, mode)
+            let socket: WebSocket = WebSocket::connect(url, &mode)
                 .await
                 .map_err(TransportError::backend)?;
 

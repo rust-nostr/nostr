@@ -1,15 +1,17 @@
 use std::time::Duration;
 
-use async_wsocket::ConnectionMode;
 use tokio::sync::watch::{self, Receiver, Sender};
 
 use super::constants::{DEFAULT_NOTIFICATION_CHANNEL_SIZE, DEFAULT_RETRY_INTERVAL};
 use super::limits::RelayLimits;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::proxy::Proxy;
 
 /// Relay options
 #[derive(Debug, Clone)]
 pub struct RelayOptions {
-    pub(crate) connection_mode: ConnectionMode,
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) proxy: Option<Proxy>,
     pub(crate) ping: bool,
     pub(crate) reconnect: bool,
     pub(crate) sleep_when_idle: bool,
@@ -27,7 +29,8 @@ pub struct RelayOptions {
 impl Default for RelayOptions {
     fn default() -> Self {
         Self {
-            connection_mode: ConnectionMode::default(),
+            #[cfg(not(target_arch = "wasm32"))]
+            proxy: None,
             ping: true,
             reconnect: true,
             sleep_when_idle: false,
@@ -51,10 +54,11 @@ impl RelayOptions {
         Self::default()
     }
 
-    /// Set connection mode
+    /// Set proxy
     #[inline]
-    pub fn connection_mode(mut self, mode: ConnectionMode) -> Self {
-        self.connection_mode = mode;
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn proxy(mut self, proxy: Proxy) -> Self {
+        self.proxy = Some(proxy);
         self
     }
 

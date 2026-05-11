@@ -2,11 +2,12 @@ use std::borrow::Cow;
 use std::future::IntoFuture;
 use std::time::Duration;
 
-use async_wsocket::ConnectionMode;
 use nostr::types::url::{RelayUrl, RelayUrlArg};
 
 use crate::client::{Client, Error};
 use crate::future::BoxedFuture;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::proxy::Proxy;
 use crate::relay::{RelayCapabilities, RelayLimits, RelayOptions};
 
 /// Add new relay to the pool
@@ -47,10 +48,11 @@ impl<'client, 'url> AddRelay<'client, 'url> {
         self
     }
 
-    /// Set connection mode
+    /// Set proxy
     #[inline]
-    pub fn connection_mode(mut self, mode: ConnectionMode) -> Self {
-        self.opts.connection_mode = mode;
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn proxy(mut self, proxy: Proxy) -> Self {
+        self.opts.proxy = Some(proxy);
         self
     }
 
@@ -169,6 +171,7 @@ where
 #[cfg(test)]
 mod tests {
     use std::collections::HashSet;
+    use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
     use super::*;
     use crate::policy::{AdmitPolicy, AdmitStatus, PolicyError};
@@ -267,5 +270,51 @@ mod tests {
 
         let relay = client.relay(&rejected).await.unwrap();
         assert!(relay.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_add_relay_with_proxy_all() {
+        let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
+        let proxy: Proxy = Proxy::all(addr);
+        let client = Client::builder().proxy(proxy).build();
+
+        client.add_relay("wss://relay.damus.io").await.unwrap();
+        client
+            .add_relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+            .await
+            .unwrap();
+
+        let relay = client.relay("wss://relay.damus.io").await.unwrap().unwrap();
+        assert_eq!(relay.proxy(), Some(addr));
+
+        let relay = client
+            .relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(relay.proxy(), Some(addr));
+    }
+
+    #[tokio::test]
+    async fn test_add_relay_with_proxy_onion() {
+        let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
+        let proxy: Proxy = Proxy::onion(addr);
+        let client = Client::builder().proxy(proxy).build();
+
+        client.add_relay("wss://relay.damus.io").await.unwrap();
+        client
+            .add_relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+            .await
+            .unwrap();
+
+        let relay = client.relay("wss://relay.damus.io").await.unwrap().unwrap();
+        assert!(relay.proxy().is_none());
+
+        let relay = client
+            .relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
+            .await
+            .unwrap()
+            .unwrap();
+        assert_eq!(relay.proxy(), Some(addr));
     }
 }

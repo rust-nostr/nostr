@@ -10,8 +10,6 @@ use std::pin::Pin;
 use std::sync::{Arc, Weak};
 use std::time::Duration;
 
-#[cfg(not(target_arch = "wasm32"))]
-use async_wsocket::ConnectionMode;
 use futures::{Stream, StreamExt};
 use nostr::prelude::*;
 use nostr_database::prelude::*;
@@ -32,13 +30,15 @@ use self::middleware::AdmissionPolicyMiddleware;
 pub use self::notification::*;
 use crate::monitor::Monitor;
 use crate::pool::{RelayPool, RelayPoolBuilder};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::proxy::Proxy;
 use crate::relay::{Relay, RelayCapabilities, RelayLimits, RelayOptions, SyncOptions};
 use crate::stream::NotificationStream;
 
 #[derive(Debug)]
 struct ClientConfig {
     #[cfg(not(target_arch = "wasm32"))]
-    connection: Connection,
+    proxy: Option<Proxy>,
     gossip_config: GossipConfig,
     connect_timeout: Duration,
     relay_limits: RelayLimits,
@@ -129,7 +129,7 @@ impl Client {
             gossip: builder.gossip.map(Gossip::new),
             config: ClientConfig {
                 #[cfg(not(target_arch = "wasm32"))]
-                connection: builder.connection,
+                proxy: builder.proxy,
                 gossip_config: builder.gossip_config,
                 connect_timeout: builder.connect_timeout,
                 relay_limits: builder.relay_limits,
@@ -303,22 +303,10 @@ impl Client {
     fn compose_relay_opts<'a>(&self, _url: &'a RelayUrlArg<'a>) -> RelayOptions {
         let mut opts: RelayOptions = RelayOptions::new();
 
-        // Set connection mode
+        // Set proxy
         #[cfg(not(target_arch = "wasm32"))]
-        if let Ok(url) = _url.try_as_relay_url() {
-            match &self.config().connection.mode {
-                ConnectionMode::Direct => {}
-                ConnectionMode::Proxy(..) => match self.config().connection.target {
-                    ConnectionTarget::All => {
-                        opts = opts.connection_mode(self.config().connection.mode.clone());
-                    }
-                    ConnectionTarget::Onion => {
-                        if url.is_onion() {
-                            opts = opts.connection_mode(self.config().connection.mode.clone())
-                        }
-                    }
-                },
-            };
+        if let Some(proxy) = &self.config().proxy {
+            opts = opts.proxy(proxy.clone());
         }
 
         // Set sleep when idle

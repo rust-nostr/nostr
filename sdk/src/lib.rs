@@ -13,6 +13,8 @@ pub mod monitor;
 pub mod policy;
 mod pool;
 pub mod prelude;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod proxy;
 pub mod relay;
 mod shared;
 mod stream;

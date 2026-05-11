@@ -3,13 +3,14 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::HashMap;
+#[cfg(not(target_arch = "wasm32"))]
+use std::net::SocketAddr;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Duration;
 
 use async_utility::time;
-use async_wsocket::ConnectionMode;
 use futures::{Stream, StreamExt};
 use nostr_database::prelude::*;
 use tokio::sync::{broadcast, oneshot};
@@ -157,10 +158,11 @@ impl Relay {
         &self.inner.url
     }
 
-    /// Get connection mode
+    /// Get proxy
     #[inline]
-    pub fn connection_mode(&self) -> &ConnectionMode {
-        self.inner.connection_mode()
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn proxy(&self) -> Option<SocketAddr> {
+        self.inner.proxy()
     }
 
     /// Get status

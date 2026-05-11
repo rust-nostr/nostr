@@ -13,22 +13,14 @@ async fn main() -> Result<()> {
     // Parse keys
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
-    // Configure client to use embedded tor for `.onion` relays
-    let connection: Connection = Connection::new()
-        .proxy(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)))
-        .target(ConnectionTarget::Onion);
-    let client = Client::builder()
-        .signer(keys.clone())
-        .connection(connection)
-        .build();
+    // Configure client to use a proxy for the onion relays
+    let proxy: Proxy = Proxy::onion(SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050)));
+    let client = Client::builder().signer(keys.clone()).proxy(proxy).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
     client
         .add_relay("ws://oxtrdevav64z64yb7x6rjg4ntzqjhedm5b5zjqulugknhzr46ny2qbad.onion")
-        .await?;
-    client
-        .add_relay("ws://2jsnlhfnelig5acq6iacydmzdbdmg7xwunm4xl6qwbvzacw4lwrjmlyd.onion")
         .await?;
 
     client.connect().await;

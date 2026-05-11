@@ -4,14 +4,10 @@
 
 //! Client builder
 
-#[cfg(not(target_arch = "wasm32"))]
-use std::net::SocketAddr;
 use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::time::Duration;
 
-#[cfg(not(target_arch = "wasm32"))]
-use async_wsocket::ConnectionMode;
 use nostr::signer::AsyncNostrSigner;
 use nostr_database::{IntoNostrDatabase, NostrDatabase};
 use nostr_gossip::{GossipAllowedRelays, IntoNostrGossip, NostrGossip};
@@ -21,6 +17,8 @@ use crate::events_tracker::MemoryEventsTracker;
 use crate::monitor::Monitor;
 use crate::policy::AdmitPolicy;
 use crate::prelude::RelayLimits;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::proxy::Proxy;
 use crate::transport::websocket::{
     DefaultWebsocketTransport, IntoWebSocketTransport, WebSocketTransport,
 };
@@ -193,9 +191,9 @@ pub struct ClientBuilder {
     pub gossip_config: GossipConfig,
     /// Relay monitor
     pub monitor: Option<Monitor>,
-    /// Connection
+    /// Proxy
     #[cfg(not(target_arch = "wasm32"))]
-    pub connection: Connection,
+    pub proxy: Option<Proxy>,
     /// Max relays allowed in the pool
     pub max_relays: Option<NonZeroUsize>,
     /// Automatic authentication to relays (NIP-42)
@@ -229,7 +227,7 @@ impl Default for ClientBuilder {
             gossip_config: GossipConfig::default(),
             monitor: None,
             #[cfg(not(target_arch = "wasm32"))]
-            connection: Connection::default(),
+            proxy: None,
             max_relays: None,
             automatic_authentication: true,
             connect_timeout: Duration::from_secs(15),
@@ -325,11 +323,11 @@ impl ClientBuilder {
         self
     }
 
-    /// Connection mode and target
+    /// Proxy
     #[inline]
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn connection(mut self, connection: Connection) -> Self {
-        self.connection = connection;
+    pub fn proxy(mut self, proxy: Proxy) -> Self {
+        self.proxy = Some(proxy);
         self
     }
 
@@ -422,76 +420,4 @@ pub enum SleepWhenIdle {
         /// After how much time of inactivity put the relay to sleep.
         timeout: Duration,
     },
-}
-
-/// Connection target
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Hash)]
-pub enum ConnectionTarget {
-    /// All relays
-    #[default]
-    All,
-    /// Only `.onion` relays
-    Onion,
-}
-
-/// Connection
-#[cfg(not(target_arch = "wasm32"))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct Connection {
-    /// Mode
-    pub mode: ConnectionMode,
-    /// Target
-    pub target: ConnectionTarget,
-}
-
-#[allow(clippy::derivable_impls)]
-#[cfg(not(target_arch = "wasm32"))]
-impl Default for Connection {
-    fn default() -> Self {
-        Self {
-            mode: ConnectionMode::default(),
-            target: ConnectionTarget::default(),
-        }
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl Connection {
-    /// New default connection config
-    #[inline]
-    pub fn new() -> Self {
-        Self {
-            mode: ConnectionMode::default(),
-            target: ConnectionTarget::default(),
-        }
-    }
-
-    /// Set connection mode (default: direct)
-    #[inline]
-    pub fn mode(mut self, mode: ConnectionMode) -> Self {
-        self.mode = mode;
-        self
-    }
-
-    /// Set connection target (default: all)
-    #[inline]
-    pub fn target(mut self, target: ConnectionTarget) -> Self {
-        self.target = target;
-        self
-    }
-
-    /// Set direct connection
-    #[inline]
-    pub fn direct(mut self) -> Self {
-        self.mode = ConnectionMode::direct();
-        self
-    }
-
-    /// Set proxy
-    #[inline]
-    pub fn proxy(mut self, addr: SocketAddr) -> Self {
-        self.mode = ConnectionMode::proxy(addr);
-        self
-    }
 }
