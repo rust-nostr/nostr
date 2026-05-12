@@ -186,49 +186,24 @@ impl TagCodec for Nip22Tag {
                 coordinate,
                 relay_hint,
                 uppercase,
-            } => {
-                // Serialize as lowercase "a" tag
-                let mut tag: Tag = nip01::serialize_a_tag(coordinate, relay_hint.as_ref());
-
-                // Replace the "a" tag with the "A" tag, if uppercase.
-                if *uppercase {
-                    tag[0] = String::from("A");
-                }
-
-                tag
-            }
+            } => maybe_uppercase(
+                nip01::serialize_a_tag(coordinate, relay_hint.as_ref()),
+                *uppercase,
+            ),
             Self::Event {
                 id,
                 relay_hint,
                 public_key,
                 uppercase,
-            } => {
-                // Serialize as lowercase "e" tag
-                let mut tag: Tag =
-                    nip01::serialize_e_tag(id, relay_hint.as_ref(), public_key.as_ref());
-
-                // Replace the "e" tag with the "E" tag, if uppercase.
-                if *uppercase {
-                    tag[0] = String::from("E");
-                }
-
-                tag
-            }
+            } => maybe_uppercase(
+                nip01::serialize_e_tag(id, relay_hint.as_ref(), public_key.as_ref()),
+                *uppercase,
+            ),
             Self::ExternalContent {
                 content,
                 hint,
                 uppercase,
-            } => {
-                // Serialize as lowercase "i" tag
-                let mut tag: Tag = nip73::serialize_i_tag(content, hint.as_ref());
-
-                // Replace the "i" tag with the "I" tag, if uppercase.
-                if *uppercase {
-                    tag[0] = String::from("I");
-                }
-
-                tag
-            }
+            } => maybe_uppercase(nip73::serialize_i_tag(content, hint.as_ref()), *uppercase),
             Self::Kind { kind, uppercase } => Tag::new(vec![
                 if *uppercase {
                     String::from("K")
@@ -238,31 +213,16 @@ impl TagCodec for Nip22Tag {
                 kind.to_string(),
             ]),
             Self::Nip73Kind { kind, uppercase } => {
-                // Serialize as lowercase "k" tag
-                let mut tag: Tag = nip73::serialize_k_tag(kind);
-
-                // Replace the "k" tag with the "K" tag, if uppercase.
-                if *uppercase {
-                    tag[0] = String::from("K");
-                }
-
-                tag
+                maybe_uppercase(nip73::serialize_k_tag(kind), *uppercase)
             }
             Self::PublicKey {
                 public_key,
                 relay_hint,
                 uppercase,
-            } => {
-                // Serialize as lowercase "p" tag
-                let mut tag: Tag = nip01::serialize_p_tag(public_key, relay_hint.as_ref());
-
-                // Replace the "p" tag with the "P" tag, if uppercase.
-                if *uppercase {
-                    tag[0] = String::from("P");
-                }
-
-                tag
-            }
+            } => maybe_uppercase(
+                nip01::serialize_p_tag(public_key, relay_hint.as_ref()),
+                *uppercase,
+            ),
         }
     }
 }
@@ -713,6 +673,14 @@ where
         relay_hint,
         uppercase,
     })
+}
+
+#[inline]
+fn maybe_uppercase(mut tag: Tag, uppercase: bool) -> Tag {
+    if uppercase {
+        tag[0] = tag[0].to_ascii_uppercase();
+    }
+    tag
 }
 
 #[cfg(all(test, feature = "std", feature = "os-rng"))]
