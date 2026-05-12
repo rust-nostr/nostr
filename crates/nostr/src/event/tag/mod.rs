@@ -11,6 +11,7 @@ use core::cell::OnceCell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
+use core::ops::{Index, IndexMut};
 #[cfg(feature = "std")]
 use std::sync::OnceLock as OnceCell;
 
@@ -73,6 +74,20 @@ impl Ord for Tag {
 impl Hash for Tag {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.buf.hash(state);
+    }
+}
+
+impl Index<usize> for Tag {
+    type Output = String;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        self.buf.index(index)
+    }
+}
+
+impl IndexMut<usize> for Tag {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.buf.index_mut(index)
     }
 }
 
