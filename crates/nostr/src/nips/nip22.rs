@@ -219,20 +219,15 @@ impl TagCodec for Nip22Tag {
                 hint,
                 uppercase,
             } => {
-                let mut tag: Vec<String> = Vec::with_capacity(2 + hint.is_some() as usize);
+                // Serialize as lowercase "i" tag
+                let mut tag: Tag = nip73::serialize_i_tag(content, hint.as_ref());
 
-                tag.push(if *uppercase {
-                    String::from("I")
-                } else {
-                    String::from("i")
-                });
-                tag.push(content.to_string());
-
-                if let Some(hint) = hint {
-                    tag.push(hint.to_string());
+                // Replace the "i" tag with the "I" tag, if uppercase.
+                if *uppercase {
+                    tag[0] = String::from("I");
                 }
 
-                Tag::new(tag)
+                tag
             }
             Self::Kind { kind, uppercase } => Tag::new(vec![
                 if *uppercase {
@@ -242,14 +237,17 @@ impl TagCodec for Nip22Tag {
                 },
                 kind.to_string(),
             ]),
-            Self::Nip73Kind { kind, uppercase } => Tag::new(vec![
+            Self::Nip73Kind { kind, uppercase } => {
+                // Serialize as lowercase "k" tag
+                let mut tag: Tag = nip73::serialize_k_tag(kind);
+
+                // Replace the "k" tag with the "K" tag, if uppercase.
                 if *uppercase {
-                    String::from("K")
-                } else {
-                    String::from("k")
-                },
-                kind.to_string(),
-            ]),
+                    tag[0] = String::from("K");
+                }
+
+                tag
+            }
             Self::PublicKey {
                 public_key,
                 relay_hint,
@@ -668,18 +666,12 @@ where
     })
 }
 
-fn parse_i_tag<T, S>(mut iter: T, uppercase: bool) -> Result<Nip22Tag, Error>
+fn parse_i_tag<T, S>(iter: T, uppercase: bool) -> Result<Nip22Tag, Error>
 where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let content: S = iter.next().ok_or(Error::MissingExternalContent)?;
-    let content: ExternalContentId = ExternalContentId::from_str(content.as_ref())?;
-
-    let hint: Option<Url> = match iter.next() {
-        Some(hint) => Some(Url::parse(hint.as_ref())?),
-        None => None,
-    };
+    let (content, hint) = nip73::parse_i_tag(iter)?;
 
     Ok(Nip22Tag::ExternalContent {
         content,

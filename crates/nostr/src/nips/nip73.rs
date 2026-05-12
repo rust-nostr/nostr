@@ -2,14 +2,18 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP73: External Content IDs
+//! NIP-73: External Content IDs
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/73.md>
 
 use alloc::string::{String, ToString};
+use alloc::vec;
+use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
+use super::util::{take_and_parse_from_str, take_and_parse_optional_from_str};
+use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::types::Url;
 
 const HASHTAG: &str = "#";
@@ -26,6 +30,10 @@ const BLOCKCHAIN_ADDR: &str = ":address:";
 /// NIP73 error
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error {
+    /// URL error
+    Url(url::ParseError),
+    /// Codec error
+    Codec(TagCodecError),
     /// Invalid external content
     InvalidExternalContent,
     /// Invalid NIP-73 kind
@@ -37,9 +45,23 @@ impl core::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Url(e) => e.fmt(f),
+            Self::Codec(e) => e.fmt(f),
             Self::InvalidExternalContent => f.write_str("invalid external content ID"),
             Self::InvalidNip73Kind => f.write_str("Invalid NIP-73 kind"),
         }
+    }
+}
+
+impl From<url::ParseError> for Error {
+    fn from(e: url::ParseError) -> Self {
+        Self::Url(e)
+    }
+}
+
+impl From<TagCodecError> for Error {
+    fn from(e: TagCodecError) -> Self {
+        Self::Codec(e)
     }
 }
 
@@ -92,7 +114,7 @@ pub enum Nip73Kind {
     /// Books kind "isbn"
     Book,
     /// Geohashes kind "geo"
-    Geohashe,
+    Geohash,
     /// Movies kind "isan"
     Movie,
     /// Papers kind "doi"
@@ -116,7 +138,7 @@ impl fmt::Display for Nip73Kind {
         match self {
             Self::Url => f.write_str("web"),
             Self::Book => f.write_str("isbn"),
-            Self::Geohashe => f.write_str("geo"),
+            Self::Geohash => f.write_str("geo"),
             Self::Movie => f.write_str("isan"),
             Self::Paper => f.write_str("doi"),
             Self::Hashtag => HASHTAG.fmt(f),
@@ -180,7 +202,7 @@ impl FromStr for Nip73Kind {
         match nip73_kind {
             "web" => Ok(Self::Url),
             "isbn" => Ok(Self::Book),
-            "geo" => Ok(Self::Geohashe),
+            "geo" => Ok(Self::Geohash),
             "isan" => Ok(Self::Movie),
             "doi" => Ok(Self::Paper),
             HASHTAG => Ok(Self::Hashtag),
@@ -276,7 +298,7 @@ impl ExternalContentId {
         match self {
             Self::Url(_) => Nip73Kind::Url,
             Self::Hashtag(_) => Nip73Kind::Hashtag,
-            Self::Geohash(_) => Nip73Kind::Geohashe,
+            Self::Geohash(_) => Nip73Kind::Geohash,
             Self::Book(_) => Nip73Kind::Book,
             Self::PodcastFeed(_) => Nip73Kind::PodcastFeed,
             Self::PodcastEpisode(_) => Nip73Kind::PodcastEpisode,
@@ -298,6 +320,86 @@ fn extract_chain_id(chain: &str) -> (String, Option<String>) {
         Some((chain, "")) => (chain.to_string(), None),
         Some((chain, chain_id)) => (chain.to_string(), Some(chain_id.to_string())),
     }
+}
+
+/// Standardized NIP-73 tags
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/73.md>
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub enum Nip73Tag {
+    /// `i` tag
+    ExternalContent {
+        /// External content
+        content: ExternalContentId,
+        /// Optional URL hint
+        hint: Option<Url>,
+    },
+    /// `k` tag
+    Kind(Nip73Kind),
+}
+
+impl TagCodec for Nip73Tag {
+    type Error = Error;
+
+    fn parse<I, S>(tag: I) -> Result<Self, Self::Error>
+    where
+        I: IntoIterator<Item = S>,
+        S: AsRef<str>,
+    {
+        let mut iter = tag.into_iter();
+        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+
+        match kind.as_ref() {
+            "i" => {
+                let (content, hint) = parse_i_tag(iter)?;
+                Ok(Self::ExternalContent { content, hint })
+            }
+            "k" => {
+                let kind: Nip73Kind = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "kind")?;
+                Ok(Self::Kind(kind))
+            }
+            _ => Err(TagCodecError::Unknown.into()),
+        }
+    }
+
+    fn to_tag(&self) -> Tag {
+        match self {
+            Self::ExternalContent { content, hint } => serialize_i_tag(content, hint.as_ref()),
+            Self::Kind(kind) => serialize_k_tag(kind),
+        }
+    }
+}
+
+impl_tag_codec_conversions!(Nip73Tag);
+
+pub(super) fn parse_i_tag<T, S>(mut iter: T) -> Result<(ExternalContentId, Option<Url>), Error>
+where
+    T: Iterator<Item = S>,
+    S: AsRef<str>,
+{
+    let content: ExternalContentId =
+        take_and_parse_from_str::<_, _, _, Error>(&mut iter, "content")?;
+    let hint: Option<Url> = take_and_parse_optional_from_str(&mut iter)?;
+
+    Ok((content, hint))
+}
+
+pub(super) fn serialize_i_tag(content: &ExternalContentId, hint: Option<&Url>) -> Tag {
+    let mut tag: Vec<String> = Vec::with_capacity(2 + hint.is_some() as usize);
+
+    tag.push(String::from("i"));
+    tag.push(content.to_string());
+
+    if let Some(hint) = hint {
+        tag.push(hint.to_string());
+    }
+
+    Tag::new(tag)
+}
+
+#[inline]
+pub(super) fn serialize_k_tag(kind: &Nip73Kind) -> Tag {
+    Tag::new(vec![String::from("k"), kind.to_string()])
 }
 
 #[cfg(test)]
@@ -461,5 +563,61 @@ mod tests {
             ExternalContentId::from_str("hello"),
             Err(Error::InvalidExternalContent)
         );
+    }
+
+    #[test]
+    fn test_i_tag() {
+        let raw = [
+            "i",
+            "https://myblog.example.com/post/2012-03-27/hello-world",
+        ];
+        let tag = Nip73Tag::parse(raw).unwrap();
+
+        assert_eq!(
+            tag,
+            Nip73Tag::ExternalContent {
+                content: ExternalContentId::Url(
+                    Url::parse("https://myblog.example.com/post/2012-03-27/hello-world").unwrap()
+                ),
+                hint: None
+            }
+        );
+
+        assert_eq!(tag.to_tag().as_slice(), &raw);
+    }
+
+    #[test]
+    fn test_i_tag_with_hint() {
+        let raw = [
+            "i",
+            "podcast:item:guid:d98d189b-dc7b-45b1-8720-d4b98690f31f",
+            "https://fountain.fm/episode/z1y9TMQRuqXl2awyrQxg",
+        ];
+        let tag = Nip73Tag::parse(raw).unwrap();
+
+        assert_eq!(
+            tag,
+            Nip73Tag::ExternalContent {
+                content: ExternalContentId::PodcastEpisode(
+                    "d98d189b-dc7b-45b1-8720-d4b98690f31f".to_string()
+                ),
+                hint: Some(Url::parse("https://fountain.fm/episode/z1y9TMQRuqXl2awyrQxg").unwrap())
+            }
+        );
+
+        assert_eq!(tag.to_tag().as_slice(), &raw);
+    }
+
+    #[test]
+    fn test_k_tag() {
+        let raw = ["k", "bitcoin:address"];
+        let tag = Nip73Tag::parse(raw).unwrap();
+
+        assert_eq!(
+            tag,
+            Nip73Tag::Kind(Nip73Kind::BlockchainAddress(String::from("bitcoin")))
+        );
+
+        assert_eq!(tag.to_tag().as_slice(), &raw);
     }
 }
