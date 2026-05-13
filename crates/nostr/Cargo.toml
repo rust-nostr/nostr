@@ -67,7 +67,7 @@ nip60 = ["nip44"]
 nip98 = ["dep:base64"]
 
 [dependencies]
-aes = { version = "0.8", optional = true }
+aes = { version = "0.9", optional = true }
 base64 = { workspace = true, optional = true }
 bech32 = { version = "0.11", default-features = false }
 bitcoin_hashes = { version = "0.14", default-features = false, features = ["serde"] } # TODO: remove serde feature
