@@ -32,6 +32,9 @@ jobs:
           - nostr --features all-nips
           - nostr --features all-nips,rand
           - nostr --features all-nips,os-rng
+          - nostr --features all-nips --target wasm32-unknown-unknown
+          - nostr --features all-nips,rand --target wasm32-unknown-unknown
+          - nostr --features all-nips,os-rng --target wasm32-unknown-unknown
           - nostr --features all-nips --target wasm32-wasip2
           - nostr --features all-nips,rand --target wasm32-wasip2
           - nostr --features all-nips,os-rng --target wasm32-wasip2
@@ -48,16 +51,20 @@ jobs:
           - nostr-gossip
           - nostr-gossip-memory
           - nostr-gossip-sqlite
+          - nostr-gossip-sqlite --target wasm32-unknown-unknown
           - nostr-gossip-test-suite
           - nostr-lmdb
           - nostr-ndb
           - nostr-sqlite
+          - nostr-sqlite --target wasm32-unknown-unknown
           - nostr-keyring
           - nostr-keyring --features async
           - nostr-sdk
+          - nostr-sdk --target wasm32-unknown-unknown
           - nostr-relay-builder
           - nostr-connect
           - nwc
+          - nwc --target wasm32-unknown-unknown
     steps:
     - name: Checkout
       uses: actions/checkout@v4
@@ -84,9 +91,13 @@ jobs:
         key: ${{ matrix.crate }}
 
     - name: Check
+      env:
+        RUSTFLAGS: ${{ contains(matrix.crate, 'wasm32-unknown-unknown') && '--cfg getrandom_backend="unsupported"' || '' }}
       run: cargo check -p ${{ matrix.crate }}
 
     - name: Clippy
+      env:
+        RUSTFLAGS: ${{ contains(matrix.crate, 'wasm32-unknown-unknown') && '--cfg getrandom_backend="unsupported"' || '' }}
       run: cargo clippy -p ${{ matrix.crate }} -- -D warnings
 
     - name: Test
