@@ -46,6 +46,7 @@
 
 ### Changed
 
+- Bump `scrypt` from 0.11 to 0.12
 - Bump `rand` from 0.8 to 0.9 (https://github.com/rust-nostr/nostr/pull/1171)
 - Rename `NostrConnectURI` to `NostrConnectUri`
 - Rename `NostrWalletConnectURI` to `NostrWalletConnectUri`

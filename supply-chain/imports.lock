@@ -1,4 +1,43 @@
 
 # cargo-vet imports lock
 
-[audits.yukikishimoto.audits]
+[[audits.yukikishimoto.audits.futures]]
+who = "Yuki Kishimoto <yukikishimoto@protonmail.com>"
+criteria = "safe-to-deploy"
+version = "0.3.32"
+notes = "Full audit"
+
+[[audits.yukikishimoto.audits.futures-channel]]
+who = "Yuki Kishimoto <yukikishimoto@protonmail.com>"
+criteria = "safe-to-deploy"
+version = "0.3.32"
+notes = "Full audit"
+
+[[audits.yukikishimoto.audits.futures-core]]
+who = "Yuki Kishimoto <yukikishimoto@protonmail.com>"
+criteria = "safe-to-deploy"
+version = "0.3.13"
+notes = "Full audit"
+
+[[audits.yukikishimoto.audits.futures-core]]
+who = "Yuki Kishimoto <yukikishimoto@protonmail.com>"
+criteria = "safe-to-deploy"
+delta = "0.3.13 -> 0.3.32"
+
+[[audits.yukikishimoto.audits.futures-io]]
+who = "Yuki Kishimoto <yukikishimoto@protonmail.com>"
+criteria = "safe-to-deploy"
+version = "0.3.32"
+notes = "Full audit"
+
+[[audits.yukikishimoto.audits.futures-sink]]
+who = "Yuki Kishimoto <yukikishimoto@protonmail.com>"
+criteria = "safe-to-deploy"
+version = "0.3.32"
+notes = "Full audit"
+
+[[audits.yukikishimoto.audits.futures-task]]
+who = "Yuki Kishimoto <yukikishimoto@protonmail.com>"
+criteria = "safe-to-deploy"
+version = "0.3.32"
+notes = "Full audit"

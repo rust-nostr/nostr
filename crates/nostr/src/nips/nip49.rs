@@ -399,7 +399,7 @@ fn derive_key(password: &str, salt: &[u8; SALT_SIZE], log_n: u8) -> Result<[u8; 
     let password: String = password.nfkc().collect();
 
     // Compose params
-    let params: ScryptParams = ScryptParams::new(log_n, 8, 1, KEY_SIZE)?;
+    let params: ScryptParams = ScryptParams::new(log_n, 8, 1)?;
 
     // Derive key
     let mut key: [u8; KEY_SIZE] = [0u8; KEY_SIZE];
