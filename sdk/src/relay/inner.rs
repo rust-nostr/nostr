@@ -1,7 +1,6 @@
 use std::borrow::Cow;
 use std::cmp;
 use std::collections::HashMap;
-#[cfg(not(target_arch = "wasm32"))]
 use std::net::SocketAddr;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
@@ -181,6 +180,12 @@ impl InnerRelay {
     #[cfg(not(target_arch = "wasm32"))]
     pub(super) fn proxy(&self) -> Option<SocketAddr> {
         self.opts.proxy.as_ref().and_then(|p| p.get_addr(&self.url))
+    }
+
+    #[inline]
+    #[cfg(target_arch = "wasm32")]
+    fn proxy(&self) -> Option<SocketAddr> {
+        None
     }
 
     /// Check if the connection task is running

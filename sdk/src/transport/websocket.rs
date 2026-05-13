@@ -89,7 +89,10 @@ impl WebSocketTransport for DefaultWebsocketTransport {
     ) -> BoxedFuture<'a, Result<(WebSocketSink, WebSocketStream), TransportError>> {
         Box::pin(async move {
             let mode: ConnectionMode = match proxy {
+                #[cfg(not(target_arch = "wasm32"))]
                 Some(proxy) => ConnectionMode::Proxy(proxy),
+                #[cfg(target_arch = "wasm32")]
+                Some(_) => ConnectionMode::Direct,
                 None => ConnectionMode::Direct,
             };
 
