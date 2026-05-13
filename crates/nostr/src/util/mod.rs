@@ -6,6 +6,7 @@
 
 use alloc::boxed::Box;
 use alloc::string::String;
+use core::convert::Infallible;
 use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
@@ -143,5 +144,19 @@ where
     #[inline]
     fn try_as_pretty_json(&self) -> Result<String, Self::Err> {
         Ok(serde_json::to_string_pretty(self)?)
+    }
+}
+
+pub(crate) trait UnwrapInfallible<T>: Sized {
+    fn unwrap_infallible(self) -> T;
+}
+
+impl<T> UnwrapInfallible<T> for Result<T, Infallible> {
+    #[inline]
+    fn unwrap_infallible(self) -> T {
+        match self {
+            Ok(value) => value,
+            Err(e) => match e {},
+        }
     }
 }
