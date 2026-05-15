@@ -38,6 +38,10 @@
 
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 
+### Fixed
+
+- Fix rejections of bunker signers that reply with secret in the connect response (https://github.com/rust-nostr/nostr/pull/1354)
+
 ## v0.44.0 - 2025/11/06
 
 ### Fixed

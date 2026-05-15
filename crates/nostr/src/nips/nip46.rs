@@ -546,19 +546,6 @@ impl ResponseResult {
     }
 
     #[inline]
-    pub fn to_ack(self) -> Result<(), Error> {
-        if let Self::Ack = self {
-            Ok(())
-        } else {
-            Err(Error::UnexpectedResponse {
-                method: NostrConnectMethod::Connect,
-                expected: String::from("ack"),
-                received: self.to_string(),
-            })
-        }
-    }
-
-    #[inline]
     pub fn to_get_public_key(self) -> Result<PublicKey, Error> {
         if let Self::GetPublicKey(val) = self {
             Ok(val)

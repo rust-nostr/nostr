@@ -137,8 +137,9 @@ impl NostrConnect {
         };
 
         // Send `connect` command if bunker URI
-        if self.uri.is_bunker() {
-            self.connect(remote_signer_public_key).await?;
+        if let NostrConnectUri::Bunker { secret, .. } = &self.uri {
+            self.connect_bunker(remote_signer_public_key, secret)
+                .await?;
         }
 
         Ok(remote_signer_public_key)
@@ -284,16 +285,25 @@ impl NostrConnect {
         .ok_or(Error::Timeout)?
     }
 
-    /// Connect msg
-    async fn connect(&self, remote_signer_public_key: PublicKey) -> Result<(), Error> {
+    /// Connect bunker
+    async fn connect_bunker(
+        &self,
+        remote_signer_public_key: PublicKey,
+        secret: &Option<String>,
+    ) -> Result<(), Error> {
         let req = NostrConnectRequest::Connect {
             remote_signer_public_key,
-            secret: self.uri.secret().map(|secret| secret.to_string()),
+            secret: secret.clone(),
         };
-        let res = self
+        let res: ResponseResult = self
             .send_request_with_pk(req, remote_signer_public_key)
             .await?;
-        Ok(res.to_ack()?)
+
+        if is_valid_connect_response(&res, secret.as_deref()) {
+            return Ok(());
+        }
+
+        Err(Error::InvalidResponse(res.to_string()))
     }
 
     async fn _get_public_key(&self) -> Result<&PublicKey, Error> {
@@ -409,15 +419,7 @@ async fn get_remote_signer_public_key(
                         error: None,
                     }) = msg.to_response(NostrConnectMethod::Connect)
                     {
-                        let is_valid = match &result {
-                            // Some signers (e.g. those following older interpretations) return "ack"
-                            ResponseResult::Ack => true,
-                            // Per current NIP-46 spec the signer returns the secret value
-                            ResponseResult::ConnectSecret(s) => s == expected_secret,
-                            _ => false,
-                        };
-
-                        if is_valid {
+                        if is_valid_connect_response(&result, Some(expected_secret)) {
                             return Ok(event.pubkey);
                         } else {
                             tracing::warn!(
@@ -433,6 +435,19 @@ async fn get_remote_signer_public_key(
     })
     .await
     .ok_or(Error::Timeout)?
+}
+
+fn is_valid_connect_response(response: &ResponseResult, expected_secret: Option<&str>) -> bool {
+    match &response {
+        // Some signers (e.g. those following older interpretations) return "ack"
+        ResponseResult::Ack => true,
+        // Per current NIP-46 spec the signer returns the secret value
+        ResponseResult::ConnectSecret(s) => match expected_secret {
+            Some(expected_secret) => s == expected_secret,
+            None => false,
+        },
+        _ => false,
+    }
 }
 
 /// Nostr Connect auth_url handler
@@ -537,5 +552,27 @@ impl AsyncNip44 for NostrConnect {
 impl AsyncNostrSigner for NostrConnect {
     fn backend(&self) -> SignerBackend<'_> {
         SignerBackend::NostrConnect
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_valid_connect_response() {
+        assert!(is_valid_connect_response(&ResponseResult::Ack, None));
+        assert!(is_valid_connect_response(
+            &ResponseResult::ConnectSecret("secret".to_string()),
+            Some("secret")
+        ));
+        assert!(!is_valid_connect_response(
+            &ResponseResult::ConnectSecret("secret".to_string()),
+            Some("other_secret")
+        ));
+        assert!(!is_valid_connect_response(
+            &ResponseResult::ConnectSecret("secret".to_string()),
+            None
+        ));
     }
 }

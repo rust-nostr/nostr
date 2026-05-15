@@ -30,6 +30,8 @@ pub enum Error {
     RelayUrl(url::Error),
     /// Set user public key error
     SetUserPublicKey(SetError<PublicKey>),
+    /// Invalid response from remote signer
+    InvalidResponse(String),
     /// NIP46 response error
     Response(String),
     /// Signer public key not found
@@ -54,6 +56,7 @@ impl fmt::Display for Error {
             Self::Client(e) => e.fmt(f),
             Self::RelayUrl(e) => e.fmt(f),
             Self::SetUserPublicKey(e) => e.fmt(f),
+            Self::InvalidResponse(e) => e.fmt(f),
             Self::Response(e) => e.fmt(f),
             Self::SignerPublicKeyNotFound => f.write_str("signer public key not found"),
             Self::Timeout => f.write_str("timeout"),
