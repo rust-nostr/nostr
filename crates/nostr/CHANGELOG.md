@@ -30,6 +30,7 @@
 - Add `a` tag of replaceable and addressable events in `EventBuilder::repost` (https://github.com/rust-nostr/nostr/pull/1184)
 - Handle legacy events with `mention` marker (https://github.com/rust-nostr/nostr/pull/1193)
 - Parse "HEAD" as `TagKing::Head` (https://github.com/rust-nostr/nostr/pull/1215)
+- Fix NIP-46 `Error::UnexpectedResponse` formatting (https://github.com/rust-nostr/nostr/commit/5c4f9fe47b83a3baf2e137c4835b14f7ec4fc523)
 
 ## v0.44.2 - 2025/12/04
 
