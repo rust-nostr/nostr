@@ -167,12 +167,13 @@ impl NostrConnectRemoteSigner {
     {
         self.bootstrap().await?;
 
-        // TODO: move into bootstrap method?
+        // Subscribe to notifications before sending the connect response
+        // to avoid missing any client messages that arrive immediately after.
+        let mut notifications = self.client.notifications();
+
         if let Some(public_key) = self.nostr_connect_client_public_key {
             self.send_connect_response(public_key).await?;
         }
-
-        let mut notifications = self.client.notifications();
 
         while let Some(notification) = notifications.next().await {
             if let ClientNotification::Event { event, .. } = notification {

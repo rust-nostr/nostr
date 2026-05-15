@@ -42,6 +42,7 @@
 
 - Fix rejections of bunker signers that reply with secret in the connect response (https://github.com/rust-nostr/nostr/pull/1354)
 - Send connect response instead of a request when the connection initiated by the client (https://github.com/rust-nostr/nostr/pull/1353)
+- Fixed race condition in `NostrConnectRemoteSigner::serve()` where notifications subscription happened after sending connect response, potentially causing missed client messages (https://github.com/rust-nostr/nostr/pull/1353)
 
 ## v0.44.0 - 2025/11/06
 
