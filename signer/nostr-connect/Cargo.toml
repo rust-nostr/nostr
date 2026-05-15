@@ -27,6 +27,7 @@ tracing.workspace = true
 dialoguer = "0.12"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 webbrowser = "1.1"
+nostr-relay-builder = { workspace = true }
 
 [[example]]
 name = "handle-auth-url"

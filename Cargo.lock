@@ -1788,6 +1788,7 @@ dependencies = [
  "dialoguer",
  "futures-core",
  "nostr",
+ "nostr-relay-builder",
  "nostr-sdk",
  "tokio",
  "tracing",
