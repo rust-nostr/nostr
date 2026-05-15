@@ -87,7 +87,7 @@ impl fmt::Display for Error {
                 expected,
             } => write!(
                 f,
-                "Unexpected response: method={method}, expected={received}, received={expected}"
+                "Unexpected response: method={method}, expected={expected}, received={received}"
             ),
         }
     }
