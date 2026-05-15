@@ -42,6 +42,8 @@ pub enum Error {
     UnexpectedUri,
     /// Public key not match
     PublicKeyNotMatchAppKeys,
+    /// Nostr connect client without a secret
+    NoClientSecret,
 }
 
 impl std::error::Error for Error {}
@@ -62,6 +64,7 @@ impl fmt::Display for Error {
             Self::Timeout => f.write_str("timeout"),
             Self::UnexpectedUri => f.write_str("unexpected URI"),
             Self::PublicKeyNotMatchAppKeys => f.write_str("public key not match app keys"),
+            Self::NoClientSecret => f.write_str("missing client secret"),
         }
     }
 }

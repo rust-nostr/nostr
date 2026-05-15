@@ -105,13 +105,14 @@ impl NostrConnectRemoteSigner {
         }
     }
 
-    async fn send_connect_ack(&self, public_key: PublicKey) -> Result<(), Error> {
-        let req: NostrConnectRequest = NostrConnectRequest::Connect {
-            remote_signer_public_key: self.keys.signer.public_key(),
-            secret: self.secret.clone(),
+    async fn send_connect_response(&self, public_key: PublicKey) -> Result<(), Error> {
+        let Some(secret) = self.secret.clone() else {
+            return Err(Error::NoClientSecret);
         };
 
-        let msg: NostrConnectMessage = NostrConnectMessage::request(&req);
+        // TODO: Fix the request id, should we?
+        let res = NostrConnectResponse::with_result(ResponseResult::ConnectSecret(secret));
+        let msg: NostrConnectMessage = NostrConnectMessage::response("urmom", res);
         let event: Event = EventBuilder::nostr_connect(&self.keys.signer, public_key, msg)?
             .sign_with_keys(&self.keys.signer)?;
         self.client.send_event(&event).await?;
@@ -168,7 +169,7 @@ impl NostrConnectRemoteSigner {
 
         // TODO: move into bootstrap method?
         if let Some(public_key) = self.nostr_connect_client_public_key {
-            self.send_connect_ack(public_key).await?;
+            self.send_connect_response(public_key).await?;
         }
 
         let mut notifications = self.client.notifications();
