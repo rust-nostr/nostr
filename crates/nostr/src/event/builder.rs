@@ -290,7 +290,6 @@ impl EventBuilder {
     ///
     /// Check [`EventBuilder::build`] to learn more.
     #[inline]
-    #[cfg(feature = "std")]
     pub fn sign<T>(self, signer: &T) -> Result<Event, Error>
     where
         T: GetPublicKey + SignEvent,
@@ -305,7 +304,6 @@ impl EventBuilder {
     ///
     /// Check [`EventBuilder::build`] to learn more.
     #[inline]
-    #[cfg(feature = "std")]
     pub async fn sign_async<T>(self, signer: &T) -> Result<Event, Error>
     where
         T: AsyncGetPublicKey + AsyncSignEvent,
