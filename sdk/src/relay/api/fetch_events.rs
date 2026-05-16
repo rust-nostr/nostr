@@ -117,9 +117,7 @@ mod tests {
 
         // Send some events
         for i in 0..num_events {
-            let event = EventBuilder::text_note(i.to_string())
-                .sign_with_keys(&keys)
-                .unwrap();
+            let event = EventBuilder::text_note(i.to_string()).sign(&keys).unwrap();
             relay.send_event(&event).await.unwrap();
         }
 
@@ -184,9 +182,7 @@ mod tests {
         let keys = Keys::generate();
 
         // Send an event
-        let event = EventBuilder::text_note("Test")
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event = EventBuilder::text_note("Test").sign(&keys).unwrap();
         relay.send_event(&event).await.unwrap();
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
@@ -227,9 +223,7 @@ mod tests {
         relay.connect();
 
         // Send an event
-        let event = EventBuilder::text_note("Test")
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event = EventBuilder::text_note("Test").sign(&keys).unwrap();
         relay.send_event(&event).await.unwrap();
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
@@ -286,7 +280,7 @@ mod tests {
 
             // Build and send event
             let event = EventBuilder::metadata(&Metadata::new().name("Test"))
-                .sign_with_keys(&keys)
+                .sign(&keys)
                 .unwrap();
             r.send_event(&event).await.unwrap();
         });
@@ -316,9 +310,7 @@ mod tests {
                 tokio::time::sleep(Duration::from_secs(2)).await;
 
                 // Build and send event
-                let event = EventBuilder::text_note("Additional")
-                    .sign_with_keys(&keys)
-                    .unwrap();
+                let event = EventBuilder::text_note("Additional").sign(&keys).unwrap();
                 r.send_event(&event).await.unwrap();
             }
         });
@@ -347,9 +339,7 @@ mod tests {
             // Send more events
             for _ in 0..2 {
                 // Build and send event
-                let event = EventBuilder::text_note("Additional")
-                    .sign_with_keys(&keys)
-                    .unwrap();
+                let event = EventBuilder::text_note("Additional").sign(&keys).unwrap();
                 r.send_event(&event).await.unwrap();
 
                 tokio::time::sleep(Duration::from_secs(2)).await;

@@ -24,7 +24,7 @@ fn main() -> Result<()> {
     let unsigned: UnsignedEvent = unsigned.mine(&adapter, difficulty)?;
 
     // Sign event
-    let event: Event = unsigned.sign_with_keys(&keys)?;
+    let event: Event = unsigned.sign(&keys)?;
 
     println!("{}", event.as_json());
 

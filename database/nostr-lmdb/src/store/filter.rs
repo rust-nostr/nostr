@@ -176,9 +176,7 @@ mod tests {
 
     fn create_test_event(content: &str) -> Event {
         let keys = Keys::generate();
-        EventBuilder::text_note(content)
-            .sign_with_keys(&keys)
-            .unwrap()
+        EventBuilder::text_note(content).sign(&keys).unwrap()
     }
 
     #[test]
@@ -205,7 +203,7 @@ mod tests {
         let keys = Keys::generate();
         let event = EventBuilder::text_note("content")
             .tag(Tag::parse(["title", "Search userfacing tags"]).unwrap())
-            .sign_with_keys(&keys)
+            .sign(&keys)
             .unwrap();
         let event: EventBorrow = (&event).into();
 

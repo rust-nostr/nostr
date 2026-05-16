@@ -114,7 +114,7 @@ impl NostrConnectRemoteSigner {
         let res = NostrConnectResponse::with_result(ResponseResult::ConnectSecret(secret));
         let msg: NostrConnectMessage = NostrConnectMessage::response("urmom", res);
         let event: Event = EventBuilder::nostr_connect(&self.keys.signer, public_key, msg)?
-            .sign_with_keys(&self.keys.signer)?;
+            .sign(&self.keys.signer)?;
         self.client.send_event(&event).await?;
         Ok(())
     }
@@ -292,7 +292,7 @@ impl NostrConnectRemoteSigner {
                                             }
                                         }
                                         NostrConnectRequest::SignEvent(unsigned) => {
-                                            match unsigned.sign_with_keys(&self.keys.user) {
+                                            match unsigned.sign(&self.keys.user) {
                                                 Ok(event) => NostrConnectResponse::with_result(
                                                     ResponseResult::SignEvent(Box::new(event)),
                                                 ),
@@ -319,7 +319,7 @@ impl NostrConnectRemoteSigner {
                                     event.pubkey,
                                     msg,
                                 )?
-                                .sign_with_keys(&self.keys.signer)?;
+                                .sign(&self.keys.signer)?;
                                 self.client.send_event(&event).await?;
                             }
                         }

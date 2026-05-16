@@ -967,7 +967,7 @@ mod tests {
 
         // Test wake up when sending an event
         let event = EventBuilder::text_note("text wake-up")
-            .sign_with_keys(&Keys::generate())
+            .sign(&Keys::generate())
             .unwrap();
         relay.send_event(&event).await.unwrap();
         assert_eq!(relay.status(), RelayStatus::Connected);

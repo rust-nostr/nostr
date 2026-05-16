@@ -27,6 +27,8 @@ pub mod secret_key;
 pub use self::public_key::PublicKey;
 pub use self::secret_key::SecretKey;
 #[cfg(all(feature = "std", feature = "os-rng"))]
+use crate::event::{Event, EventId, UnsignedEvent};
+#[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::nips::nip04::{AsyncNip04, Nip04};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::nips::nip44::{AsyncNip44, Nip44};
@@ -38,8 +40,6 @@ use crate::util;
 use crate::util::BoxedFuture;
 #[cfg(feature = "std")]
 use crate::util::SECP256K1;
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use crate::{Event, UnsignedEvent};
 
 /// [`Keys`] error
 #[derive(Debug, PartialEq)]
@@ -277,7 +277,10 @@ impl GetPublicKey for Keys {
 #[cfg(all(feature = "std", feature = "os-rng"))]
 impl SignEvent for Keys {
     fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, SignerError> {
-        unsigned.sign_with_keys(self).map_err(SignerError::backend)
+        let id: EventId = unsigned.id.unwrap_or_else(|| unsigned.compute_id());
+        let message: Message = Message::from_digest(id.to_bytes());
+        let sig: Signature = self.sign_schnorr(&message);
+        unsigned.add_signature(sig).map_err(SignerError::backend)
     }
 }
 

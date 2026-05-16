@@ -21,7 +21,7 @@ async fn main() -> Result<()> {
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
     // Publish a text note
-    let event = EventBuilder::text_note("Hello world").sign_with_keys(&keys)?;
+    let event = EventBuilder::text_note("Hello world").sign(&keys)?;
     let output = client.send_event(&event).await?;
     println!("Event ID: {}", output.id().to_bech32()?);
     println!("Sent to: {:?}", output.success);
@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     let unsigned = unsigned
         .mine_async(&SingleThreadPow, NonZeroU8::new(20).unwrap())
         .await?;
-    let event = unsigned.sign_with_keys(&keys)?;
+    let event = unsigned.sign(&keys)?;
     client.send_event(&event).await?;
 
     Ok(())

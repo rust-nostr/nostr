@@ -1419,7 +1419,7 @@ mod tests {
         let keys = Keys::generate();
         EventBuilder::new(Kind::from(kind), "test content")
             .custom_created_at(Timestamp::from_secs(created_at))
-            .sign_with_keys(&keys)
+            .sign(&keys)
             .unwrap()
     }
 

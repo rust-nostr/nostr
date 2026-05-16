@@ -9,14 +9,6 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::ops::Range;
 
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
-#[cfg(feature = "rand")]
-use rand::{CryptoRng, RngCore};
-#[cfg(feature = "rand")]
-use secp256k1::{Secp256k1, Signing, Verification};
 use serde_json::{Value, json};
 
 use crate::nips::nip58::Nip58Tag;
@@ -310,33 +302,6 @@ impl EventBuilder {
     {
         let public_key: PublicKey = signer.get_public_key().await?;
         Ok(self.build(public_key).sign_async(signer).await?)
-    }
-
-    /// Build, sign and return [`Event`] using [`Keys`] signer
-    ///
-    /// Check [`EventBuilder::sign_with_ctx`] to learn more.
-    #[inline]
-    #[cfg(all(feature = "std", feature = "os-rng"))]
-    pub fn sign_with_keys(self, keys: &Keys) -> Result<Event, Error> {
-        self.sign_with_ctx(&SECP256K1, &mut OsRng.unwrap_err(), keys)
-    }
-
-    /// Build, sign and return [`Event`] using [`Keys`] signer
-    ///
-    /// Check [`EventBuilder::build`] to learn more.
-    #[cfg(feature = "rand")]
-    pub fn sign_with_ctx<C, R>(
-        self,
-        secp: &Secp256k1<C>,
-        rng: &mut R,
-        keys: &Keys,
-    ) -> Result<Event, Error>
-    where
-        C: Signing + Verification,
-        R: RngCore + CryptoRng,
-    {
-        let pubkey: PublicKey = keys.public_key();
-        Ok(self.build(pubkey).sign_with_ctx(secp, rng, keys)?)
     }
 
     /// Profile metadata
@@ -1267,7 +1232,7 @@ impl EventBuilder {
         Self::new(Kind::GiftWrap, content)
             .tags(tags)
             .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
-            .sign_with_keys(&keys)
+            .sign(&keys)
     }
 
     /// Gift Wrap
@@ -1840,9 +1805,7 @@ mod tests {
                 .unwrap(),
         );
 
-        let event = EventBuilder::text_note("hello")
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event = EventBuilder::text_note("hello").sign(&keys).unwrap();
 
         let serialized = event.as_json();
         let deserialized = Event::from_json(serialized).unwrap();
@@ -1859,7 +1822,7 @@ mod tests {
         // Self-tagging
         let event = EventBuilder::text_note("hello")
             .tag(Tag::public_key(keys.public_key()))
-            .sign_with_keys(&keys)
+            .sign(&keys)
             .unwrap();
         assert!(event.tags.is_empty());
 
@@ -1867,7 +1830,7 @@ mod tests {
         let other = Keys::generate();
         let event = EventBuilder::text_note("hello 2")
             .tag(Tag::public_key(other.public_key()))
-            .sign_with_keys(&keys)
+            .sign(&keys)
             .unwrap();
         assert_eq!(event.tags.len(), 1);
     }
@@ -2001,7 +1964,7 @@ mod tests {
         let event_builder: Event =
             EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
                 .unwrap()
-                .sign_with_keys(&keys)
+                .sign(&keys)
                 .unwrap();
 
         assert_eq!(event_builder.kind, Kind::BadgeAward);
@@ -2027,12 +1990,12 @@ mod tests {
         ];
         let bravery_badge_event =
             EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
-                .sign_with_keys(&badge_one_keys)
+                .sign(&badge_one_keys)
                 .unwrap();
         let bravery_badge_award =
             EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())
                 .unwrap()
-                .sign_with_keys(&badge_one_keys)
+                .sign(&badge_one_keys)
                 .unwrap();
 
         // Badge 2
@@ -2041,12 +2004,12 @@ mod tests {
 
         let honor_badge_event =
             EventBuilder::define_badge("honor", None, None, None, None, Vec::new())
-                .sign_with_keys(&badge_two_keys)
+                .sign(&badge_two_keys)
                 .unwrap();
         let honor_badge_award =
             EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())
                 .unwrap()
-                .sign_with_keys(&badge_two_keys)
+                .sign(&badge_two_keys)
                 .unwrap();
 
         let example_event_json = format!(
@@ -2073,7 +2036,7 @@ mod tests {
         let profile_badges =
             EventBuilder::profile_badges(badge_definitions, badge_awards, &pub_key)
                 .unwrap()
-                .sign_with_keys(&keys)
+                .sign(&keys)
                 .unwrap();
 
         assert_eq!(profile_badges.kind, Kind::ProfileBadges);
@@ -2091,7 +2054,7 @@ mod tests {
         // Build reply
         let reply_keys = Keys::generate();
         let reply = EventBuilder::text_note_reply("Test reply", &root_event, None, None)
-            .sign_with_keys(&reply_keys)
+            .sign(&reply_keys)
             .unwrap();
         assert_eq!(reply.tags.public_keys().count(), 1); // Root author
         assert_eq!(reply.tags.public_keys().next().unwrap(), root_event.pubkey);
@@ -2102,7 +2065,7 @@ mod tests {
         let other_keys = Keys::generate();
         let reply_of_reply =
             EventBuilder::text_note_reply("Test reply of reply", &reply, Some(&root_event), None)
-                .sign_with_keys(&other_keys)
+                .sign(&other_keys)
                 .unwrap();
         assert_eq!(reply_of_reply.tags.public_keys().count(), 2); // Reply + root author
 
@@ -2122,10 +2085,10 @@ mod tests {
     fn replaceable_repost() {
         let keys = Keys::generate();
         let replaceable = EventBuilder::mute_list(MuteList::default())
-            .sign_with_keys(&keys)
+            .sign(&keys)
             .unwrap();
         let repost = EventBuilder::repost(&replaceable, None)
-            .sign_with_keys(&keys)
+            .sign(&keys)
             .unwrap();
 
         assert_eq!(repost.kind, Kind::GenericRepost);
@@ -2147,11 +2110,9 @@ mod tests {
     #[cfg(all(feature = "std", feature = "os-rng"))]
     fn addressable_repost() {
         let keys = Keys::generate();
-        let addressable = EventBuilder::follow_set("lorem", [])
-            .sign_with_keys(&keys)
-            .unwrap();
+        let addressable = EventBuilder::follow_set("lorem", []).sign(&keys).unwrap();
         let repost = EventBuilder::repost(&addressable, None)
-            .sign_with_keys(&keys)
+            .sign(&keys)
             .unwrap();
 
         assert_eq!(repost.kind, Kind::GenericRepost);
@@ -2176,11 +2137,9 @@ mod tests {
         let note_keys = Keys::generate();
         let repost_keys = Keys::generate();
         let relay_url = RelayUrl::parse("wss://relay.example.com").unwrap();
-        let note = EventBuilder::text_note("hello")
-            .sign_with_keys(&note_keys)
-            .unwrap();
+        let note = EventBuilder::text_note("hello").sign(&note_keys).unwrap();
         let repost = EventBuilder::repost(&note, Some(relay_url.clone()))
-            .sign_with_keys(&repost_keys)
+            .sign(&repost_keys)
             .unwrap();
 
         assert_eq!(repost.kind, Kind::Repost);
@@ -2207,11 +2166,9 @@ mod tests {
         let keys = Keys::generate();
         let protected = EventBuilder::text_note("secret")
             .tag(Tag::protected())
-            .sign_with_keys(&keys)
+            .sign(&keys)
             .unwrap();
-        let repost = EventBuilder::repost(&protected, None)
-            .sign_with_keys(&keys)
-            .unwrap();
+        let repost = EventBuilder::repost(&protected, None).sign(&keys).unwrap();
 
         assert!(repost.content.is_empty());
     }
@@ -2228,7 +2185,7 @@ mod benches {
     pub fn builder_to_event(bh: &mut Bencher) {
         let keys = Keys::generate();
         bh.iter(|| {
-            black_box(EventBuilder::text_note("hello").sign_with_keys(&keys)).unwrap();
+            black_box(EventBuilder::text_note("hello").sign(&keys)).unwrap();
         });
     }
 }

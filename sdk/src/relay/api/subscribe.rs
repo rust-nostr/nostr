@@ -218,7 +218,7 @@ mod tests {
 
         // Event
         let kind = Kind::Custom(22_222); // Ephemeral kind
-        let event: Event = EventBuilder::new(kind, "").sign_with_keys(&keys).unwrap();
+        let event: Event = EventBuilder::new(kind, "").sign(&keys).unwrap();
 
         let event_id: EventId = event.id;
 

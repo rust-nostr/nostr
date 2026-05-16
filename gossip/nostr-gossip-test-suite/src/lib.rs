@@ -101,7 +101,7 @@ macro_rules! gossip_unit_tests {
                         relay_hint: Some(relay_url.clone()),
                     },
                 ))
-                .sign_with_keys(&keys)
+                .sign(&keys)
                 .unwrap();
 
             store.process(&event, None).await.unwrap();
@@ -128,7 +128,7 @@ macro_rules! gossip_unit_tests {
             // Process multiple events from the same relay
             for i in 0..5 {
                 let event = EventBuilder::text_note(format!("Test {i}"))
-                    .sign_with_keys(&keys)
+                    .sign(&keys)
                     .unwrap();
 
                 store.process(&event, Some(&relay_url)).await.unwrap();

@@ -212,9 +212,7 @@ mod tests {
     #[tokio::test]
     async fn test_stream_with_subscription_verification_single_filter() {
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("test")
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event = EventBuilder::text_note("test").sign(&keys).unwrap();
 
         let mock = MockRelay::run().await.unwrap();
         let url = mock.url().await;
@@ -247,9 +245,7 @@ mod tests {
     #[tokio::test]
     async fn test_stream_with_subscription_verification_multiple_filters() {
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("test")
-            .sign_with_keys(&keys)
-            .unwrap();
+        let event = EventBuilder::text_note("test").sign(&keys).unwrap();
 
         let mock = MockRelay::run().await.unwrap();
         let url = mock.url().await;
