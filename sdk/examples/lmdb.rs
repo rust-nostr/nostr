@@ -9,13 +9,8 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
-
     let database = NostrLmdb::open("./db/nostr-lmdb").await?;
-    let client: Client = ClientBuilder::default()
-        .signer(keys.clone())
-        .database(database)
-        .build();
+    let client: Client = ClientBuilder::default().database(database).build();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.wine").await?;
@@ -23,9 +18,11 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
+
     // Publish a text note
-    let builder = EventBuilder::text_note("Hello world");
-    client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("Hello world").sign(&keys)?;
+    client.send_event(&event).await?;
 
     // Negentropy sync
     let filter = Filter::new().author(keys.public_key());

@@ -32,7 +32,7 @@ async fn main() -> Result<()> {
     // Configure client to use proxy for `.onion` relays
     let addr = SocketAddr::V4(SocketAddrV4::new(Ipv4Addr::LOCALHOST, 9050));
     let proxy: Proxy = Proxy::onion(addr);
-    let client = Client::builder().signer(keys).proxy(proxy).build();
+    let client = Client::builder().proxy(proxy).build();
 
     // Add relays
     client.add_relay("wss://relay.damus.io").await?;
@@ -45,8 +45,8 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let builder = EventBuilder::text_note("My first text note from rust-nostr!");
-    client.send_event_builder(builder).await?;
+    let event = EventBuilder::text_note("My first text note from rust-nostr!").sign(&keys)?;
+    client.send_event(&event).await?;
 
     Ok(())
 }

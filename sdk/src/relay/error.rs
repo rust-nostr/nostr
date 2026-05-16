@@ -12,6 +12,8 @@ use crate::transport::error::TransportError;
 /// Relay error
 #[derive(Debug)]
 pub enum Error {
+    /// Any error
+    Any(Box<dyn std::error::Error + Send + Sync>),
     /// Transport error
     Transport(TransportError),
     /// Policy error
@@ -30,8 +32,6 @@ pub enum Error {
     Negentropy(negentropy::Error),
     /// Oneshot recv error
     OneshotRecv(oneshot::error::RecvError),
-    /// Signer not configured
-    SignerNotConfigured,
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -121,6 +121,10 @@ pub enum Error {
     PrematureExit,
     /// An empty list of filters has been provided
     EmptyFilters,
+    /// The authenticator is not configured
+    AuthenticatorNotConfigured,
+    /// The authentication event is invalid
+    AuthenticationEventInvalid,
 }
 
 impl std::error::Error for Error {}
@@ -128,6 +132,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Any(e) => e.fmt(f),
             Self::Transport(e) => write!(f, "transport: {e}"),
             Self::Policy(e) => write!(f, "policy: {e}"),
             Self::Database(e) => write!(f, "database: {e}"),
@@ -137,7 +142,6 @@ impl fmt::Display for Error {
             Self::Hex(e) => e.fmt(f),
             Self::Negentropy(e) => e.fmt(f),
             Self::OneshotRecv(e) => e.fmt(f),
-            Self::SignerNotConfigured => f.write_str("signer not configured"),
             Self::Timeout => f.write_str("timeout"),
             Self::NotRepliedToPing => f.write_str("not replied to ping"),
             Self::CantParsePong => f.write_str("can't parse pong"),
@@ -192,7 +196,16 @@ impl fmt::Display for Error {
             },
             Self::PrematureExit => f.write_str("premature exit"),
             Self::EmptyFilters => f.write_str("empty filters"),
+            Self::AuthenticatorNotConfigured => f.write_str("authenticator is not configured"),
+            Self::AuthenticationEventInvalid => f.write_str("authentication event is invalid"),
         }
+    }
+}
+
+impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
+    #[inline]
+    fn from(e: Box<dyn std::error::Error + Send + Sync>) -> Self {
+        Self::Any(e)
     }
 }
 

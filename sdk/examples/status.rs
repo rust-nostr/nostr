@@ -10,8 +10,7 @@ use nostr_sdk::prelude::*;
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
-    let client = Client::builder().signer(keys).build();
+    let client = Client::default();
 
     client.add_relay("wss://relay.damus.io").await?;
     client.add_relay("wss://nostr.wine").await?;
@@ -19,10 +18,12 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
+    let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
+
     // Send a General statuses event to relays
     let general = LiveStatus::new(StatusType::General);
-    let builder = EventBuilder::live_status(general, "Building rust-nostr");
-    client.send_event_builder(builder).await?;
+    let event = EventBuilder::live_status(general, "Building rust-nostr").sign(&keys)?;
+    client.send_event(&event).await?;
 
     // Send a Music statuses event to relays
     let music = LiveStatus {
@@ -30,8 +31,8 @@ async fn main() -> Result<()> {
         expiration: Some(Timestamp::now() + Duration::from_secs(60 * 60 * 24)),
         reference: Some("spotify:search:Intergalatic%20-%20Beastie%20Boys".into()),
     };
-    let builder = EventBuilder::live_status(music, "Intergalatic - Beastie Boys");
-    client.send_event_builder(builder).await?;
+    let event = EventBuilder::live_status(music, "Intergalatic - Beastie Boys").sign(&keys)?;
+    client.send_event(&event).await?;
 
     Ok(())
 }

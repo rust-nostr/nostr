@@ -6,6 +6,7 @@
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for `BTreeSet<Event>`
 #![doc = include_str!("../README.md")]
 
+pub mod authenticator;
 pub mod client;
 mod events_tracker;
 mod future;
