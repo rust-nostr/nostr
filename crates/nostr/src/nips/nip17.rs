@@ -6,15 +6,30 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/17.md>
 
+#![allow(rustdoc::redundant_explicit_links)]
+
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+use super::nip44::{AsyncNip44, Nip44};
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+use super::nip59::{self, GiftWrapBuilder};
+use super::util::take_relay_url;
+use crate::event::Event;
 use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::nips::util::take_relay_url;
-use crate::types::url;
-use crate::{Event, RelayUrl};
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+use crate::event::unsigned::FinalizeUnsignedEvent;
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+use crate::event::{EventBuilder, FinalizeEvent, FinalizeEventAsync, Kind, UnsignedEvent};
+use crate::key::PublicKey;
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent, SignerError};
+use crate::types::url::{self, RelayUrl};
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+use crate::util::{BoxedFuture, UnwrapInfallible};
 
 const RELAY: &str = "relay";
 
@@ -25,6 +40,12 @@ pub enum Error {
     Url(url::Error),
     /// Codec error
     Codec(TagCodecError),
+    /// Signer error
+    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+    Signer(SignerError),
+    /// NIP-59 error
+    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+    NIP59(nip59::Error),
 }
 
 impl core::error::Error for Error {}
@@ -34,6 +55,10 @@ impl fmt::Display for Error {
         match self {
             Self::Url(e) => e.fmt(f),
             Self::Codec(e) => e.fmt(f),
+            #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+            Self::Signer(e) => e.fmt(f),
+            #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+            Self::NIP59(e) => e.fmt(f),
         }
     }
 }
@@ -48,6 +73,150 @@ impl From<TagCodecError> for Error {
     fn from(e: TagCodecError) -> Self {
         Self::Codec(e)
     }
+}
+
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+impl From<SignerError> for Error {
+    fn from(e: SignerError) -> Self {
+        Self::Signer(e)
+    }
+}
+
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+impl From<nip59::Error> for Error {
+    fn from(e: nip59::Error) -> Self {
+        Self::NIP59(e)
+    }
+}
+
+/// Private Direct Message event builder.
+///
+/// # Example
+///
+/// ```rust,no_run
+/// # use nostr::prelude::*;
+/// # #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+/// # fn main() -> Result<(), Box<dyn core::error::Error>> {
+/// let receiver = PublicKey::from_hex("<receiver-public-key>")?;
+/// let signer = Keys::parse("<my-secret-key>")?;
+/// let private_msg: Event =
+///     PrivateDirectMessageBuilder::new(receiver, "Hello, world!").finalize(&signer)?;
+/// # Ok(())
+/// # }
+/// # #[cfg(not(all(feature = "std", feature = "os-rng", feature = "nip59")))]
+/// # fn main() {}
+/// ```
+#[derive(Debug, Clone)]
+pub struct PrivateDirectMessageBuilder {
+    /// Receiver public key.
+    pub receiver: PublicKey,
+    /// Message.
+    pub message: String,
+    /// Extra tags to add to the **rumor** event.
+    pub rumor_extra_tags: Vec<Tag>,
+    /// Extra tags to add to the **gift wrap** event.
+    pub extra_tags: Vec<Tag>,
+}
+
+// TODO: should this be under the required features, like for the Finalize traits?
+impl PrivateDirectMessageBuilder {
+    /// Create a new private direct message event builder.
+    #[inline]
+    pub fn new<M>(receiver: PublicKey, message: M) -> Self
+    where
+        M: Into<String>,
+    {
+        Self {
+            receiver,
+            message: message.into(),
+            rumor_extra_tags: Vec::new(),
+            extra_tags: Vec::new(),
+        }
+    }
+
+    /// Extra tags to add to the **rumor** event.
+    #[inline]
+    pub fn rumor_extra_tags<T>(mut self, tags: T) -> Self
+    where
+        T: IntoIterator<Item = Tag>,
+    {
+        self.rumor_extra_tags.extend(tags);
+        self
+    }
+
+    /// Extra tags to add to the **gift wrap** event.
+    #[inline]
+    pub fn extra_tags<T>(mut self, tags: T) -> Self
+    where
+        T: IntoIterator<Item = Tag>,
+    {
+        self.extra_tags.extend(tags);
+        self
+    }
+}
+
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+impl<S> FinalizeEvent<S> for PrivateDirectMessageBuilder
+where
+    S: GetPublicKey + SignEvent + Nip44,
+{
+    type Error = Error;
+
+    fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
+        let public_key: PublicKey = signer.get_public_key()?;
+        let rumor: UnsignedEvent = make_rumor(
+            public_key,
+            self.receiver,
+            self.message,
+            self.rumor_extra_tags,
+        );
+        Ok(GiftWrapBuilder::new(rumor, self.receiver)
+            .extra_tags(self.extra_tags)
+            .finalize(signer)?)
+    }
+}
+
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+impl<S> FinalizeEventAsync<S> for PrivateDirectMessageBuilder
+where
+    S: AsyncGetPublicKey + AsyncSignEvent + AsyncNip44,
+{
+    type Error = Error;
+
+    fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
+    where
+        Self: 'a,
+        S: 'a,
+    {
+        Box::pin(async move {
+            let public_key: PublicKey = signer.get_public_key().await?;
+            let rumor: UnsignedEvent = make_rumor(
+                public_key,
+                self.receiver,
+                self.message,
+                self.rumor_extra_tags,
+            );
+            Ok(GiftWrapBuilder::new(rumor, self.receiver)
+                .extra_tags(self.extra_tags)
+                .finalize_async(signer)
+                .await?)
+        })
+    }
+}
+
+#[inline]
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+fn make_rumor(
+    sender: PublicKey,
+    receiver: PublicKey,
+    message: String,
+    extra_tags: Vec<Tag>,
+) -> UnsignedEvent {
+    EventBuilder::new(Kind::PrivateDirectMessage, message)
+        .tag(Tag::public_key(receiver))
+        .tags(extra_tags)
+        .finalize_unsigned(sender)
+        .unwrap_infallible()
 }
 
 /// Standardized NIP-17 tags

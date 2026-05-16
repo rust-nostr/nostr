@@ -4,7 +4,7 @@
 
 use std::time::Duration;
 
-use nostr::event::EventBuilder;
+use nostr::event::{EventBuilder, FinalizeEventAsync};
 use nostr::key::{Keys, PublicKey};
 use nostr::nips::nip46::{NostrConnectRequest, NostrConnectUri};
 use nostr::types::RelayUrl;
@@ -53,7 +53,7 @@ async fn test_bunker_uri(user_keys: Keys, relay_url: RelayUrl) {
     .unwrap();
 
     let event = EventBuilder::text_note("GM")
-        .sign_async(&nostr_connect_signer)
+        .finalize_async(&nostr_connect_signer)
         .await
         .unwrap();
 
@@ -91,7 +91,7 @@ async fn test_bunker_uri_no_secret(user_keys: Keys, relay_url: RelayUrl) {
     .unwrap();
 
     let event = EventBuilder::text_note("GM")
-        .sign_async(&nostr_connect_signer)
+        .finalize_async(&nostr_connect_signer)
         .await
         .unwrap();
 
@@ -124,7 +124,7 @@ async fn test_nostrconnect_uri(relay_url: RelayUrl, user_keys: Keys) {
         NostrConnect::new(connect_uri, app_keys, Duration::from_secs(5), None).unwrap();
 
     let event = EventBuilder::text_note("GM")
-        .sign_async(&nostr_connect_signer)
+        .finalize_async(&nostr_connect_signer)
         .await
         .unwrap();
 

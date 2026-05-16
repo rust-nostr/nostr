@@ -87,16 +87,14 @@ impl EventDeletionRequest {
             tags.push(Tag::coordinate(coordinate, None));
         }
 
-        EventBuilder::new(Kind::EventDeletion, self.reason.unwrap_or_default())
-            .tags(tags)
-            .dedup_tags()
+        EventBuilder::new(Kind::EventDeletion, self.reason.unwrap_or_default()).tags(tags)
     }
 }
 
 #[cfg(all(test, feature = "std", feature = "os-rng"))]
 mod tests {
     use super::*;
-    use crate::{Event, Keys, Tags};
+    use crate::prelude::*;
 
     #[test]
     fn test_event_deletion_request() {
@@ -116,7 +114,7 @@ mod tests {
             .coordinate(coordinate)
             .reason("these posts were published by accident");
 
-        let event: Event = request.to_event_builder().sign(&keys).unwrap();
+        let event: Event = request.to_event_builder().finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::EventDeletion);
         assert_eq!(event.content, "these posts were published by accident");
@@ -137,7 +135,7 @@ mod tests {
         // Event ID without reason
         let request = EventDeletionRequest::new().id(event_id);
 
-        let event: Event = request.to_event_builder().sign(&keys).unwrap();
+        let event: Event = request.to_event_builder().finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::EventDeletion);
         assert!(event.content.is_empty());

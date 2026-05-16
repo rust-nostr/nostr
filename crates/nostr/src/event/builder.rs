@@ -4,8 +4,10 @@
 
 //! Event builder
 
+use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 use core::ops::Range;
 
@@ -14,6 +16,7 @@ use serde_json::{Value, json};
 use crate::nips::nip58::Nip58Tag;
 use crate::nips::nip62::VanishTarget;
 use crate::prelude::*;
+use crate::util::BoxedFuture;
 
 /// Wrong kind error
 #[derive(Debug, PartialEq, Eq)]
@@ -53,9 +56,6 @@ pub enum Error {
     NIP44(nip44::Error),
     /// NIP58 error
     NIP58(nip58::Error),
-    /// NIP59 error
-    #[cfg(all(feature = "std", feature = "nip59"))]
-    NIP59(nip59::Error),
     /// Wrong kind
     WrongKind {
         /// The received wrong kind
@@ -82,8 +82,6 @@ impl fmt::Display for Error {
             #[cfg(all(feature = "std", feature = "nip44"))]
             Self::NIP44(e) => e.fmt(f),
             Self::NIP58(e) => e.fmt(f),
-            #[cfg(all(feature = "std", feature = "nip59"))]
-            Self::NIP59(e) => e.fmt(f),
             Self::WrongKind { received, expected } => {
                 write!(f, "Wrong kind: received={received}, expected={expected}")
             }
@@ -143,32 +141,118 @@ impl From<nip58::Error> for Error {
     }
 }
 
-#[cfg(all(feature = "std", feature = "nip59"))]
-impl From<nip59::Error> for Error {
-    fn from(e: nip59::Error) -> Self {
-        Self::NIP59(e)
+/// Template that can be converted into a generic [`EventBuilder`].
+pub trait EventBuilderTemplate: Sized {
+    /// Conversion error.
+    type Error: core::error::Error;
+
+    /// Convert into the generic event builder.
+    fn build(self) -> Result<EventBuilder, Self::Error>;
+}
+
+impl<B, S> FinalizeEvent<S> for B
+where
+    B: EventBuilderTemplate,
+    S: GetPublicKey + SignEvent + ?Sized,
+{
+    type Error = SignerError;
+
+    fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
+        let builder: EventBuilder = self.build().map_err(SignerError::backend)?;
+        builder.finalize(signer)
+    }
+}
+
+impl<B> FinalizeUnsignedEvent for B
+where
+    B: EventBuilderTemplate,
+{
+    type Error = SignerError;
+
+    #[inline]
+    fn finalize_unsigned(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error> {
+        let builder: EventBuilder = self.build().map_err(SignerError::backend)?;
+        Ok(builder.finalize_unsigned(public_key).unwrap_infallible())
+    }
+}
+
+/// Template that can asynchronously be converted into a generic [`EventBuilder`].
+pub trait EventBuilderTemplateAsync {
+    /// Conversion error.
+    type Error: core::error::Error;
+
+    /// Convert this typed builder into the generic event builder.
+    fn build<'a>(self) -> BoxedFuture<'a, Result<EventBuilder, Self::Error>>
+    where
+        Self: 'a;
+}
+
+impl<B> EventBuilderTemplateAsync for B
+where
+    B: EventBuilderTemplate + Send,
+{
+    type Error = B::Error;
+
+    #[inline]
+    fn build<'a>(self) -> BoxedFuture<'a, Result<EventBuilder, Self::Error>>
+    where
+        Self: 'a,
+    {
+        Box::pin(async move { EventBuilderTemplate::build(self) })
+    }
+}
+
+impl<B, S> FinalizeEventAsync<S> for B
+where
+    B: EventBuilderTemplateAsync + Send,
+    S: AsyncGetPublicKey + AsyncSignEvent + ?Sized,
+{
+    type Error = SignerError;
+
+    fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
+    where
+        Self: 'a,
+        S: 'a,
+    {
+        Box::pin(async move {
+            let builder: EventBuilder = self.build().await.map_err(SignerError::backend)?;
+            builder.finalize_async(signer).await
+        })
+    }
+}
+
+impl<B> FinalizeUnsignedEventAsync for B
+where
+    B: EventBuilderTemplateAsync + Send,
+{
+    type Error = SignerError;
+
+    #[inline]
+    fn finalize_unsigned_async<'a>(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'a, Result<UnsignedEvent, Self::Error>>
+    where
+        Self: 'a,
+    {
+        Box::pin(async move {
+            let builder: EventBuilder = self.build().await.map_err(SignerError::backend)?;
+            Ok(builder.finalize_unsigned(public_key).unwrap_infallible())
+        })
     }
 }
 
 /// Event builder
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct EventBuilder {
-    // Not expose the kind, tags and content.
-    // These if changed may break the previously constructed events
-    // (i.e., change the content of a NIP46 event or of a NIP59 seal).
-    kind: Kind,
-    tags: Tags,
-    content: String,
-    /// Custom timestamp
-    pub custom_created_at: Option<Timestamp>,
-    /// Allow self-tagging
-    ///
-    /// If enabled, the `p` tags that match the signing keypair will not be discarded.
-    pub allow_self_tagging: bool,
-    /// Deduplicate tags
-    ///
-    /// For more details check [`Tags::dedup`].
-    pub dedup_tags: bool,
+    /// Event kind.
+    pub kind: Kind,
+    /// Event tags.
+    pub tags: Tags,
+    /// Event content.
+    pub content: String,
+    /// Custom timestamp.
+    pub created_at: Option<Timestamp>,
 }
 
 impl EventBuilder {
@@ -182,9 +266,7 @@ impl EventBuilder {
             kind,
             tags: Tags::new(),
             content: content.into(),
-            custom_created_at: None,
-            allow_self_tagging: false,
-            dedup_tags: false,
+            created_at: None,
         }
     }
 
@@ -215,93 +297,11 @@ impl EventBuilder {
         self
     }
 
-    /// Set a custom `created_at` UNIX timestamp
+    /// Set a custom `created_at` UNIX timestamp.
     #[inline]
     pub fn custom_created_at(mut self, created_at: Timestamp) -> Self {
-        self.custom_created_at = Some(created_at);
+        self.created_at = Some(created_at);
         self
-    }
-
-    /// Allow self-tagging
-    ///
-    /// When this mode is enabled, any `p` tags referencing the author’s public key will not be discarded.
-    pub fn allow_self_tagging(mut self) -> Self {
-        self.allow_self_tagging = true;
-        self
-    }
-
-    /// Deduplicate tags
-    ///
-    /// For more details check [`Tags::dedup`].
-    pub fn dedup_tags(mut self) -> Self {
-        self.dedup_tags = true;
-        self
-    }
-
-    /// Build an unsigned event
-    ///
-    /// By default, this method removes any `p` tags that match the author's public key.
-    /// To allow self-tagging, call [`EventBuilder::allow_self_tagging`] first.
-    pub fn build(mut self, public_key: PublicKey) -> UnsignedEvent {
-        // If self-tagging isn't allowed, discard all `p` tags that match the event author.
-        if !self.allow_self_tagging {
-            let public_key_hex: String = public_key.to_hex();
-            self.tags.retain(|t| {
-                if t.kind() == "p" {
-                    if let Some(content) = t.content() {
-                        if content == public_key_hex {
-                            return false; // Remove `p` tag that match author
-                        }
-                    }
-                }
-
-                true // No `p` tag or author public key not match
-            });
-        }
-
-        // Deduplicate tags
-        if self.dedup_tags {
-            self.tags.dedup();
-        }
-
-        // Construct unsigned event
-        UnsignedEvent {
-            // Not compute event ID, as the user may want POW, so would be an unnecessary computation.
-            id: None,
-            pubkey: public_key,
-            created_at: self.custom_created_at.unwrap_or_else(Timestamp::now),
-            kind: self.kind,
-            tags: self.tags,
-            content: self.content,
-        }
-    }
-
-    /// Build, sign and return [`Event`]
-    ///
-    /// Shortcut for `builder.build(public_key).sign(signer)`.
-    ///
-    /// Check [`EventBuilder::build`] to learn more.
-    #[inline]
-    pub fn sign<T>(self, signer: &T) -> Result<Event, Error>
-    where
-        T: GetPublicKey + SignEvent,
-    {
-        let public_key: PublicKey = signer.get_public_key()?;
-        Ok(self.build(public_key).sign(signer)?)
-    }
-
-    /// Build, sign and return [`Event`]
-    ///
-    /// Shortcut for `builder.build(public_key).sign(signer)`.
-    ///
-    /// Check [`EventBuilder::build`] to learn more.
-    #[inline]
-    pub async fn sign_async<T>(self, signer: &T) -> Result<Event, Error>
-    where
-        T: AsyncGetPublicKey + AsyncSignEvent,
-    {
-        let public_key: PublicKey = signer.get_public_key().await?;
-        Ok(self.build(public_key).sign_async(signer).await?)
     }
 
     /// Profile metadata
@@ -1168,112 +1168,18 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
-    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub fn seal<T>(
-        signer: &T,
-        receiver_pubkey: &PublicKey,
-        rumor: UnsignedEvent,
-    ) -> Result<Self, Error>
-    where
-        T: Nip44,
-    {
-        Ok(nip59::make_seal(signer, receiver_pubkey, rumor)?)
-    }
-
-    /// Seal
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    #[inline]
-    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub async fn seal_async<T>(
-        signer: &T,
-        receiver_pubkey: &PublicKey,
-        rumor: UnsignedEvent,
-    ) -> Result<Self, Error>
-    where
-        T: AsyncNip44,
-    {
-        Ok(nip59::make_seal_async(signer, receiver_pubkey, rumor).await?)
-    }
-
-    /// Gift Wrap from seal
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub fn gift_wrap_from_seal<I>(
-        receiver: &PublicKey,
-        seal: &Event,
-        extra_tags: I,
-    ) -> Result<Event, Error>
-    where
-        I: IntoIterator<Item = Tag>,
-    {
-        if seal.kind != Kind::Seal {
-            return Err(Error::WrongKind {
-                received: seal.kind,
-                expected: WrongKindError::Single(Kind::Seal),
-            });
-        }
-
-        let keys: Keys = Keys::generate();
-        let content: String = nip44::encrypt(
-            keys.secret_key(),
-            receiver,
-            seal.as_json(),
-            nip44::Version::default(),
-        )?;
-
-        // Collect extra tags
-        let mut tags: Vec<Tag> = extra_tags.into_iter().collect();
-
-        // Push received public key
-        tags.push(Tag::public_key(*receiver));
-
-        Self::new(Kind::GiftWrap, content)
-            .tags(tags)
-            .custom_created_at(Timestamp::tweaked(nip59::RANGE_RANDOM_TIMESTAMP_TWEAK))
-            .sign(&keys)
+    #[cfg(feature = "nip59")]
+    pub fn seal(rumor: UnsignedEvent, receiver: PublicKey) -> GiftWrapSealBuilder {
+        GiftWrapSealBuilder::new(rumor, receiver)
     }
 
     /// Gift Wrap
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
     #[inline]
-    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub fn gift_wrap<T, I>(
-        signer: &T,
-        receiver: &PublicKey,
-        rumor: UnsignedEvent,
-        extra_tags: I,
-    ) -> Result<Event, Error>
-    where
-        T: GetPublicKey + SignEvent + Nip44,
-        I: IntoIterator<Item = Tag>,
-    {
-        let seal: Event = Self::seal(signer, receiver, rumor)?.sign(signer)?;
-        Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
-    }
-
-    /// Gift Wrap
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/59.md>
-    #[inline]
-    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub async fn gift_wrap_async<T, I>(
-        signer: &T,
-        receiver: &PublicKey,
-        rumor: UnsignedEvent,
-        extra_tags: I,
-    ) -> Result<Event, Error>
-    where
-        T: AsyncGetPublicKey + AsyncSignEvent + AsyncNip44,
-        I: IntoIterator<Item = Tag>,
-    {
-        let seal: Event = Self::seal_async(signer, receiver, rumor)
-            .await?
-            .sign_async(signer)
-            .await?;
-        Self::gift_wrap_from_seal(receiver, &seal, extra_tags)
+    #[cfg(feature = "nip59")]
+    pub fn gift_wrap(rumor: UnsignedEvent, receiver: PublicKey) -> GiftWrapBuilder {
+        GiftWrapBuilder::new(rumor, receiver)
     }
 
     /// Private direct message relay list
@@ -1286,69 +1192,16 @@ impl EventBuilder {
         Self::new(Kind::InboxRelays, "").tags(urls.into_iter().map(Nip17Tag::Relay).map(Into::into))
     }
 
-    /// Private Direct message rumor
-    ///
-    /// You probably are looking for [`EventBuilder::private_msg`] method.
-    ///
-    /// <div class="warning">
-    /// This constructor compose ONLY the rumor for the private direct message!
-    /// NOT USE THIS IF YOU DON'T KNOW WHAT YOU ARE DOING!
-    /// </div>
+    /// Private Direct message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
     #[inline]
     #[cfg(feature = "nip59")]
-    pub fn private_msg_rumor<S>(receiver: PublicKey, message: S) -> Self
+    pub fn private_msg<M>(receiver: PublicKey, message: M) -> PrivateDirectMessageBuilder
     where
-        S: Into<String>,
+        M: Into<String>,
     {
-        Self::new(Kind::PrivateDirectMessage, message).tags([Tag::public_key(receiver)])
-    }
-
-    /// Private Direct message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[inline]
-    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub fn private_msg<T, S, I>(
-        signer: &T,
-        receiver: PublicKey,
-        message: S,
-        rumor_extra_tags: I,
-    ) -> Result<Event, Error>
-    where
-        T: GetPublicKey + SignEvent + Nip44,
-        S: Into<String>,
-        I: IntoIterator<Item = Tag>,
-    {
-        let public_key: PublicKey = signer.get_public_key()?;
-        let rumor: UnsignedEvent = Self::private_msg_rumor(receiver, message)
-            .tags(rumor_extra_tags)
-            .build(public_key);
-        Self::gift_wrap(signer, &receiver, rumor, [])
-    }
-
-    /// Private Direct message
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/17.md>
-    #[inline]
-    #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-    pub async fn private_msg_async<T, S, I>(
-        signer: &T,
-        receiver: PublicKey,
-        message: S,
-        rumor_extra_tags: I,
-    ) -> Result<Event, Error>
-    where
-        T: AsyncGetPublicKey + AsyncSignEvent + AsyncNip44,
-        S: Into<String>,
-        I: IntoIterator<Item = Tag>,
-    {
-        let public_key: PublicKey = signer.get_public_key().await?;
-        let rumor: UnsignedEvent = Self::private_msg_rumor(receiver, message)
-            .tags(rumor_extra_tags)
-            .build(public_key);
-        Self::gift_wrap_async(signer, &receiver, rumor, []).await
+        PrivateDirectMessageBuilder::new(receiver, message)
     }
 
     /// Mute list
@@ -1788,6 +1641,68 @@ fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
     false
 }
 
+impl FinalizeUnsignedEvent for EventBuilder {
+    type Error = Infallible;
+
+    fn finalize_unsigned(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error> {
+        Ok(UnsignedEvent {
+            // Not compute event ID, as the user may want POW, so would be an unnecessary computation.
+            id: None,
+            pubkey: public_key,
+            created_at: self.created_at.unwrap_or_else(Timestamp::now),
+            kind: self.kind,
+            tags: self.tags,
+            content: self.content,
+        })
+    }
+}
+
+impl FinalizeUnsignedEventAsync for EventBuilder {
+    type Error = Infallible;
+
+    fn finalize_unsigned_async<'a>(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'a, Result<UnsignedEvent, Self::Error>>
+    where
+        Self: 'a,
+    {
+        Box::pin(async move { self.finalize_unsigned(public_key) })
+    }
+}
+
+impl<S> FinalizeEvent<S> for EventBuilder
+where
+    S: GetPublicKey + SignEvent + ?Sized,
+{
+    type Error = SignerError;
+
+    fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
+        let public_key: PublicKey = signer.get_public_key()?;
+        let unsigned: UnsignedEvent = self.finalize_unsigned(public_key).unwrap_infallible();
+        signer.sign_event(unsigned)
+    }
+}
+
+impl<S> FinalizeEventAsync<S> for EventBuilder
+where
+    S: AsyncGetPublicKey + AsyncSignEvent + ?Sized,
+{
+    type Error = SignerError;
+
+    fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
+    where
+        Self: 'a,
+        S: 'a,
+    {
+        Box::pin(async move {
+            let public_key: PublicKey = signer.get_public_key().await?;
+            let unsigned: UnsignedEvent = self.finalize_unsigned(public_key).unwrap_infallible();
+            signer.sign_event(unsigned).await
+        })
+    }
+}
+
 #[cfg(test)]
 mod tests {
     #[cfg(all(feature = "std", feature = "os-rng"))]
@@ -1805,34 +1720,12 @@ mod tests {
                 .unwrap(),
         );
 
-        let event = EventBuilder::text_note("hello").sign(&keys).unwrap();
+        let event = EventBuilder::text_note("hello").finalize(&keys).unwrap();
 
         let serialized = event.as_json();
         let deserialized = Event::from_json(serialized).unwrap();
 
         assert_eq!(event, deserialized);
-    }
-
-    #[test]
-    #[cfg(all(feature = "std", feature = "os-rng"))]
-    fn test_self_tagging() {
-        let keys = Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
-            .unwrap();
-
-        // Self-tagging
-        let event = EventBuilder::text_note("hello")
-            .tag(Tag::public_key(keys.public_key()))
-            .sign(&keys)
-            .unwrap();
-        assert!(event.tags.is_empty());
-
-        // Tag someone else
-        let other = Keys::generate();
-        let event = EventBuilder::text_note("hello 2")
-            .tag(Tag::public_key(other.public_key()))
-            .sign(&keys)
-            .unwrap();
-        assert_eq!(event.tags.len(), 1);
     }
 
     #[test]
@@ -1964,7 +1857,7 @@ mod tests {
         let event_builder: Event =
             EventBuilder::award_badge(&badge_definition_event, awarded_pubkeys)
                 .unwrap()
-                .sign(&keys)
+                .finalize(&keys)
                 .unwrap();
 
         assert_eq!(event_builder.kind, Kind::BadgeAward);
@@ -1990,12 +1883,12 @@ mod tests {
         ];
         let bravery_badge_event =
             EventBuilder::define_badge("bravery", None, None, None, None, Vec::new())
-                .sign(&badge_one_keys)
+                .finalize(&badge_one_keys)
                 .unwrap();
         let bravery_badge_award =
             EventBuilder::award_badge(&bravery_badge_event, awarded_pubkeys.clone())
                 .unwrap()
-                .sign(&badge_one_keys)
+                .finalize(&badge_one_keys)
                 .unwrap();
 
         // Badge 2
@@ -2004,12 +1897,12 @@ mod tests {
 
         let honor_badge_event =
             EventBuilder::define_badge("honor", None, None, None, None, Vec::new())
-                .sign(&badge_two_keys)
+                .finalize(&badge_two_keys)
                 .unwrap();
         let honor_badge_award =
             EventBuilder::award_badge(&honor_badge_event, awarded_pubkeys.clone())
                 .unwrap()
-                .sign(&badge_two_keys)
+                .finalize(&badge_two_keys)
                 .unwrap();
 
         let example_event_json = format!(
@@ -2036,7 +1929,7 @@ mod tests {
         let profile_badges =
             EventBuilder::profile_badges(badge_definitions, badge_awards, &pub_key)
                 .unwrap()
-                .sign(&keys)
+                .finalize(&keys)
                 .unwrap();
 
         assert_eq!(profile_badges.kind, Kind::ProfileBadges);
@@ -2054,7 +1947,7 @@ mod tests {
         // Build reply
         let reply_keys = Keys::generate();
         let reply = EventBuilder::text_note_reply("Test reply", &root_event, None, None)
-            .sign(&reply_keys)
+            .finalize(&reply_keys)
             .unwrap();
         assert_eq!(reply.tags.public_keys().count(), 1); // Root author
         assert_eq!(reply.tags.public_keys().next().unwrap(), root_event.pubkey);
@@ -2065,7 +1958,7 @@ mod tests {
         let other_keys = Keys::generate();
         let reply_of_reply =
             EventBuilder::text_note_reply("Test reply of reply", &reply, Some(&root_event), None)
-                .sign(&other_keys)
+                .finalize(&other_keys)
                 .unwrap();
         assert_eq!(reply_of_reply.tags.public_keys().count(), 2); // Reply + root author
 
@@ -2085,10 +1978,10 @@ mod tests {
     fn replaceable_repost() {
         let keys = Keys::generate();
         let replaceable = EventBuilder::mute_list(MuteList::default())
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
         let repost = EventBuilder::repost(&replaceable, None)
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
 
         assert_eq!(repost.kind, Kind::GenericRepost);
@@ -2110,9 +2003,11 @@ mod tests {
     #[cfg(all(feature = "std", feature = "os-rng"))]
     fn addressable_repost() {
         let keys = Keys::generate();
-        let addressable = EventBuilder::follow_set("lorem", []).sign(&keys).unwrap();
+        let addressable = EventBuilder::follow_set("lorem", [])
+            .finalize(&keys)
+            .unwrap();
         let repost = EventBuilder::repost(&addressable, None)
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
 
         assert_eq!(repost.kind, Kind::GenericRepost);
@@ -2137,9 +2032,11 @@ mod tests {
         let note_keys = Keys::generate();
         let repost_keys = Keys::generate();
         let relay_url = RelayUrl::parse("wss://relay.example.com").unwrap();
-        let note = EventBuilder::text_note("hello").sign(&note_keys).unwrap();
+        let note = EventBuilder::text_note("hello")
+            .finalize(&note_keys)
+            .unwrap();
         let repost = EventBuilder::repost(&note, Some(relay_url.clone()))
-            .sign(&repost_keys)
+            .finalize(&repost_keys)
             .unwrap();
 
         assert_eq!(repost.kind, Kind::Repost);
@@ -2166,9 +2063,11 @@ mod tests {
         let keys = Keys::generate();
         let protected = EventBuilder::text_note("secret")
             .tag(Tag::protected())
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
-        let repost = EventBuilder::repost(&protected, None).sign(&keys).unwrap();
+        let repost = EventBuilder::repost(&protected, None)
+            .finalize(&keys)
+            .unwrap();
 
         assert!(repost.content.is_empty());
     }
@@ -2185,7 +2084,7 @@ mod benches {
     pub fn builder_to_event(bh: &mut Bencher) {
         let keys = Keys::generate();
         bh.iter(|| {
-            black_box(EventBuilder::text_note("hello").sign(&keys)).unwrap();
+            black_box(EventBuilder::text_note("hello").finalize(&keys)).unwrap();
         });
     }
 }

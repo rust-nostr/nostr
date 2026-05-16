@@ -22,7 +22,7 @@ async fn main() -> Result<()> {
 
     // Send a General statuses event to relays
     let general = LiveStatus::new(StatusType::General);
-    let event = EventBuilder::live_status(general, "Building rust-nostr").sign(&keys)?;
+    let event = EventBuilder::live_status(general, "Building rust-nostr").finalize(&keys)?;
     client.send_event(&event).await?;
 
     // Send a Music statuses event to relays
@@ -31,7 +31,7 @@ async fn main() -> Result<()> {
         expiration: Some(Timestamp::now() + Duration::from_secs(60 * 60 * 24)),
         reference: Some("spotify:search:Intergalatic%20-%20Beastie%20Boys".into()),
     };
-    let event = EventBuilder::live_status(music, "Intergalatic - Beastie Boys").sign(&keys)?;
+    let event = EventBuilder::live_status(music, "Intergalatic - Beastie Boys").finalize(&keys)?;
     client.send_event(&event).await?;
 
     Ok(())

@@ -162,7 +162,7 @@ mod tests {
     use std::time::Duration;
 
     use futures::StreamExt;
-    use nostr::event::EventBuilder;
+    use nostr::event::{EventBuilder, FinalizeEvent};
     use nostr::key::Keys;
     use nostr::{Filter, Kind, SubscriptionId};
     use nostr_relay_builder::MockRelay;
@@ -212,7 +212,7 @@ mod tests {
     #[tokio::test]
     async fn test_stream_with_subscription_verification_single_filter() {
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("test").sign(&keys).unwrap();
+        let event = EventBuilder::text_note("test").finalize(&keys).unwrap();
 
         let mock = MockRelay::run().await.unwrap();
         let url = mock.url().await;
@@ -245,7 +245,7 @@ mod tests {
     #[tokio::test]
     async fn test_stream_with_subscription_verification_multiple_filters() {
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("test").sign(&keys).unwrap();
+        let event = EventBuilder::text_note("test").finalize(&keys).unwrap();
 
         let mock = MockRelay::run().await.unwrap();
         let url = mock.url().await;

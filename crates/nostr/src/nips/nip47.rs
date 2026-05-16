@@ -20,8 +20,10 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use super::nip04;
-#[cfg(feature = "std")]
-use crate::event;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use crate::event::FinalizeEvent;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use crate::signer::SignerError;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{RelayUrl, Url};
 use crate::{Event, JsonUtil, PublicKey, SecretKey, Timestamp};
@@ -35,9 +37,9 @@ pub enum Error {
     Json(serde_json::Error),
     /// NIP04 error
     NIP04(nip04::Error),
-    /// Event Builder error
-    #[cfg(feature = "std")]
-    EventBuilder(event::builder::Error),
+    /// Signer error
+    #[cfg(all(feature = "std", feature = "os-rng"))]
+    Signer(SignerError),
     /// Error code
     ErrorCode(NIP47Error),
     /// Can't deserialize NIP-47 response
@@ -62,8 +64,8 @@ impl fmt::Display for Error {
         match self {
             Self::Json(e) => e.fmt(f),
             Self::NIP04(e) => e.fmt(f),
-            #[cfg(feature = "std")]
-            Self::EventBuilder(e) => e.fmt(f),
+            #[cfg(all(feature = "std", feature = "os-rng"))]
+            Self::Signer(e) => e.fmt(f),
             Self::ErrorCode(e) => e.fmt(f),
             Self::CantDeserializeResponse { response, error } => write!(
                 f,
@@ -88,10 +90,10 @@ impl From<nip04::Error> for Error {
     }
 }
 
-#[cfg(feature = "std")]
-impl From<event::builder::Error> for Error {
-    fn from(e: event::builder::Error) -> Self {
-        Self::EventBuilder(e)
+#[cfg(all(feature = "std", feature = "os-rng"))]
+impl From<SignerError> for Error {
+    fn from(e: SignerError) -> Self {
+        Self::Signer(e)
     }
 }
 
@@ -626,7 +628,7 @@ impl Request {
         let keys: Keys = Keys::new(uri.secret.clone());
         Ok(EventBuilder::new(Kind::WalletConnectRequest, encrypted)
             .tag(Tag::public_key(uri.public_key))
-            .sign(&keys)?)
+            .finalize(&keys)?)
     }
 }
 

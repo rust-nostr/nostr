@@ -13,7 +13,7 @@ fn main() -> Result<()> {
         .description("this is a test stall")
         .shipping(vec![shipping.clone()]);
 
-    let stall_event = EventBuilder::stall_data(stall).sign(&keys)?;
+    let stall_event = EventBuilder::stall_data(stall).finalize(&keys)?;
     println!("{}", stall_event.as_json());
 
     let product = ProductData::new("1", "123", "my test product", "USD")
@@ -23,7 +23,7 @@ fn main() -> Result<()> {
         .images(vec!["https://example.com/image.png".into()])
         .categories(vec!["test".into()]);
 
-    let product_event = EventBuilder::product_data(product).sign(&keys)?;
+    let product_event = EventBuilder::product_data(product).finalize(&keys)?;
     println!("{}", product_event.as_json());
 
     Ok(())

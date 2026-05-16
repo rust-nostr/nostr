@@ -647,13 +647,13 @@ mod tests {
         // Build events to store in the local database
         let local_events = [
             EventBuilder::text_note("Local 1")
-                .sign(&Keys::generate())
+                .finalize(&Keys::generate())
                 .unwrap(),
             EventBuilder::text_note("Local 2")
-                .sign(&Keys::generate())
+                .finalize(&Keys::generate())
                 .unwrap(),
             EventBuilder::new(Kind::Custom(123), "Local 123")
-                .sign(&Keys::generate())
+                .finalize(&Keys::generate())
                 .unwrap(),
         ];
 
@@ -678,13 +678,13 @@ mod tests {
             // Event in common with the local database
             local_events[0].clone(),
             EventBuilder::text_note("Test 2")
-                .sign(&Keys::generate())
+                .finalize(&Keys::generate())
                 .unwrap(),
             EventBuilder::text_note("Test 3")
-                .sign(&Keys::generate())
+                .finalize(&Keys::generate())
                 .unwrap(),
             EventBuilder::new(Kind::Custom(123), "Test 4")
-                .sign(&Keys::generate())
+                .finalize(&Keys::generate())
                 .unwrap(),
         ];
 

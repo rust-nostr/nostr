@@ -898,7 +898,7 @@ mod tests {
             .tag(Tag::parse(["subject", "gamma-token"]).unwrap())
             .tag(Tag::parse(["name", "delta-token"]).unwrap())
             .tag(Tag::identifier("epsilon-token"))
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
 
         assert!(db.save_event(&event).await.unwrap().is_success());

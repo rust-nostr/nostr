@@ -13,7 +13,8 @@ fn main() -> Result<()> {
     let msg_content = "This is a Nostr message with embedded proof-of-work";
 
     // Build unsigned event
-    let unsigned: UnsignedEvent = EventBuilder::text_note(msg_content).build(keys.public_key);
+    let unsigned: UnsignedEvent =
+        EventBuilder::text_note(msg_content).finalize_unsigned(keys.public_key)?;
 
     #[cfg(not(feature = "pow-multi-thread"))]
     let adapter = SingleThreadPow;
@@ -24,7 +25,7 @@ fn main() -> Result<()> {
     let unsigned: UnsignedEvent = unsigned.mine(&adapter, difficulty)?;
 
     // Sign event
-    let event: Event = unsigned.sign(&keys)?;
+    let event: Event = unsigned.finalize(&keys)?;
 
     println!("{}", event.as_json());
 
