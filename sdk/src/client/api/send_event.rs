@@ -470,7 +470,7 @@ mod tests {
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Broadcast test")
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
 
         // Send event (broadcast to all WRITE relays by default)
@@ -498,7 +498,7 @@ mod tests {
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Targeted test")
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
 
         // Send only to relay 1
@@ -539,7 +539,7 @@ mod tests {
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Force to all test")
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
 
         // Force send to all WRITE instead of using gossip
@@ -570,7 +570,7 @@ mod tests {
         // Setup User A keys and their Relay List (NIP-65) pointing to the Outbox Relay
         let keys_a = Keys::generate();
         let relay_list = EventBuilder::relay_list([(outbox_url.clone(), None)])
-            .sign(&keys_a)
+            .finalize(&keys_a)
             .unwrap();
         let res = discovery_mock.add_event(relay_list).await.unwrap();
         assert!(res.is_success());
@@ -619,7 +619,7 @@ mod tests {
         // - Automatically connect to 'outbox_url'
         // - Send the event to the outbox and public relay
         let event = EventBuilder::text_note("Gossip test")
-            .sign(&keys_a)
+            .finalize(&keys_a)
             .unwrap();
 
         // Send event using default config (must be sent to gossip)
@@ -652,7 +652,7 @@ mod tests {
 
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Broadcast test")
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
 
         // Send event
@@ -676,7 +676,7 @@ mod tests {
         // Setup Bob keys and NIP-17 list pointing to the Inbox Relay
         let bob_keys = Keys::generate();
         let relay_list = EventBuilder::nip17_relay_list([inbox_url.clone()])
-            .sign(&bob_keys)
+            .finalize(&bob_keys)
             .unwrap();
         let res = discovery_mock.add_event(relay_list).await.unwrap();
         assert!(res.is_success());
@@ -709,7 +709,7 @@ mod tests {
         // NOTE: this is not a NIP-17 event, as the nip59 feature is required, so we are sending a fake gift wrap tagging the recipient
         let event = EventBuilder::new(Kind::GiftWrap, "payload")
             .tag(Tag::public_key(bob_keys.public_key))
-            .sign(&Keys::generate())
+            .finalize(&Keys::generate())
             .unwrap();
         let output = client.send_event(&event).to_nip17().await.unwrap();
 
@@ -739,7 +739,7 @@ mod tests {
         let bob_keys = Keys::generate();
         let event = EventBuilder::new(Kind::GiftWrap, "payload")
             .tag(Tag::public_key(bob_keys.public_key))
-            .sign(&Keys::generate())
+            .finalize(&Keys::generate())
             .unwrap();
 
         // Send event

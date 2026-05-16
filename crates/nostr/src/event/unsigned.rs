@@ -4,6 +4,7 @@
 
 //! Unsigned Event
 
+use alloc::boxed::Box;
 use alloc::string::String;
 use core::num::NonZeroU8;
 
@@ -11,10 +12,12 @@ use secp256k1::schnorr::Signature;
 use secp256k1::{Secp256k1, Verification};
 
 use super::error::Error;
+use super::{FinalizeEvent, FinalizeEventAsync};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::nips::nip13::{AsyncPowAdapter, PowAdapter};
-use crate::signer::{AsyncSignEvent, SignEvent};
+use crate::signer::{AsyncSignEvent, SignEvent, SignerError};
+use crate::util::BoxedFuture;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Tag, Tags, Timestamp};
 
 /// Unsigned event
@@ -121,24 +124,6 @@ impl UnsignedEvent {
         adapter.compute(self, difficulty).await
     }
 
-    /// Sign an unsigned event
-    #[inline]
-    pub fn sign<T>(self, signer: &T) -> Result<Event, Error>
-    where
-        T: SignEvent,
-    {
-        Ok(signer.sign_event(self)?)
-    }
-
-    /// Sign an unsigned event
-    #[inline]
-    pub async fn sign_async<T>(self, signer: &T) -> Result<Event, Error>
-    where
-        T: AsyncSignEvent,
-    {
-        Ok(signer.sign_event(self).await?)
-    }
-
     /// Add a signature to an unsigned event
     ///
     /// This method internally verifies the event ID and signature.
@@ -190,6 +175,34 @@ impl UnsignedEvent {
     }
 }
 
+impl<S> FinalizeEvent<S> for UnsignedEvent
+where
+    S: SignEvent + ?Sized,
+{
+    type Error = SignerError;
+
+    #[inline]
+    fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
+        signer.sign_event(self)
+    }
+}
+
+impl<S> FinalizeEventAsync<S> for UnsignedEvent
+where
+    S: AsyncSignEvent + ?Sized,
+{
+    type Error = SignerError;
+
+    #[inline]
+    fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
+    where
+        Self: 'a,
+        S: 'a,
+    {
+        Box::pin(async move { signer.sign_event(self).await })
+    }
+}
+
 impl JsonUtil for UnsignedEvent {
     type Err = Error;
 }
@@ -205,6 +218,29 @@ impl From<Event> for UnsignedEvent {
             content: event.content,
         }
     }
+}
+
+/// Finalize a builder into an unsigned event.
+pub trait FinalizeUnsignedEvent: Sized {
+    /// Finalization error.
+    type Error: core::error::Error;
+
+    /// Build the unsigned event with the supplied public key.
+    fn finalize_unsigned(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error>;
+}
+
+/// Finalize a builder into an unsigned event asynchronously.
+pub trait FinalizeUnsignedEventAsync: Sized {
+    /// Finalization error.
+    type Error: core::error::Error;
+
+    /// Build the unsigned event with the supplied public key.
+    fn finalize_unsigned_async<'a>(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'a, Result<UnsignedEvent, Self::Error>>
+    where
+        Self: 'a;
 }
 
 #[cfg(test)]

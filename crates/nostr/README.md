@@ -42,16 +42,16 @@ fn main() -> Result<()> {
         .lud16("pay@yukikishimoto.com")
         .custom_field("custom_field", "my value");
 
-    let event: Event = EventBuilder::metadata(&metadata).sign(&keys)?;
+    let event: Event = EventBuilder::metadata(&metadata).finalize(&keys)?;
 
     // New text note
-    let event: Event = EventBuilder::text_note("Hello from rust-nostr").sign(&keys)?;
+    let event: Event = EventBuilder::text_note("Hello from rust-nostr").finalize(&keys)?;
 
     // New POW text note
     let difficulty: NonZeroU8 = NonZeroU8::new(16).unwrap();
-    let unsigned: UnsignedEvent = EventBuilder::text_note("POW text note from rust-nostr").build(keys.public_key);
+    let unsigned: UnsignedEvent = EventBuilder::text_note("POW text note from rust-nostr").finalize_unsigned(keys.public_key)?;
     let unsigned: UnsignedEvent = unsigned.mine(&SingleThreadPow, difficulty)?;
-    let event: Event = unsigned.sign(&keys)?;
+    let event: Event = unsigned.finalize(&keys)?;
 
     // Convert client message to JSON
     let json = ClientMessage::event(event).as_json();

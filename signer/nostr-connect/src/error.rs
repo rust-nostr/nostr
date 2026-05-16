@@ -9,6 +9,7 @@ use std::fmt;
 use nostr::PublicKey;
 use nostr::event::builder;
 use nostr::nips::{nip04, nip44, nip46};
+use nostr::signer::SignerError;
 use nostr::types::url;
 use nostr_sdk::client;
 use tokio::sync::SetError;
@@ -16,6 +17,8 @@ use tokio::sync::SetError;
 /// Nostr Connect error
 #[derive(Debug)]
 pub enum Error {
+    /// Signer error
+    Signer(SignerError),
     /// Event builder error
     Builder(builder::Error),
     /// NIP04 error
@@ -51,6 +54,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Signer(e) => e.fmt(f),
             Self::Builder(e) => e.fmt(f),
             Self::NIP04(e) => e.fmt(f),
             Self::NIP44(e) => e.fmt(f),
@@ -66,6 +70,12 @@ impl fmt::Display for Error {
             Self::PublicKeyNotMatchAppKeys => f.write_str("public key not match app keys"),
             Self::NoClientSecret => f.write_str("missing client secret"),
         }
+    }
+}
+
+impl From<SignerError> for Error {
+    fn from(e: SignerError) -> Self {
+        Self::Signer(e)
     }
 }
 

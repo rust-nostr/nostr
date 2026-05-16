@@ -14,7 +14,7 @@ fn main() -> Result<()> {
         .id(event_id)
         .reason("these posts were published by accident");
 
-    let event: Event = EventBuilder::delete(request).sign(&keys)?;
+    let event: Event = EventBuilder::delete(request).finalize(&keys)?;
     println!("{}", event.as_json());
 
     Ok(())

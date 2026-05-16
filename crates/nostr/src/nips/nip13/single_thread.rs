@@ -94,7 +94,8 @@ pub mod tests {
         let unsigned = EventBuilder::text_note(
             "Proof of Work: The only workout my CPU gets since I stopped gaming",
         )
-        .build(PublicKey::from_slice(&[0; 32]).unwrap());
+        .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap())
+        .unwrap_infallible();
 
         // Mine the event
         let unsigned = unsigned
@@ -114,7 +115,8 @@ pub mod tests {
     fn single_thread_mining_can_be_cancelled() {
         let cancel: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let unsigned = EventBuilder::text_note("single thread cancellation test")
-            .build(PublicKey::from_slice(&[0; 32]).unwrap());
+            .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap())
+            .unwrap_infallible();
 
         let worker_cancel: Arc<AtomicBool> = cancel.clone();
         let handle = thread::spawn(move || mine(unsigned, u8::MAX, Some(worker_cancel.as_ref())));

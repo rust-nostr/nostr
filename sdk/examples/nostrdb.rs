@@ -19,7 +19,7 @@ async fn main() -> Result<()> {
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
     // Publish a text note
-    let event = EventBuilder::text_note("Hello world").sign(&keys)?;
+    let event = EventBuilder::text_note("Hello world").finalize(&keys)?;
     client.send_event(&event).await?;
 
     // Negentropy reconcile

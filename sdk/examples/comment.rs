@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
 
     let comment_to = events.first().unwrap();
     let event = EventBuilder::comment("This is a reply", CommentTarget::from(comment_to), None)
-        .sign(&keys)?;
+        .finalize(&keys)?;
 
     let output = client.send_event(&event).await?;
     println!("Output: {:?}", output);

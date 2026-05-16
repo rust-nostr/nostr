@@ -25,9 +25,13 @@ use super::util::take_and_parse_from_str;
 use crate::Url;
 #[cfg(all(feature = "std", feature = "rand"))]
 use crate::event::EventBuilder;
+#[cfg(all(feature = "std", feature = "rand"))]
+use crate::event::FinalizeEventAsync;
 use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 #[cfg(feature = "std")]
-use crate::event::{self, Event, builder};
+use crate::event::{self, Event};
+#[cfg(feature = "std")]
+use crate::signer::SignerError;
 #[cfg(all(feature = "std", feature = "rand"))]
 use crate::signer::{AsyncGetPublicKey, AsyncSignEvent};
 use crate::types::url;
@@ -74,7 +78,7 @@ pub enum Error {
     Event(event::Error),
     /// Event builder error
     #[cfg(feature = "std")]
-    EventBuilder(builder::Error),
+    Signer(SignerError),
     /// URL parse error
     Url(url::ParseError),
     /// Hex decoding error
@@ -129,7 +133,7 @@ impl fmt::Display for Error {
             #[cfg(feature = "std")]
             Self::Event(e) => e.fmt(f),
             #[cfg(feature = "std")]
-            Self::EventBuilder(e) => e.fmt(f),
+            Self::Signer(e) => e.fmt(f),
             Self::Url(e) => e.fmt(f),
             Self::Hex(e) => e.fmt(f),
             Self::Codec(e) => e.fmt(f),
@@ -188,9 +192,9 @@ impl From<event::Error> for Error {
 }
 
 #[cfg(feature = "std")]
-impl From<builder::Error> for Error {
-    fn from(e: builder::Error) -> Self {
-        Self::EventBuilder(e)
+impl From<SignerError> for Error {
+    fn from(e: SignerError) -> Self {
+        Self::Signer(e)
     }
 }
 
@@ -345,7 +349,7 @@ impl HttpData {
     where
         T: AsyncGetPublicKey + AsyncSignEvent,
     {
-        let event: Event = EventBuilder::http_auth(self).sign_async(signer).await?;
+        let event: Event = EventBuilder::http_auth(self).finalize_async(signer).await?;
         let encoded: String = general_purpose::STANDARD.encode(event.as_json());
         Ok(format!("{AUTH_HEADER_PREFIX} {encoded}"))
     }

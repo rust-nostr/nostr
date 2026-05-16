@@ -21,18 +21,19 @@ async fn main() -> Result<()> {
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
     // Publish a text note
-    let event = EventBuilder::text_note("Hello world").sign(&keys)?;
+    let event = EventBuilder::text_note("Hello world").finalize(&keys)?;
     let output = client.send_event(&event).await?;
     println!("Event ID: {}", output.id().to_bech32()?);
     println!("Sent to: {:?}", output.success);
     println!("Not sent to: {:?}", output.failed);
 
     // Create a text note POW event to relays
-    let unsigned = EventBuilder::text_note("POW text note from rust-nostr").build(keys.public_key);
+    let unsigned = EventBuilder::text_note("POW text note from rust-nostr")
+        .finalize_unsigned(keys.public_key)?;
     let unsigned = unsigned
         .mine_async(&SingleThreadPow, NonZeroU8::new(20).unwrap())
         .await?;
-    let event = unsigned.sign(&keys)?;
+    let event = unsigned.finalize(&keys)?;
     client.send_event(&event).await?;
 
     Ok(())
