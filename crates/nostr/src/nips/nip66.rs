@@ -412,7 +412,7 @@ impl<'a> BoolTag<'a> {
 
 impl_tag_codec_conversions!(Nip66Tag);
 
-#[cfg(all(test, feature = "std", feature = "os-rng"))]
+#[cfg(test)]
 mod tests {
     use super::*;
 
