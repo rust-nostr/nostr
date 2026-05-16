@@ -38,6 +38,10 @@
 
 - Bump MSRV to 1.85.0 (https://github.com/rust-nostr/nostr/pull/1267)
 
+### Added
+
+- `NostrConnectKeys::new` function (https://github.com/rust-nostr/nostr/pull/1356)
+
 ### Fixed
 
 - Fix rejections of bunker signers that reply with secret in the connect response (https://github.com/rust-nostr/nostr/pull/1354)

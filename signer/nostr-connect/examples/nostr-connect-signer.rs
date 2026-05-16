@@ -12,10 +12,10 @@ const USER_SECRET_KEY: &str = "nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqc
 async fn main() -> Result<()> {
     tracing_subscriber::fmt::init();
 
-    let keys = NostrConnectKeys {
-        signer: Keys::parse(SIGNER_SECRET_KEY)?,
-        user: Keys::parse(USER_SECRET_KEY)?,
-    };
+    let keys = NostrConnectKeys::new(
+        Keys::parse(SIGNER_SECRET_KEY)?,
+        Keys::parse(USER_SECRET_KEY)?,
+    );
 
     // Compose signer
     let signer = NostrConnectRemoteSigner::new(keys, ["wss://relay.nsec.app"], None, None)?;

@@ -17,10 +17,17 @@ use crate::error::Error;
 pub struct NostrConnectKeys {
     /// The keys used for communication with the client.
     ///
-    /// This may be the same as the `user` one.
+    /// This may be the same as the `user` one, but not necessarily.
     pub signer: Keys,
     /// The keys used to sign events and so on.
     pub user: Keys,
+}
+
+impl NostrConnectKeys {
+    /// Construct a new [`NostrConnectKeys`]
+    pub fn new(signer: Keys, user: Keys) -> Self {
+        Self { signer, user }
+    }
 }
 
 /// Nostr Connect Signer
