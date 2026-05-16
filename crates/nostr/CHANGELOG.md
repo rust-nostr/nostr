@@ -43,6 +43,8 @@
 - Drop support for NIP-96
 - Remove TagStandard enum in favor of per-NIP tag enums (https://github.com/rust-nostr/nostr/pull/1347)
 - Remove TagKind (https://github.com/rust-nostr/nostr/pull/1347)
+- Drop support for private and anon zaps (https://github.com/rust-nostr/nostr/pull/1355)
+- Remove `EventBuilder::sign_with_keys` and `EventBuilder::sign_with_ctx` (https://github.com/rust-nostr/nostr/pull/1355)
 
 ### Changed
 

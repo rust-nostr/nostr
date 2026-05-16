@@ -840,33 +840,7 @@ impl EventBuilder {
     ///
     /// **This event MUST NOT be broadcasted to relays**, instead must be sent to a recipient's LNURL pay callback url.
     ///
-    /// To build a **private** or **anonymous** zap request, use:
-    ///
-    /// ```rust,no_run
-    /// use nostr::prelude::*;
-    ///
-    /// # #[cfg(all(feature = "std", feature = "os-rng", feature = "nip57"))]
-    /// # fn main() {
-    /// # let keys = Keys::generate();
-    /// # let public_key = PublicKey::from_bech32(
-    /// # "npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy",
-    /// # ).unwrap();
-    /// # let relays = [RelayUrl::parse("wss://relay.damus.io").unwrap()];
-    /// let data = ZapRequestData::new(public_key, relays).message("Zap!");
-    ///
-    /// let anon_zap: Event = nip57::anonymous_zap_request(data.clone()).unwrap();
-    /// println!("Anonymous zap request: {anon_zap:#?}");
-    ///
-    /// let private_zap: Event = nip57::private_zap_request(data, &keys).unwrap();
-    /// println!("Private zap request: {private_zap:#?}");
-    /// # }
-    ///
-    /// # #[cfg(not(all(feature = "std", feature = "os-rng", feature = "nip57")))]
-    /// # fn main() {}
-    /// ```
-    ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    #[cfg(feature = "nip57")]
     pub fn public_zap_request(data: ZapRequestData) -> Self {
         let message: String = data.message.clone();
         let tags: Vec<Tag> = data.into();
@@ -876,7 +850,6 @@ impl EventBuilder {
     /// Zap Receipt
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/57.md>
-    #[cfg(feature = "nip57")]
     pub fn zap_receipt<S1, S2>(bolt11: S1, preimage: Option<S2>, zap_request: &Event) -> Self
     where
         S1: Into<String>,
@@ -1900,7 +1873,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "nip57")]
     fn test_zap_event_builder() {
         let bolt11 = "lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0";
         let preimage = Some("5d006d2cf1e73c7148e7519a4c68adc81642ce0e25a432b2434c99f97344c15f");
@@ -1922,7 +1894,6 @@ mod tests {
     }
 
     #[test]
-    #[cfg(feature = "nip57")]
     fn test_zap_event_builder_without_preimage() {
         let bolt11 = "lnbc10u1p3unwfusp5t9r3yymhpfqculx78u027lxspgxcr2n2987mx2j55nnfs95nxnzqpp5jmrh92pfld78spqs78v9euf2385t83uvpwk9ldrlvf6ch7tpascqhp5zvkrmemgth3tufcvflmzjzfvjt023nazlhljz2n9hattj4f8jq8qxqyjw5qcqpjrzjqtc4fc44feggv7065fqe5m4ytjarg3repr5j9el35xhmtfexc42yczarjuqqfzqqqqqqqqlgqqqqqqgq9q9qxpqysgq079nkq507a5tw7xgttmj4u990j7wfggtrasah5gd4ywfr2pjcn29383tphp4t48gquelz9z78p4cq7ml3nrrphw5w6eckhjwmhezhnqpy6gyf0";
         let preimage: Option<&str> = None;

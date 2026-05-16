@@ -82,7 +82,6 @@ The following crate feature flags are available:
 | `nip46`            |   No    | Enable NIP-46: Nostr Connect                                  |
 | `nip47`            |   No    | Enable NIP-47: Nostr Wallet Connect                           |
 | `nip49`            |   No    | Enable NIP-49: Private Key Encryption                         |
-| `nip57`            |   No    | Enable NIP-57: Zaps                                           |
 | `nip59`            |   No    | Enable NIP-59: Gift Wrap                                      |
 | `nip60`            |   No    | Enable NIP-60: Cashu Wallets                                  |
 
