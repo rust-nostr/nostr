@@ -43,7 +43,7 @@ impl NostrConnectRemoteSigner {
     /// Construct new remote signer
     pub fn new<'a, I, U>(
         keys: NostrConnectKeys,
-        urls: I,
+        relays: I,
         secret: Option<String>,
         opts: Option<RelayOptions>,
     ) -> Result<Self, Error>
@@ -51,14 +51,14 @@ impl NostrConnectRemoteSigner {
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,
     {
-        let mut relays = Vec::new();
-        for relay in urls.into_iter() {
-            relays.push(relay.into().try_into_relay_url()?.into_owned());
+        let mut _relays = Vec::new();
+        for relay in relays.into_iter() {
+            _relays.push(relay.into().try_into_relay_url()?.into_owned());
         }
 
         Ok(Self {
             keys,
-            relays,
+            relays: _relays,
             client: Client::default(),
             opts: opts.unwrap_or_default(),
             secret,
