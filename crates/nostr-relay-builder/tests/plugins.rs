@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use nostr::event::{EventBuilder, Tag};
+use nostr::event::{EventBuilder, FinalizeEvent, Tag};
 use nostr::filter::Filter;
 use nostr::key::Keys;
 use nostr::util::BoxedFuture;
@@ -49,7 +49,7 @@ async fn update_filter() {
     // Event with our target tag
     let event = EventBuilder::text_note(":)")
         .tag(Tag::hashtag(UPDATE_TAG))
-        .sign(&keys)
+        .finalize(&keys)
         .unwrap();
     client.send_event(&event).await.unwrap();
 
@@ -57,7 +57,7 @@ async fn update_filter() {
     // It would only appear if the filter had not been updated correctly.
     let event = EventBuilder::text_note(":)")
         .tag(Tag::hashtag("TEST"))
-        .sign(&keys)
+        .finalize(&keys)
         .unwrap();
     client.send_event(&event).await.unwrap();
 

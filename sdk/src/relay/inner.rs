@@ -1796,7 +1796,7 @@ mod tests {
     #[tokio::test]
     async fn test_subscription_verification_accepts_event_matching_any_filter() {
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("test").sign(&keys).unwrap();
+        let event = EventBuilder::text_note("test").finalize(&keys).unwrap();
 
         let filter = Filter::new().kind(Kind::TextNote).since(event.created_at);
         let matching_filter = filter.clone().author(event.pubkey);

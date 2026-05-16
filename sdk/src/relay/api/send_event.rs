@@ -291,7 +291,7 @@ mod tests {
 
         // Make an event
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("Test").sign(&keys).unwrap();
+        let event = EventBuilder::text_note("Test").finalize(&keys).unwrap();
 
         // Send the event
         let output = relay.send_event(&event).await.unwrap();
@@ -324,7 +324,7 @@ mod tests {
             .unwrap();
 
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("Test").sign(&keys).unwrap();
+        let event = EventBuilder::text_note("Test").finalize(&keys).unwrap();
         let output = relay.send_event(&event).wait_for_ok(false).await.unwrap();
 
         assert_eq!(output.id(), &event.id);
@@ -348,7 +348,7 @@ mod tests {
 
         // Signer and event
         let keys = Keys::generate();
-        let event = EventBuilder::text_note("Test").sign(&keys).unwrap();
+        let event = EventBuilder::text_note("Test").finalize(&keys).unwrap();
 
         // Auth disabled, so must fails as is unauthenticated
         match relay.send_event(&event).await.unwrap_err() {
@@ -380,7 +380,7 @@ mod tests {
 
         relay.connect();
 
-        let event = EventBuilder::text_note("Test").sign(&keys).unwrap();
+        let event = EventBuilder::text_note("Test").finalize(&keys).unwrap();
 
         // Send as authenticated
         assert!(relay.send_event(&event).await.is_ok());

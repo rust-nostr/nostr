@@ -162,8 +162,7 @@ pub fn is_valid_vanish_request_for_relay(tags: &[Tag], relay_url: Option<&RelayU
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[cfg(feature = "std")]
-    use crate::{EventBuilder, PublicKey};
+    use crate::prelude::*;
 
     #[test]
     fn test_standardized_relay_tag() {
@@ -192,7 +191,7 @@ mod tests {
 
         let all_relays = EventBuilder::request_vanish(VanishTarget::all_relays())
             .unwrap()
-            .build(
+            .finalize_unsigned(
                 PublicKey::from_hex(
                     "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                 )
@@ -210,7 +209,7 @@ mod tests {
 
         let single_relay = EventBuilder::request_vanish(VanishTarget::relay(relay_a.clone()))
             .unwrap()
-            .build(
+            .finalize_unsigned(
                 PublicKey::from_hex(
                     "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                 )
@@ -226,7 +225,7 @@ mod tests {
             Some(&relay_b)
         ));
 
-        let other_kind = EventBuilder::text_note("hello").build(
+        let other_kind = EventBuilder::text_note("hello").finalize_unsigned(
             PublicKey::from_hex("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
                 .unwrap(),
         );

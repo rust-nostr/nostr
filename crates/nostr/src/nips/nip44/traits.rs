@@ -9,6 +9,7 @@ use core::fmt::Debug;
 use crate::key::PublicKey;
 use crate::util::BoxedFuture;
 
+// TODO: add a trait/method for encrypting using a specific version?
 /// Synchronous NIP-44
 pub trait Nip44: Any + Debug + Send + Sync {
     /// NIP-44 error

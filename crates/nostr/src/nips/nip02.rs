@@ -11,6 +11,8 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use super::util::{take_and_parse_optional_relay_url, take_optional_string, take_public_key};
+use crate::event::Kind;
+use crate::event::builder::{EventBuilder, EventBuilderTemplate};
 use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::key::{self, PublicKey};
 use crate::types::url::{self, RelayUrl};
@@ -175,9 +177,47 @@ where
     Ok((public_key, relay_hint, alias))
 }
 
+/// Contact list event builder
+///
+/// <https://github.com/nostr-protocol/nips/blob/master/02.md>
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct ContactListBuilder {
+    /// Contacts
+    pub contacts: Vec<Contact>,
+}
+
+impl ContactListBuilder {
+    /// Create a new contact list builder
+    #[inline]
+    pub fn new<I>(contacts: I) -> Self
+    where
+        I: IntoIterator<Item = Contact>,
+    {
+        Self {
+            contacts: contacts.into_iter().collect(),
+        }
+    }
+}
+
+impl EventBuilderTemplate for ContactListBuilder {
+    fn build(self) -> EventBuilder {
+        let tags = self.contacts.into_iter().map(|contact| {
+            Nip02Tag::PublicKey {
+                public_key: contact.public_key,
+                relay_hint: contact.relay_url,
+                alias: contact.alias,
+            }
+            .to_tag()
+        });
+        EventBuilder::new(Kind::ContactList, "").tags(tags)
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use super::{Error, *};
+    use crate::prelude::*;
 
     #[test]
     fn test_standardized_p_tag() {
@@ -245,5 +285,37 @@ mod tests {
         let tag = vec!["p"];
         let err = Nip02Tag::parse(&tag).unwrap_err();
         assert_eq!(err, Error::Codec(TagCodecError::Missing("public key")));
+    }
+
+    #[test]
+    #[cfg(all(feature = "std", feature = "os-rng"))]
+    fn test_make_contact_list_event() {
+        let keys = Keys::generate();
+
+        let contact = Contact {
+            public_key: PublicKey::from_hex(
+                "0000000000000000000000000000000000000000000000000000000000000000",
+            )
+            .unwrap(),
+            relay_url: None,
+            alias: None,
+        };
+
+        let event = ContactListBuilder::new([contact.clone()])
+            .finalize(&keys)
+            .unwrap();
+
+        assert_eq!(event.kind, Kind::ContactList);
+        assert_eq!(event.pubkey, keys.public_key());
+        assert_eq!(event.tags.len(), 1);
+        assert_eq!(
+            event.tags[0],
+            Nip02Tag::PublicKey {
+                public_key: contact.public_key,
+                relay_hint: contact.relay_url,
+                alias: contact.alias,
+            }
+            .to_tag()
+        );
     }
 }

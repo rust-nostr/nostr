@@ -45,7 +45,7 @@ async fn main() -> Result<()> {
     client.connect().await;
 
     // Publish a text note
-    let event = EventBuilder::text_note("My first text note from rust-nostr!").sign(&keys)?;
+    let event = EventBuilder::text_note("My first text note from rust-nostr!").finalize(&keys)?;
     client.send_event(&event).await?;
 
     Ok(())

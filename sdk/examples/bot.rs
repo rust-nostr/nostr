@@ -48,7 +48,8 @@ async fn main() -> Result<()> {
                             };
 
                             // Send private message
-                            let msg = EventBuilder::private_msg(&keys, sender, content, [])?;
+                            let msg = PrivateDirectMessageBuilder::new(sender, content)
+                                .finalize(&keys)?;
                             client.send_event(&msg).to_nip17().await?;
                         }
                     }

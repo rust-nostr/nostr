@@ -120,8 +120,8 @@ impl NostrConnectRemoteSigner {
         // TODO: Fix the request id, should we?
         let res = NostrConnectResponse::with_result(ResponseResult::ConnectSecret(secret));
         let msg: NostrConnectMessage = NostrConnectMessage::response("urmom", res);
-        let event: Event = EventBuilder::nostr_connect(&self.keys.signer, public_key, msg)?
-            .sign(&self.keys.signer)?;
+        let event: Event =
+            NostrConnectEventBuilder::new(public_key, msg).finalize(&self.keys.signer)?;
         self.client.send_event(&event).await?;
         Ok(())
     }
@@ -299,7 +299,7 @@ impl NostrConnectRemoteSigner {
                                             }
                                         }
                                         NostrConnectRequest::SignEvent(unsigned) => {
-                                            match unsigned.sign(&self.keys.user) {
+                                            match unsigned.finalize(&self.keys.user) {
                                                 Ok(event) => NostrConnectResponse::with_result(
                                                     ResponseResult::SignEvent(Box::new(event)),
                                                 ),
@@ -321,12 +321,8 @@ impl NostrConnectRemoteSigner {
                                     NostrConnectMessage::response(id, response);
 
                                 // Compose and publish event
-                                let event = EventBuilder::nostr_connect(
-                                    &self.keys.signer,
-                                    event.pubkey,
-                                    msg,
-                                )?
-                                .sign(&self.keys.signer)?;
+                                let event = NostrConnectEventBuilder::new(event.pubkey, msg)
+                                    .finalize(&self.keys.signer)?;
                                 self.client.send_event(&event).await?;
                             }
                         }

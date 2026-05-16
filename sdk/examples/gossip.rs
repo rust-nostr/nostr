@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
         "Hello world nostr:npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet",
     )
     .tag(Tag::public_key(pubkey))
-    .sign(&keys)?;
+    .finalize(&keys)?;
 
     let output = client.send_event(&event).await?;
     println!("Event ID: {}", output.to_bech32()?);

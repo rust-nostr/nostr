@@ -3,6 +3,7 @@
 use std::any::Any;
 use std::fmt::Debug;
 
+use nostr::event::FinalizeEventAsync;
 use nostr::signer::{AsyncGetPublicKey, AsyncSignEvent};
 use nostr::{Event, EventBuilder, RelayUrl};
 
@@ -65,7 +66,7 @@ where
     ) -> BoxedFuture<'a, Result<Event, AuthenticationError>> {
         Box::pin(async move {
             Ok(EventBuilder::auth(challenge, relay_url.clone())
-                .sign_async(&self.signer)
+                .finalize_async(&self.signer)
                 .await?)
         })
     }

@@ -224,9 +224,8 @@ impl NostrConnect {
         tracing::debug!("Sending '{msg}' NIP46 message");
 
         let req_id = msg.id().to_string();
-        let event: Event =
-            EventBuilder::nostr_connect(&self.client_keys, remote_signer_public_key, msg)?
-                .sign(&self.client_keys)?;
+        let event: Event = NostrConnectEventBuilder::new(remote_signer_public_key, msg)
+            .finalize(&self.client_keys)?;
 
         let mut notifications = self.client.notifications();
 

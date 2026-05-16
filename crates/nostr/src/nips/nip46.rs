@@ -22,10 +22,14 @@ use rand::rngs::OsRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::event::unsigned::UnsignedEvent;
+use crate::event::{FinalizeEvent, FinalizeEventAsync};
+use crate::prelude::{AsyncNip44, Nip44};
+use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent, SignerError};
 use crate::types::url::{self, ParseError, RelayUrl, Url};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::util;
-use crate::{Event, JsonUtil, PublicKey, event, key};
+use crate::util::BoxedFuture;
+use crate::{Event, EventBuilder, JsonUtil, Kind, PublicKey, Tag, event, key};
 
 /// NIP46 URI Scheme
 pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
@@ -35,6 +39,8 @@ pub const NOSTR_CONNECT_BUNKER_URI_SCHEME: &str = "bunker";
 /// NIP46 error
 #[derive(Debug, PartialEq)]
 pub enum Error {
+    /// Signer error
+    Signer(SignerError),
     /// Key error
     Key(key::Error),
     /// JSON error
@@ -71,6 +77,7 @@ impl core::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Signer(e) => e.fmt(f),
             Self::Key(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
             Self::RelayUrl(e) => e.fmt(f),
@@ -90,6 +97,12 @@ impl fmt::Display for Error {
                 "Unexpected response: method={method}, expected={expected}, received={received}"
             ),
         }
+    }
+}
+
+impl From<SignerError> for Error {
+    fn from(e: SignerError) -> Self {
+        Self::Signer(e)
     }
 }
 
@@ -1006,6 +1019,68 @@ impl NostrConnectUri {
             Self::Client { secret, .. } => Some(secret.as_str()),
         }
     }
+}
+
+/// Nostr Connect event builder
+#[non_exhaustive]
+#[derive(Debug, Clone)]
+pub struct NostrConnectEventBuilder {
+    /// Receiver public key
+    pub receiver: PublicKey,
+    /// The Nostr Connect message
+    pub message: NostrConnectMessage,
+}
+
+impl NostrConnectEventBuilder {
+    /// Create a new Nostr Connect event builder
+    #[inline]
+    pub fn new(receiver: PublicKey, message: NostrConnectMessage) -> Self {
+        Self { receiver, message }
+    }
+}
+
+impl<S> FinalizeEvent<S> for NostrConnectEventBuilder
+where
+    S: GetPublicKey + SignEvent + Nip44,
+{
+    type Error = Error;
+
+    fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
+        let json: String = self.message.as_json();
+        let content: String = signer
+            .nip44_encrypt(&self.receiver, &json)
+            .map_err(SignerError::backend)?;
+        Ok(make_event_builder(content, self.receiver).finalize(signer)?)
+    }
+}
+
+impl<S> FinalizeEventAsync<S> for NostrConnectEventBuilder
+where
+    S: AsyncGetPublicKey + AsyncSignEvent + AsyncNip44,
+{
+    type Error = Error;
+
+    fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
+    where
+        Self: 'a,
+        S: 'a,
+    {
+        Box::pin(async move {
+            let json: String = self.message.as_json();
+            let content: String = signer
+                .nip44_encrypt_async(&self.receiver, &json)
+                .await
+                .map_err(SignerError::backend)?;
+            Ok(make_event_builder(content, self.receiver)
+                .finalize_async(signer)
+                .await?)
+        })
+    }
+}
+
+#[inline]
+fn make_event_builder(nip44_encrypted_content: String, receiver: PublicKey) -> EventBuilder {
+    EventBuilder::new(Kind::NostrConnect, nip44_encrypted_content).tag(Tag::public_key(receiver))
 }
 
 impl FromStr for NostrConnectUri {

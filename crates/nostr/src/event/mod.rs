@@ -35,6 +35,7 @@ use crate::SECP256K1;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip19::{self, Nip19Event, ToBech32};
 use crate::nips::nip21::ToNostrUri;
+use crate::util::BoxedFuture;
 use crate::{JsonUtil, Metadata, PublicKey, Timestamp};
 
 const ID: &str = "id";
@@ -365,6 +366,33 @@ impl<'de> Deserialize<'de> for Event {
     }
 }
 
+/// Finalize a builder into a signed event.
+pub trait FinalizeEvent<S>: Sized
+where
+    S: ?Sized,
+{
+    /// Finalization error.
+    type Error: core::error::Error;
+
+    /// Build and sign the event.
+    fn finalize(self, signer: &S) -> Result<Event, Self::Error>;
+}
+
+/// Finalize a builder into a signed event with an asynchronous signer.
+pub trait FinalizeEventAsync<S>: Sized
+where
+    S: ?Sized,
+{
+    /// Finalization error.
+    type Error: core::error::Error;
+
+    /// Build and sign the event.
+    fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
+    where
+        Self: 'a,
+        S: 'a;
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -383,7 +411,7 @@ mod tests {
     fn test_custom_kind() {
         let keys = Keys::generate();
         let e: Event = EventBuilder::new(Kind::Custom(123), "my content")
-            .sign(&keys)
+            .finalize(&keys)
             .unwrap();
 
         let serialized = e.as_json();
@@ -400,7 +428,7 @@ mod tests {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")
             .tags([Tag::expiration(Timestamp::from(1600000000))])
-            .sign(&my_keys)
+            .finalize(&my_keys)
             .unwrap();
 
         assert!(&event.is_expired());
@@ -415,7 +443,7 @@ mod tests {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")
             .tags([Tag::expiration(Timestamp::from(expiry_date))])
-            .sign(&my_keys)
+            .finalize(&my_keys)
             .unwrap();
 
         assert!(!&event.is_expired());
@@ -426,7 +454,7 @@ mod tests {
     fn test_event_without_expiration_tag() {
         let my_keys = Keys::generate();
         let event = EventBuilder::text_note("my content")
-            .sign(&my_keys)
+            .finalize(&my_keys)
             .unwrap();
         assert!(!&event.is_expired());
     }

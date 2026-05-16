@@ -23,7 +23,7 @@ async fn main() -> Result<()> {
     client.connect().and_wait(Duration::from_secs(10)).await;
 
     // Publish a text note
-    let event = EventBuilder::text_note("Hello world").sign(&keys)?;
+    let event = EventBuilder::text_note("Hello world").finalize(&keys)?;
     let output = client.send_event(&event).await?;
     println!("Event ID: {}", output.id().to_bech32()?);
     println!("Sent to: {:?}", output.success);

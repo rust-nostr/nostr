@@ -40,7 +40,7 @@ async fn main() -> Result<()> {
     println!("Content: {content}");
 
     let event = EventBuilder::text_note("Testing rust-nostr")
-        .sign_async(&connect)
+        .finalize_async(&connect)
         .await?;
     println!("Event: {}", event.as_json());
 
