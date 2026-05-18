@@ -3,14 +3,16 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP11: Relay Information Document
+//! NIP-11: Relay Information Document
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/11.md>
 
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::{JsonUtil, Timestamp};
+use url::Url;
+
+use crate::{JsonUtil, PublicKey, Timestamp};
 
 /// Relay information document
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -20,7 +22,10 @@ pub struct RelayInformationDocument {
     /// Description
     pub description: Option<String>,
     /// Owner public key
-    pub pubkey: Option<String>,
+    pub pubkey: Option<PublicKey>,
+    /// Relay's own pubkey
+    #[serde(rename = "self")]
+    pub self_pubkey: Option<PublicKey>,
     /// Owner contact
     pub contact: Option<String>,
     /// Supported NIPs
@@ -32,18 +37,15 @@ pub struct RelayInformationDocument {
     /// Limitations imposed by the relay on clients
     pub limitation: Option<Limitation>,
     /// Link to relay's fee schedules
-    pub payments_url: Option<String>,
+    pub payments_url: Option<Url>,
     /// Relay fee schedules
     pub fees: Option<FeeSchedules>,
     /// URL pointing to an image to be used as an icon for the relay
-    pub icon: Option<String>,
+    pub icon: Option<Url>,
     /// Banner
-    pub banner: Option<String>,
-    /// Relay's own pubkey
-    #[serde(rename = "self")]
-    pub self_pubkey: Option<String>,
+    pub banner: Option<Url>,
     /// Term of service
-    pub terms_of_service: Option<String>,
+    pub terms_of_service: Option<Url>,
 }
 
 impl RelayInformationDocument {
@@ -181,9 +183,12 @@ mod tests {
         assert_eq!(doc.name, Some(String::from("Test Relay")));
         assert_eq!(
             doc.self_pubkey,
-            Some(String::from(
-                "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
-            ))
+            Some(
+                PublicKey::from_hex(
+                    "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798"
+                )
+                .unwrap()
+            )
         );
         assert_eq!(
             doc.description,
