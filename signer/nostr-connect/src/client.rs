@@ -132,8 +132,9 @@ impl NostrConnect {
         };
 
         // Send `connect` command if bunker URI
-        if self.uri.is_bunker() {
-            self.connect(remote_signer_public_key).await?;
+        if let NostrConnectURI::Bunker { secret, .. } = &self.uri {
+            self.connect_bunker(remote_signer_public_key, secret)
+                .await?;
         }
 
         Ok(remote_signer_public_key)
@@ -213,6 +214,18 @@ impl NostrConnect {
         req: NostrConnectRequest,
         remote_signer_public_key: PublicKey,
     ) -> Result<ResponseResult, Error> {
+        let method = req.method();
+        let result: String = self
+            .send_request_with_pk_raw(req, remote_signer_public_key)
+            .await?;
+        Ok(ResponseResult::parse(method, result)?)
+    }
+
+    async fn send_request_with_pk_raw(
+        &self,
+        req: NostrConnectRequest,
+        remote_signer_public_key: PublicKey,
+    ) -> Result<String, Error> {
         let secret_key: &SecretKey = self.client_keys.secret_key();
 
         // Convert request to event
@@ -239,36 +252,36 @@ impl NostrConnect {
 
                         tracing::debug!("Received NIP46 message: '{msg}'");
 
-                        if req_id == msg.id() && msg.is_response() {
-                            let response: NostrConnectResponse = msg.to_response(req.method())?;
-
-                            if response.is_auth_url() {
-                                if let (Some(auth_url), Some(handler)) =
-                                    (response.error, &self.auth_url_handler)
-                                {
-                                    match Url::parse(&auth_url) {
-                                        Ok(url) => {
-                                            if let Err(e) = handler.on_auth_url(url).await {
-                                                tracing::error!(
-                                                    "Impossible to handle `auth_url`: {e}"
-                                                );
+                        if let NostrConnectMessage::Response { id, result, error } = msg {
+                            if req_id == id {
+                                if result.as_deref() == Some("auth_url") {
+                                    if let (Some(auth_url), Some(handler)) =
+                                        (error, &self.auth_url_handler)
+                                    {
+                                        match Url::parse(&auth_url) {
+                                            Ok(url) => {
+                                                if let Err(e) = handler.on_auth_url(url).await {
+                                                    tracing::error!(
+                                                        "Impossible to handle `auth_url`: {e}"
+                                                    );
+                                                }
+                                            }
+                                            Err(e) => {
+                                                tracing::error!("Can't parse `auth_url`: {e}")
                                             }
                                         }
-                                        Err(e) => {
-                                            tracing::error!("Can't parse `auth_url`: {e}")
-                                        }
                                     }
-                                }
-                            } else {
-                                if let Some(error) = response.error {
-                                    return Err(Error::Response(error));
-                                }
+                                } else {
+                                    if let Some(error) = error {
+                                        return Err(Error::Response(error));
+                                    }
 
-                                if let Some(result) = response.result {
-                                    return Ok(result);
-                                }
+                                    if let Some(result) = result {
+                                        return Ok(result);
+                                    }
 
-                                break;
+                                    break;
+                                }
                             }
                         }
                     }
@@ -282,15 +295,25 @@ impl NostrConnect {
     }
 
     /// Connect msg
-    async fn connect(&self, remote_signer_public_key: PublicKey) -> Result<(), Error> {
+    async fn connect_bunker(
+        &self,
+        remote_signer_public_key: PublicKey,
+        secret: &Option<String>,
+    ) -> Result<(), Error> {
         let req = NostrConnectRequest::Connect {
             remote_signer_public_key,
-            secret: self.uri.secret().map(|secret| secret.to_string()),
+            secret: secret.clone(),
         };
-        let res = self
-            .send_request_with_pk(req, remote_signer_public_key)
+
+        let result: String = self
+            .send_request_with_pk_raw(req, remote_signer_public_key)
             .await?;
-        Ok(res.to_ack()?)
+
+        if is_valid_connect_result(&result, secret.as_deref()) {
+            Ok(())
+        } else {
+            Err(unexpected_connect_response(result))
+        }
     }
 
     async fn _get_public_key(&self) -> Result<&PublicKey, Error> {
@@ -404,6 +427,36 @@ async fn get_remote_signer_public_key(
     })
     .await
     .ok_or(Error::Timeout)?
+}
+
+fn is_valid_connect_result(result: &str, expected_secret: Option<&str>) -> bool {
+    match expected_secret {
+        Some(secret) => result == "ack" || result == secret,
+        None => result == "ack",
+    }
+}
+
+fn unexpected_connect_response(received: String) -> Error {
+    nip46::Error::UnexpectedResponse {
+        method: NostrConnectMethod::Connect,
+        expected: String::from("ack or matching secret"),
+        received,
+    }
+    .into()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_valid_connect_result() {
+        assert!(is_valid_connect_result("ack", None));
+        assert!(is_valid_connect_result("ack", Some("secret")));
+        assert!(is_valid_connect_result("secret", Some("secret")));
+        assert!(!is_valid_connect_result("secret", None));
+        assert!(!is_valid_connect_result("secret", Some("other_secret")));
+    }
 }
 
 /// Nostr Connect auth_url handler
