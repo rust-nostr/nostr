@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use nostr::event::tag::TagCodec;
+use nostr::event::TagCodec;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nipb7::NipB7Tag;
 use nostr::{EventBuilder, Kind, Tag, Timestamp, Url};

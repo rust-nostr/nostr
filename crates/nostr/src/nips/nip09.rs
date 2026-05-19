@@ -10,8 +10,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use super::nip01::Coordinate;
-use crate::event::id::EventId;
-use crate::{EventBuilder, Kind, Tag};
+use crate::event::{EventBuilder, EventId, Kind, Tag};
 
 /// Event deletion request
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]

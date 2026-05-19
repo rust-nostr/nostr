@@ -57,8 +57,8 @@ impl fmt::Display for MissingField {
 pub enum Error {
     /// FlatBuffer
     FlatBuffer(InvalidFlatbuffer),
-    /// Tag error
-    Tag(tag::Error),
+    /// Event error
+    Event(event::Error),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// Field not found
@@ -71,7 +71,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::FlatBuffer(e) => write!(f, "{e}"),
-            Self::Tag(e) => write!(f, "{e}"),
+            Self::Event(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::FieldNotFound(field) => write!(f, "'{field}' field not found"),
         }
@@ -84,9 +84,9 @@ impl From<InvalidFlatbuffer> for Error {
     }
 }
 
-impl From<tag::Error> for Error {
-    fn from(e: tag::Error) -> Self {
-        Self::Tag(e)
+impl From<event::Error> for Error {
+    fn from(e: event::Error) -> Self {
+        Self::Event(e)
     }
 }
 

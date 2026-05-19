@@ -13,7 +13,7 @@ use core::fmt;
 use core::num::ParseIntError;
 
 use super::util::{take_string, take_timestamp};
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::{EventBuilder, Kind, Timestamp};
 
 const URL: &str = "d";

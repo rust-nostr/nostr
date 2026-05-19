@@ -22,7 +22,7 @@ mod tags;
 pub use self::tags::*;
 use super::nip19::{self, FromBech32, Nip19Coordinate, ToBech32};
 use super::nip21::{FromNostrUri, ToNostrUri};
-use crate::event::tag::TagCodecError;
+use crate::event::TagCodecError;
 use crate::types::url::{self, Url};
 use crate::{Filter, JsonUtil, Kind, PublicKey, Tag, event, key};
 

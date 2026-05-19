@@ -11,7 +11,7 @@ use alloc::vec;
 use core::fmt;
 
 use super::util::take_string;
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 
 /// NIP-32 error
 #[derive(Debug, PartialEq)]

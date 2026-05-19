@@ -35,111 +35,6 @@ impl fmt::Display for WrongKindError {
     }
 }
 
-/// Event builder error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Unsigned event error
-    Event(super::Error),
-    /// NIP01 error
-    NIP01(nip01::Error),
-    /// OpenTimestamps error
-    #[cfg(feature = "nip03")]
-    NIP03(String),
-    /// NIP04 error
-    #[cfg(feature = "nip04")]
-    NIP04(nip04::Error),
-    /// NIP21 error
-    NIP21(nip21::Error),
-    /// NIP44 error
-    #[cfg(all(feature = "std", feature = "nip44"))]
-    NIP44(nip44::Error),
-    /// NIP58 error
-    NIP58(nip58::Error),
-    /// Wrong kind
-    WrongKind {
-        /// The received wrong kind
-        received: Kind,
-        /// The expected kind (single or range)
-        expected: WrongKindError,
-    },
-    /// Empty tags, while at least one tag is required
-    EmptyTags,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Event(e) => e.fmt(f),
-            Self::NIP01(e) => e.fmt(f),
-            #[cfg(feature = "nip03")]
-            Self::NIP03(e) => e.fmt(f),
-            #[cfg(feature = "nip04")]
-            Self::NIP04(e) => e.fmt(f),
-            Self::NIP21(e) => e.fmt(f),
-            #[cfg(all(feature = "std", feature = "nip44"))]
-            Self::NIP44(e) => e.fmt(f),
-            Self::NIP58(e) => e.fmt(f),
-            Self::WrongKind { received, expected } => {
-                write!(f, "Wrong kind: received={received}, expected={expected}")
-            }
-            Self::EmptyTags => f.write_str("At least one tag is required"),
-        }
-    }
-}
-
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Event(super::Error::Signer(e.to_string()))
-    }
-}
-
-impl From<super::Error> for Error {
-    fn from(e: super::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<nip01::Error> for Error {
-    fn from(e: nip01::Error) -> Self {
-        Self::NIP01(e)
-    }
-}
-
-#[cfg(feature = "nip03")]
-impl From<nostr_ots::Error> for Error {
-    fn from(e: nostr_ots::Error) -> Self {
-        Self::NIP03(e.to_string())
-    }
-}
-
-#[cfg(feature = "nip04")]
-impl From<nip04::Error> for Error {
-    fn from(e: nip04::Error) -> Self {
-        Self::NIP04(e)
-    }
-}
-
-impl From<nip21::Error> for Error {
-    fn from(e: nip21::Error) -> Self {
-        Self::NIP21(e)
-    }
-}
-
-#[cfg(all(feature = "std", feature = "nip44"))]
-impl From<nip44::Error> for Error {
-    fn from(e: nip44::Error) -> Self {
-        Self::NIP44(e)
-    }
-}
-
-impl From<nip58::Error> for Error {
-    fn from(e: nip58::Error) -> Self {
-        Self::NIP58(e)
-    }
-}
-
 /// Template that can be converted into a generic [`EventBuilder`].
 pub trait EventBuilderTemplate: Sized {
     /// Convert into the generic event builder.
@@ -459,7 +354,10 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/03.md>
     #[cfg(feature = "nip03")]
-    pub fn opentimestamps(event_id: EventId, relay_hint: Option<RelayUrl>) -> Result<Self, Error> {
+    pub fn opentimestamps(
+        event_id: EventId,
+        relay_hint: Option<RelayUrl>,
+    ) -> Result<Self, nostr_ots::Error> {
         let ots: String = nostr_ots::timestamp_event(&event_id.to_hex())?;
         Ok(Self::new(Kind::OpenTimestamps, ots).tag(
             Nip01Tag::Event {
@@ -530,14 +428,14 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
     #[inline]
-    pub fn request_vanish(target: VanishTarget) -> Result<Self, Error> {
+    pub fn request_vanish(target: VanishTarget) -> Self {
         Self::request_vanish_with_reason(target, "")
     }
 
     /// Request to vanish with reason
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
-    pub fn request_vanish_with_reason<S>(target: VanishTarget, reason: S) -> Result<Self, Error>
+    pub fn request_vanish_with_reason<S>(target: VanishTarget, reason: S) -> Self
     where
         S: Into<String>,
     {
@@ -548,17 +446,11 @@ impl EventBuilder {
                 builder = builder.tag(Nip62Tag::AllRelays.to_tag());
             }
             VanishTarget::Relays(list) => {
-                // Check if the list is empty
-                if list.is_empty() {
-                    // Empty list, return error.
-                    return Err(Error::EmptyTags);
-                }
-
                 builder = builder.tags(list.into_iter().map(Nip62Tag::Relay).map(Into::into));
             }
         }
 
-        Ok(builder)
+        builder
     }
 
     /// Voice Message
@@ -863,7 +755,10 @@ impl EventBuilder {
     /// Badge award
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
-    pub fn award_badge<I>(badge_definition: &Event, awarded_public_keys: I) -> Result<Self, Error>
+    pub fn award_badge<I>(
+        badge_definition: &Event,
+        awarded_public_keys: I,
+    ) -> Result<Self, nip58::Error>
     where
         I: IntoIterator<Item = PublicKey>,
     {
@@ -874,7 +769,7 @@ impl EventBuilder {
                 Ok(Nip01Tag::Identifier(id)) => Some(id),
                 _ => None,
             })
-            .ok_or(Error::NIP58(nip58::Error::IdentifierTagNotFound))?;
+            .ok_or(nip58::Error::IdentifierTagNotFound)?;
 
         // At least 1 tag
         let mut tags = Vec::with_capacity(1);
@@ -903,14 +798,14 @@ impl EventBuilder {
         badge_definitions: Vec<Event>,
         badge_awards: Vec<Event>,
         pubkey_awarded: &PublicKey,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, nip58::Error> {
         if badge_definitions.len() != badge_awards.len() {
-            return Err(Error::NIP58(nip58::Error::InvalidLength));
+            return Err(nip58::Error::InvalidLength);
         }
 
         let badge_awards: Vec<Event> = nip58::filter_for_kind(badge_awards, &Kind::BadgeAward);
         if badge_awards.is_empty() {
-            return Err(Error::NIP58(nip58::Error::InvalidKind));
+            return Err(nip58::Error::InvalidKind);
         }
 
         for award in badge_awards.iter() {
@@ -918,14 +813,14 @@ impl EventBuilder {
                 Ok(Nip01Tag::PublicKey { public_key, .. }) => public_key == *pubkey_awarded,
                 _ => false,
             }) {
-                return Err(Error::NIP58(nip58::Error::BadgeAwardsLackAwardedPublicKey));
+                return Err(nip58::Error::BadgeAwardsLackAwardedPublicKey);
             }
         }
 
         let badge_definitions: Vec<Event> =
             nip58::filter_for_kind(badge_definitions, &Kind::BadgeDefinition);
         if badge_definitions.is_empty() {
-            return Err(Error::NIP58(nip58::Error::InvalidKind));
+            return Err(nip58::Error::InvalidKind);
         }
 
         let mut tags: Vec<Tag> = Vec::new();
@@ -954,7 +849,7 @@ impl EventBuilder {
         for (badge_definition, badge_award) in users_badges {
             match (badge_definition, badge_award) {
                 ((_, identifier), (_, badge_id, ..)) if badge_id != identifier => {
-                    return Err(Error::NIP58(nip58::Error::MismatchedBadgeDefinitionOrAward));
+                    return Err(nip58::Error::MismatchedBadgeDefinitionOrAward);
                 }
                 ((_, identifier), (badge_award_event, badge_id, a_tag, relay_url))
                     if badge_id == identifier =>
@@ -977,12 +872,9 @@ impl EventBuilder {
     /// Data Vending Machine (DVM) - Job Request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    pub fn job_request(kind: Kind) -> Result<Self, Error> {
+    pub fn job_request(kind: Kind) -> Result<Self, WrongKindError> {
         if !kind.is_job_request() {
-            return Err(Error::WrongKind {
-                received: kind,
-                expected: WrongKindError::Range(NIP90_JOB_REQUEST_RANGE),
-            });
+            return Err(WrongKindError::Range(NIP90_JOB_REQUEST_RANGE));
         }
 
         Ok(Self::new(kind, ""))
@@ -996,7 +888,7 @@ impl EventBuilder {
         payload: S,
         millisats: u64,
         bolt11: Option<String>,
-    ) -> Result<Self, Error>
+    ) -> Result<Self, WrongKindError>
     where
         S: Into<String>,
     {
@@ -1004,10 +896,7 @@ impl EventBuilder {
 
         // Check if Job Result kind
         if !kind.is_job_result() {
-            return Err(Error::WrongKind {
-                received: kind,
-                expected: WrongKindError::Range(NIP90_JOB_RESULT_RANGE),
-            });
+            return Err(WrongKindError::Range(NIP90_JOB_RESULT_RANGE));
         }
 
         let mut tags: Vec<Tag> = job_request
@@ -1368,9 +1257,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_repository_announcement(
-        announcement: GitRepositoryAnnouncement,
-    ) -> Result<Self, Error> {
+    pub fn git_repository_announcement(announcement: GitRepositoryAnnouncement) -> Self {
         announcement.to_event_builder()
     }
 
@@ -1378,7 +1265,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_issue(issue: GitIssue) -> Result<Self, Error> {
+    pub fn git_issue(issue: GitIssue) -> Result<Self, nip34::Error> {
         issue.to_event_builder()
     }
 
@@ -1386,7 +1273,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_patch(patch: GitPatch) -> Result<Self, Error> {
+    pub fn git_patch(patch: GitPatch) -> Result<Self, nip34::Error> {
         patch.to_event_builder()
     }
 
@@ -1394,7 +1281,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_pull_request(pull_request: GitPullRequest) -> Result<Self, Error> {
+    pub fn git_pull_request(pull_request: GitPullRequest) -> Result<Self, nip34::Error> {
         pull_request.to_event_builder()
     }
 
@@ -1402,7 +1289,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_pull_request_update(update: GitPullRequestUpdate) -> Result<Self, Error> {
+    pub fn git_pull_request_update(update: GitPullRequestUpdate) -> Result<Self, nip34::Error> {
         update.to_event_builder()
     }
 
@@ -1458,7 +1345,7 @@ impl EventBuilder {
         content: S,
         reply_to: &Event,
         relay_url: Option<RelayUrl>,
-    ) -> Result<Self, Error>
+    ) -> Result<Self, nip21::Error>
     where
         S: Into<String>,
     {

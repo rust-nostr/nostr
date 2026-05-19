@@ -1,7 +1,7 @@
 use std::fmt;
 use std::time::Duration;
 
-use nostr::event::{self, builder};
+use nostr::event;
 use nostr::message::MessageHandleError;
 use nostr_database::DatabaseError;
 use tokio::sync::oneshot;
@@ -24,8 +24,6 @@ pub enum Error {
     MessageHandle(MessageHandleError),
     /// Event error
     Event(event::Error),
-    /// Event Builder error
-    EventBuilder(builder::Error),
     /// Hex error
     Hex(faster_hex::Error),
     /// Negentropy error
@@ -138,7 +136,6 @@ impl fmt::Display for Error {
             Self::Database(e) => write!(f, "database: {e}"),
             Self::MessageHandle(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
-            Self::EventBuilder(e) => e.fmt(f),
             Self::Hex(e) => e.fmt(f),
             Self::Negentropy(e) => e.fmt(f),
             Self::OneshotRecv(e) => e.fmt(f),
@@ -236,12 +233,6 @@ impl From<MessageHandleError> for Error {
 impl From<event::Error> for Error {
     fn from(e: event::Error) -> Self {
         Self::Event(e)
-    }
-}
-
-impl From<builder::Error> for Error {
-    fn from(e: builder::Error) -> Self {
-        Self::EventBuilder(e)
     }
 }
 

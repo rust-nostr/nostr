@@ -13,7 +13,7 @@ use core::num::ParseIntError;
 use core::str::FromStr;
 
 use super::util::{take_and_parse_from_str, take_relay_url, take_string, take_timestamp};
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::types::url;
 use crate::{Event, EventBuilder, EventId, Kind, RelayUrl, Timestamp};
 

@@ -10,7 +10,7 @@ use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use super::nip44;
-use crate::event::{self, Event, EventId, tag};
+use crate::event::{self, Event, EventId};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::event::{EventBuilder, Kind, Tag};
 use crate::key::{PublicKey, SecretKey};
@@ -26,7 +26,7 @@ const EVENT_MARKER_CREATED: &str = "created";
 const EVENT_MARKER_DESTROYED: &str = "destroyed";
 const EVENT_MARKER_REDEEMED: &str = "redeemed";
 
-/// NIP60 error
+/// NIP-60 error
 #[derive(Debug)]
 pub enum Error {
     /// NIP44 error
@@ -35,8 +35,6 @@ pub enum Error {
     Json(serde_json::Error),
     /// Event error
     Event(event::Error),
-    /// Tag error
-    Tag(tag::Error),
     /// URL error
     Url(ParseError),
     /// Invalid direction
@@ -61,7 +59,6 @@ impl fmt::Display for Error {
             Self::Nip44(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
-            Self::Tag(e) => e.fmt(f),
             Self::Url(e) => e.fmt(f),
             Self::InvalidDirection => f.write_str("Invalid direction"),
             Self::FoundMultiplePrivKeys => f.write_str("Found multiple private keys"),
@@ -88,12 +85,6 @@ impl From<serde_json::Error> for Error {
 impl From<event::Error> for Error {
     fn from(e: event::Error) -> Self {
         Self::Event(e)
-    }
-}
-
-impl From<tag::Error> for Error {
-    fn from(e: tag::Error) -> Self {
-        Self::Tag(e)
     }
 }
 

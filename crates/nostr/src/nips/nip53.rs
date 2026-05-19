@@ -21,7 +21,7 @@ use super::util::{
     take_coordinate, take_event_id, take_optional_string, take_public_key, take_string,
     take_timestamp,
 };
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::key::{self, PublicKey};
 use crate::types::image;
 use crate::types::url::{self, RelayUrl, Url};

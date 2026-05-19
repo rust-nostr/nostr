@@ -27,9 +27,9 @@ use crate::Url;
 use crate::event::EventBuilder;
 #[cfg(all(feature = "std", feature = "rand"))]
 use crate::event::FinalizeEventAsync;
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 #[cfg(feature = "std")]
 use crate::event::{self, Event};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 #[cfg(feature = "std")]
 use crate::signer::SignerError;
 #[cfg(all(feature = "std", feature = "rand"))]

@@ -18,12 +18,6 @@ pub use secp256k1::schnorr::Signature;
 pub use serde_json::Value;
 
 // Internal modules
-pub use crate::event::borrow::{self, *};
-pub use crate::event::builder::{self, *};
-pub use crate::event::id::{self, *};
-pub use crate::event::kind::{self, *};
-pub use crate::event::tag::{self, *};
-pub use crate::event::unsigned::{self, *};
 pub use crate::event::{self, *};
 pub use crate::filter::{self, *};
 pub use crate::key::{self, *};

@@ -18,7 +18,7 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
-use crate::event::tag::list::TagsIndexes;
+use crate::event::TagsIndexes;
 use crate::nips::nip01::Coordinate;
 use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
 

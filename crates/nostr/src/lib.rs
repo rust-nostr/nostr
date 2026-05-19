@@ -53,9 +53,9 @@ pub mod types;
 pub mod util;
 
 #[doc(hidden)]
-pub use self::event::tag::{Tag, Tags};
-#[doc(hidden)]
 pub use self::event::{Event, EventBuilder, EventId, Kind, UnsignedEvent};
+#[doc(hidden)]
+pub use self::event::{Tag, Tags};
 #[doc(hidden)]
 pub use self::filter::{Alphabet, Filter, SingleLetterTag};
 #[doc(hidden)]

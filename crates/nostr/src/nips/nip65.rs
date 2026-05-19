@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP65: Relay List Metadata
+//! NIP-65: Relay List Metadata
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/65.md>
 
@@ -11,7 +11,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::nips::util::take_relay_url;
 use crate::types::url;
 use crate::{Event, RelayUrl};

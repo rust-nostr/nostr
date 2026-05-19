@@ -5,7 +5,7 @@
 
 use core::cmp;
 
-use nostr::event::borrow::EventBorrow;
+use nostr::event::EventBorrow;
 use nostr::nips::nip01::Coordinate;
 use nostr::{EventId, PublicKey, SingleLetterTag, Timestamp};
 

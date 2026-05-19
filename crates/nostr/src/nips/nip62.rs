@@ -11,7 +11,7 @@ use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
 
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::types::url::{self, RelayUrl};
 
 const RELAY: &str = "relay";
@@ -190,7 +190,6 @@ mod tests {
         let relay_b = RelayUrl::parse("wss://relay.b.com").unwrap();
 
         let all_relays = EventBuilder::request_vanish(VanishTarget::all_relays())
-            .unwrap()
             .finalize_unsigned(
                 PublicKey::from_hex(
                     "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
@@ -208,7 +207,6 @@ mod tests {
         ));
 
         let single_relay = EventBuilder::request_vanish(VanishTarget::relay(relay_a.clone()))
-            .unwrap()
             .finalize_unsigned(
                 PublicKey::from_hex(
                     "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",

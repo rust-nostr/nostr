@@ -17,7 +17,7 @@ use hashes::hex::HexToArrayError;
 use hashes::sha256::Hash as Sha256Hash;
 
 use super::util::{take_and_parse_from_str, take_string};
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::types::{image, url};
 use crate::{ImageDimensions, Url};
 

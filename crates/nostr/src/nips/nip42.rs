@@ -10,7 +10,7 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use core::fmt;
 
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::nips::util::{take_relay_url, take_string};
 use crate::types::url;
 use crate::{Event, Kind, RelayUrl};

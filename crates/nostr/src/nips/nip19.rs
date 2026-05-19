@@ -22,7 +22,7 @@ use super::nip01::{Coordinate, CoordinateBorrow};
 use super::nip05::Nip05Profile;
 #[cfg(feature = "nip49")]
 use super::nip49::{self, EncryptedSecretKey};
-use crate::event::id::EventId;
+use crate::event::EventId;
 use crate::types::url::{self, RelayUrl};
 use crate::{Event, Kind, PublicKey, SecretKey, event, key};
 

@@ -17,8 +17,7 @@ use super::util::{
     take_and_parse_from_str, take_and_parse_optional_from_str, take_public_key, take_relay_url,
     take_string,
 };
-use crate::event::builder::Error as BuilderError;
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::key::Error as KeyError;
 use crate::types::url;
 use crate::{EventId, PublicKey, RelayUrl, event};
@@ -36,7 +35,6 @@ const ZAP: &str = "zap";
 #[derive(Debug)]
 pub enum Error {
     Key(KeyError),
-    Builder(BuilderError),
     Event(event::Error),
     Url(url::Error),
     ParseInt(ParseIntError),
@@ -58,7 +56,6 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Key(e) => e.fmt(f),
-            Self::Builder(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
             Self::Url(e) => e.fmt(f),
             Self::ParseInt(e) => e.fmt(f),
@@ -78,12 +75,6 @@ impl fmt::Display for Error {
 impl From<KeyError> for Error {
     fn from(e: KeyError) -> Self {
         Self::Key(e)
-    }
-}
-
-impl From<BuilderError> for Error {
-    fn from(e: BuilderError) -> Self {
-        Self::Builder(e)
     }
 }
 

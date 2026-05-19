@@ -20,8 +20,7 @@ use hashes::sha1::Hash as Sha1Hash;
 use super::nip01::{self, Coordinate};
 use super::nip22::Nip22Tag;
 use super::util::{take_and_parse_from_str, take_string};
-use crate::event::builder::{Error as BuilderError, EventBuilder, WrongKindError};
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{EventBuilder, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::types::url::{self, Url};
 use crate::{EventId, Kind, PublicKey, RelayUrl, Timestamp, key};
 
@@ -67,6 +66,8 @@ pub enum Error {
     Codec(TagCodecError),
     /// Invalid `HEAD` tag
     InvalidHeadTag,
+    /// Unexpected event kind
+    UnexpectedKind,
 }
 
 impl core::error::Error for Error {}
@@ -82,6 +83,7 @@ impl fmt::Display for Error {
             Self::ParseInt(e) => e.fmt(f),
             Self::Codec(e) => e.fmt(f),
             Self::InvalidHeadTag => f.write_str("Invalid HEAD tag"),
+            Self::UnexpectedKind => f.write_str("Unexpected event kind"),
         }
     }
 }
@@ -497,12 +499,7 @@ pub struct GitRepositoryAnnouncement {
 }
 
 impl GitRepositoryAnnouncement {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
-        if self.id.is_empty() {
-            // TODO: should return another error?
-            return Err(BuilderError::NIP01(nip01::Error::InvalidCoordinate));
-        }
-
+    pub(crate) fn to_event_builder(self) -> EventBuilder {
         let mut tags: Vec<Tag> = Vec::with_capacity(1);
 
         // Add repo ID
@@ -544,7 +541,7 @@ impl GitRepositoryAnnouncement {
         }
 
         // Build
-        Ok(EventBuilder::new(Kind::GitRepoAnnouncement, "").tags(tags))
+        EventBuilder::new(Kind::GitRepoAnnouncement, "").tags(tags)
     }
 }
 
@@ -563,13 +560,10 @@ pub struct GitIssue {
 
 impl GitIssue {
     /// Based on <https://github.com/nostr-protocol/nips/blob/ea36ec9ed7596e49bf7f217b05954c1fecacad88/34.md> revision.
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(BuilderError::WrongKind {
-                received: self.repository.kind,
-                expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
-            });
+            return Err(Error::UnexpectedKind);
         }
 
         // Verify coordinate
@@ -673,13 +667,10 @@ pub struct GitPatch {
 }
 
 impl GitPatch {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(BuilderError::WrongKind {
-                received: self.repository.kind,
-                expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
-            });
+            return Err(Error::UnexpectedKind);
         }
 
         // Verify coordinate
@@ -763,13 +754,10 @@ pub struct GitPullRequest {
 }
 
 impl GitPullRequest {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(BuilderError::WrongKind {
-                received: self.repository.kind,
-                expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
-            });
+            return Err(Error::UnexpectedKind);
         }
 
         // Verify coordinate
@@ -841,13 +829,10 @@ pub struct GitPullRequestUpdate {
 }
 
 impl GitPullRequestUpdate {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, BuilderError> {
+    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(BuilderError::WrongKind {
-                received: self.repository.kind,
-                expected: WrongKindError::Single(Kind::GitRepoAnnouncement),
-            });
+            return Err(Error::UnexpectedKind);
         }
 
         // Verify coordinate
@@ -950,7 +935,7 @@ mod tests {
         };
 
         let keys = Keys::generate();
-        let event: Event = repo.to_event_builder().unwrap().finalize(&keys).unwrap();
+        let event: Event = repo.to_event_builder().finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::GitRepoAnnouncement);
         assert!(event.content.is_empty());

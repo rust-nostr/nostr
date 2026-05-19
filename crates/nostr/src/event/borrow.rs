@@ -10,8 +10,8 @@ use core::hash::{Hash, Hasher};
 
 use secp256k1::schnorr::Signature;
 
-use super::tag::cow::CowTag;
-use crate::{Event, EventId, Kind, PublicKey, Tags, Timestamp};
+use super::{CowTag, Event, EventId, Kind, Tags, Timestamp};
+use crate::key::PublicKey;
 
 /// Borrowed event
 #[derive(Debug, Clone)]

@@ -18,14 +18,13 @@ use serde::ser::SerializeSeq;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 mod codec;
-pub mod cow;
-mod error;
-pub mod list;
+mod cow;
+mod list;
 
 pub use self::codec::*;
-pub use self::cow::CowTag;
-pub use self::error::Error;
-pub use self::list::Tags;
+pub use self::cow::*;
+pub use self::list::*;
+use super::error::Error;
 use super::id::EventId;
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip13::Nip13Tag;

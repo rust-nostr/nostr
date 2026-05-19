@@ -15,7 +15,7 @@ use core::time::Duration;
 
 use super::util::take_string;
 use crate::Kind;
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::util::UnwrapInfallible;
 
 const RTT_OPEN: &str = "rtt-open";

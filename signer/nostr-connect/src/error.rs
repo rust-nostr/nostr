@@ -7,7 +7,6 @@
 use std::fmt;
 
 use nostr::PublicKey;
-use nostr::event::builder;
 use nostr::nips::{nip04, nip44, nip46};
 use nostr::signer::SignerError;
 use nostr::types::url;
@@ -19,8 +18,6 @@ use tokio::sync::SetError;
 pub enum Error {
     /// Signer error
     Signer(SignerError),
-    /// Event builder error
-    Builder(builder::Error),
     /// NIP04 error
     NIP04(nip04::Error),
     /// NIP44 error
@@ -55,7 +52,6 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Signer(e) => e.fmt(f),
-            Self::Builder(e) => e.fmt(f),
             Self::NIP04(e) => e.fmt(f),
             Self::NIP44(e) => e.fmt(f),
             Self::NIP46(e) => e.fmt(f),
@@ -76,12 +72,6 @@ impl fmt::Display for Error {
 impl From<SignerError> for Error {
     fn from(e: SignerError) -> Self {
         Self::Signer(e)
-    }
-}
-
-impl From<builder::Error> for Error {
-    fn from(e: builder::Error) -> Self {
-        Self::Builder(e)
     }
 }
 

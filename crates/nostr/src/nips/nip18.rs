@@ -16,10 +16,9 @@ use super::util::{
     take_and_parse_from_str, take_and_parse_optional_public_key, take_and_parse_optional_relay_url,
     take_event_id, take_public_key,
 };
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::event::{self};
-use crate::types::url;
-use crate::{EventId, Kind, PublicKey, RelayUrl, key};
+use crate::event::{self, EventId, Kind, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::key::{self, PublicKey};
+use crate::types::url::{self, RelayUrl};
 
 const EVENT: &str = "e";
 const KIND: &str = "k";

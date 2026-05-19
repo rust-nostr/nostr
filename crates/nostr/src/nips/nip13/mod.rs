@@ -26,7 +26,7 @@ pub use self::multi_thread::*;
 pub use self::single_thread::*;
 use super::util::take_and_parse_from_str;
 use crate::UnsignedEvent;
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::util::BoxedFuture;
 
 const NONCE: &str = "nonce";

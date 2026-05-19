@@ -12,7 +12,7 @@ use core::fmt;
 use core::str::FromStr;
 
 use super::util::{take_and_parse_from_str, take_event_id, take_public_key};
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::{EventId, PublicKey, event, key};
 
 /// NIP56 error

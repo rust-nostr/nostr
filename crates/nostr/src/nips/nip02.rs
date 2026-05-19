@@ -11,9 +11,10 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use super::util::{take_and_parse_optional_relay_url, take_optional_string, take_public_key};
-use crate::event::Kind;
-use crate::event::builder::{EventBuilder, EventBuilderTemplate};
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{
+    EventBuilder, EventBuilderTemplate, Kind, Tag, TagCodec, TagCodecError,
+    impl_tag_codec_conversions,
+};
 use crate::key::{self, PublicKey};
 use crate::types::url::{self, RelayUrl};
 

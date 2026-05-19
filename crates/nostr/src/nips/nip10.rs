@@ -14,10 +14,9 @@ use core::str::FromStr;
 use super::util::{
     take_and_parse_optional_public_key, take_and_parse_optional_relay_url, take_event_id,
 };
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::event::{self};
-use crate::types::url;
-use crate::{EventId, PublicKey, RelayUrl, key};
+use crate::event::{self, EventId, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::key::{self, PublicKey};
+use crate::types::url::{self, RelayUrl};
 
 const EVENT: &str = "e";
 

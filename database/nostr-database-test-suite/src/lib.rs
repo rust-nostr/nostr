@@ -944,7 +944,6 @@ macro_rules! database_unit_tests {
 
             // Request to vanish
             let request_to_vanish = EventBuilder::request_vanish(VanishTarget::AllRelays)
-                .unwrap()
                 .finalize(&to_vanish)
                 .unwrap();
             store.save_event(&request_to_vanish).await.unwrap();
@@ -995,7 +994,6 @@ macro_rules! database_unit_tests {
 
             // Request to vanish
             let request_to_vanish = EventBuilder::request_vanish(VanishTarget::relay(url))
-                .unwrap()
                 .finalize(&to_vanish)
                 .unwrap();
             store.save_event(&request_to_vanish).await.unwrap();

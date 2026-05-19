@@ -12,7 +12,7 @@ use core::num::ParseIntError;
 
 use super::nip01::{Coordinate, Nip01Tag};
 use super::util::take_and_parse_from_str;
-use crate::event::tag::{Tag, TagCodec, TagCodecError, Tags, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, Tags, impl_tag_codec_conversions};
 use crate::{Event, EventId, Kind, PublicKey, RelayUrl};
 
 /// NIP-25 error

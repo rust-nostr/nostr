@@ -18,8 +18,7 @@ use secp256k1::{Secp256k1, Verification};
 
 #[cfg(feature = "std")]
 use crate::SECP256K1;
-use crate::event::unsigned::UnsignedEvent;
-use crate::event::{self, Event};
+use crate::event::{self, Event, UnsignedEvent};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::event::{FinalizeEvent, FinalizeEventAsync};
 #[cfg(all(feature = "std", feature = "os-rng"))]

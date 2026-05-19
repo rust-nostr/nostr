@@ -13,7 +13,7 @@ use core::fmt;
 
 use super::nip01::Nip01Tag;
 use super::util::{take_and_parse_from_str, take_and_parse_optional_from_str, take_string};
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::types::url::{self, Url};
 use crate::types::{RelayUrl, image};
 use crate::{Event, ImageDimensions, Kind, PublicKey};

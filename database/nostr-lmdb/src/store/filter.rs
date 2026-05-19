@@ -4,7 +4,7 @@
 
 use std::collections::{BTreeMap, BTreeSet, HashSet};
 
-use nostr::event::borrow::EventBorrow;
+use nostr::event::EventBorrow;
 use nostr::{Filter, SingleLetterTag, Timestamp};
 
 const TITLE: &str = "title";

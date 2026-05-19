@@ -12,7 +12,7 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::num::ParseIntError;
 
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::nips::util::take_timestamp;
 use crate::types::time::Timestamp;
 

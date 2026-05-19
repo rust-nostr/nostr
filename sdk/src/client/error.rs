@@ -26,8 +26,6 @@ pub enum Error {
     Signer(SignerError),
     /// Gossip error
     Gossip(GossipError),
-    /// [`EventBuilder`] error
-    EventBuilder(event::builder::Error),
     /// Json error
     Json(serde_json::Error),
     /// Signer not configured
@@ -51,7 +49,6 @@ impl fmt::Display for Error {
             Self::Database(e) => e.fmt(f),
             Self::Signer(e) => e.fmt(f),
             Self::Gossip(e) => e.fmt(f),
-            Self::EventBuilder(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
             Self::SignerNotConfigured => f.write_str("signer not configured"),
             Self::GossipNotConfigured => f.write_str("gossip not configured"),
@@ -96,12 +93,6 @@ impl From<SignerError> for Error {
 impl From<GossipError> for Error {
     fn from(e: GossipError) -> Self {
         Self::Gossip(e)
-    }
-}
-
-impl From<event::builder::Error> for Error {
-    fn from(e: event::builder::Error) -> Self {
-        Self::EventBuilder(e)
     }
 }
 

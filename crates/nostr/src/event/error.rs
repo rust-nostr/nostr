@@ -13,7 +13,7 @@ pub enum Error {
     /// Error serializing or deserializing JSON data
     Json(String),
     /// Signer error
-    Signer(String),
+    Signer(SignerError),
     /// Hex decode error
     Hex(faster_hex::Error),
     /// Unknown JSON event key
@@ -22,6 +22,8 @@ pub enum Error {
     InvalidId,
     /// Invalid signature
     InvalidSignature,
+    /// Empty tag
+    EmptyTag,
 }
 
 impl core::error::Error for Error {}
@@ -35,6 +37,7 @@ impl fmt::Display for Error {
             Self::UnknownKey(key) => write!(f, "Unknown key: {key}"),
             Self::InvalidId => f.write_str("Invalid event ID"),
             Self::InvalidSignature => f.write_str("Invalid signature"),
+            Self::EmptyTag => f.write_str("Empty tag"),
         }
     }
 }
@@ -47,7 +50,7 @@ impl From<serde_json::Error> for Error {
 
 impl From<SignerError> for Error {
     fn from(e: SignerError) -> Self {
-        Self::Signer(e.to_string())
+        Self::Signer(e)
     }
 }
 

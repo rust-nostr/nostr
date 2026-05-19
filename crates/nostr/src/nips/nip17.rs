@@ -18,12 +18,11 @@ use super::nip44::{AsyncNip44, Nip44};
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
 use super::nip59::{self, GiftWrapBuilder};
 use super::util::take_relay_url;
-use crate::event::Event;
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Event, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-use crate::event::unsigned::FinalizeUnsignedEvent;
-#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-use crate::event::{EventBuilder, FinalizeEvent, FinalizeEventAsync, Kind, UnsignedEvent};
+use crate::event::{
+    EventBuilder, FinalizeEvent, FinalizeEventAsync, FinalizeUnsignedEvent, Kind, UnsignedEvent,
+};
 use crate::key::PublicKey;
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
 use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent, SignerError};

@@ -16,20 +16,21 @@ use secp256k1::schnorr::Signature;
 use secp256k1::{Message, Secp256k1, Verification};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-pub mod borrow;
-pub mod builder;
+mod borrow;
+mod builder;
 mod error;
-pub mod id;
-pub mod kind;
-pub mod tag;
-pub mod unsigned;
+mod id;
+mod kind;
+mod tag;
+mod unsigned;
 
-pub use self::builder::EventBuilder;
+pub use self::borrow::*;
+pub use self::builder::*;
 pub use self::error::Error;
-pub use self::id::EventId;
-pub use self::kind::Kind;
-pub use self::tag::{Tag, Tags};
-pub use self::unsigned::UnsignedEvent;
+pub use self::id::*;
+pub use self::kind::*;
+pub use self::tag::*;
+pub use self::unsigned::*;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::nips::nip01::Coordinate;

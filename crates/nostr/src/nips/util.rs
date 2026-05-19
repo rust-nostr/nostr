@@ -3,8 +3,7 @@ use core::num::ParseIntError;
 use core::str::FromStr;
 
 use super::nip01::{self, Coordinate};
-use crate::event::tag::TagCodecError;
-use crate::event::{self, EventId};
+use crate::event::{self, EventId, TagCodecError};
 use crate::key::{self, PublicKey};
 use crate::types::time::Timestamp;
 use crate::types::url::{self, RelayUrl};

@@ -12,7 +12,7 @@ use core::fmt;
 use super::nip01::Coordinate;
 use super::nip30::Nip30Tag;
 use super::util::{take_event_id, take_public_key, take_relay_url, take_string};
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::types::url::{self, RelayUrl, Url};
 use crate::{EventId, PublicKey, event, key};
 

@@ -10,7 +10,7 @@ use alloc::string::String;
 use alloc::vec;
 use core::fmt;
 
-use crate::event::tag::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 
 /// NIP-70 error
 #[derive(Debug, PartialEq)]
