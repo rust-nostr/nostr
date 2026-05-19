@@ -31,14 +31,14 @@ pub trait AsyncNip44: Any + Debug + Send + Sync {
     /// Encrypts asynchronously using NIP-44.
     ///
     /// The NIP-44 version is chosen by the implementation.
-    fn nip44_encrypt<'a>(
+    fn nip44_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>>;
 
     /// Decrypts asynchronously a NIP-44 payload.
-    fn nip44_decrypt<'a>(
+    fn nip44_decrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         payload: &'a str,

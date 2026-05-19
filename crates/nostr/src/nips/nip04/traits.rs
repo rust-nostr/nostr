@@ -35,14 +35,14 @@ pub trait AsyncNip04: Any + Debug + Send + Sync {
     /// Encrypts asynchronously using NIP-04.
     ///
     /// **NIP-04 is considered deprecated and unsecure!**
-    fn nip04_encrypt<'a>(
+    fn nip04_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>>;
 
     /// Decrypts asynchronously a NIP-04 payload.
-    fn nip04_decrypt<'a>(
+    fn nip04_decrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         encrypted_content: &'a str,

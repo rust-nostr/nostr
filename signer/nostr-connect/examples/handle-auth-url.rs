@@ -36,7 +36,7 @@ async fn main() -> Result<()> {
 
     let receiver =
         PublicKey::parse("npub1acg6thl5psv62405rljzkj8spesceyfz2c32udakc2ak0dmvfeyse9p35c")?;
-    let content = connect.nip44_encrypt(&receiver, "Hi").await?;
+    let content = connect.nip44_encrypt_async(&receiver, "Hi").await?;
     println!("Content: {content}");
 
     let event = EventBuilder::text_note("Testing rust-nostr")

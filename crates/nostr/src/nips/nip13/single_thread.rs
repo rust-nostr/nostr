@@ -32,7 +32,7 @@ impl PowAdapter for SingleThreadPow {
 impl AsyncPowAdapter for SingleThreadPow {
     type Error = Infallible;
 
-    fn compute(
+    fn compute_async(
         &self,
         unsigned: UnsignedEvent,
         target_difficulty: NonZeroU8,

@@ -26,7 +26,7 @@ async fn main() -> Result<()> {
     }
 
     // Get public key
-    let public_key = proxy.get_public_key().await?;
+    let public_key = proxy.get_public_key_async().await?;
     println!("Public key: {}", public_key);
 
     // Sign event

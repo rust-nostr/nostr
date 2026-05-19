@@ -300,7 +300,7 @@ impl EventBuilder {
     where
         T: AsyncGetPublicKey + AsyncSignEvent,
     {
-        let public_key: PublicKey = signer.get_public_key().await?;
+        let public_key: PublicKey = signer.get_public_key_async().await?;
         Ok(self.build(public_key).sign_async(signer).await?)
     }
 
@@ -1344,7 +1344,7 @@ impl EventBuilder {
         S: Into<String>,
         I: IntoIterator<Item = Tag>,
     {
-        let public_key: PublicKey = signer.get_public_key().await?;
+        let public_key: PublicKey = signer.get_public_key_async().await?;
         let rumor: UnsignedEvent = Self::private_msg_rumor(receiver, message)
             .tags(rumor_extra_tags)
             .build(public_key);

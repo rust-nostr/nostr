@@ -34,7 +34,7 @@ impl PowAdapter for MultiThreadPow {
 impl AsyncPowAdapter for MultiThreadPow {
     type Error = Infallible;
 
-    fn compute(
+    fn compute_async(
         &self,
         unsigned: UnsignedEvent,
         difficulty: NonZeroU8,

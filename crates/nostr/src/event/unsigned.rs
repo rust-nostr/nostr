@@ -118,7 +118,7 @@ impl UnsignedEvent {
     where
         T: AsyncPowAdapter,
     {
-        adapter.compute(self, difficulty).await
+        adapter.compute_async(self, difficulty).await
     }
 
     /// Sign an unsigned event
@@ -136,7 +136,7 @@ impl UnsignedEvent {
     where
         T: AsyncSignEvent,
     {
-        Ok(signer.sign_event(self).await?)
+        Ok(signer.sign_event_async(self).await?)
     }
 
     /// Add a signature to an unsigned event

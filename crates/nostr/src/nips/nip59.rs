@@ -140,14 +140,14 @@ impl UnwrappedGift {
 
         // Decrypt and verify seal
         let seal: String = signer
-            .nip44_decrypt(&gift_wrap.pubkey, &gift_wrap.content)
+            .nip44_decrypt_async(&gift_wrap.pubkey, &gift_wrap.content)
             .await
             .map_err(|e| Error::NIP44(e.to_string()))?;
         let seal: Event = parse_and_verify_seal(secp, seal)?;
 
         // Decrypt rumor
         let rumor: String = signer
-            .nip44_decrypt(&seal.pubkey, &seal.content)
+            .nip44_decrypt_async(&seal.pubkey, &seal.content)
             .await
             .map_err(|e| Error::NIP44(e.to_string()))?;
 
@@ -234,7 +234,7 @@ where
 {
     // Encrypt content
     let content: String = signer
-        .nip44_encrypt(receiver_pubkey, &rumor.as_json())
+        .nip44_encrypt_async(receiver_pubkey, &rumor.as_json())
         .await
         .map_err(|e| Error::NIP44(e.to_string()))?;
 

@@ -77,13 +77,16 @@ pub trait AsyncNostrSigner:
 /// Get public key
 pub trait AsyncGetPublicKey: Any + Debug + Send + Sync {
     /// Get signer public key
-    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>>;
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>>;
 }
 
 /// Sign event
 pub trait AsyncSignEvent: Any + Debug + Send + Sync {
     /// Sign an unsigned event
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>>;
+    fn sign_event_async(
+        &self,
+        unsigned: UnsignedEvent,
+    ) -> BoxedFuture<'_, Result<Event, SignerError>>;
 }
 
 impl<T> AsyncGetPublicKey for T
@@ -91,8 +94,8 @@ where
     T: AsRef<dyn AsyncNostrSigner> + Debug + Send + Sync + 'static,
 {
     #[inline]
-    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
-        self.as_ref().get_public_key()
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
+        self.as_ref().get_public_key_async()
     }
 }
 
@@ -101,8 +104,11 @@ where
     T: AsRef<dyn AsyncNostrSigner> + Debug + Send + Sync + 'static,
 {
     #[inline]
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
-        self.as_ref().sign_event(unsigned)
+    fn sign_event_async(
+        &self,
+        unsigned: UnsignedEvent,
+    ) -> BoxedFuture<'_, Result<Event, SignerError>> {
+        self.as_ref().sign_event_async(unsigned)
     }
 }
 
@@ -113,21 +119,22 @@ where
     type Error = SignerError;
 
     #[inline]
-    fn nip04_encrypt<'a>(
+    fn nip04_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>> {
-        self.as_ref().nip04_encrypt(public_key, content)
+        self.as_ref().nip04_encrypt_async(public_key, content)
     }
 
     #[inline]
-    fn nip04_decrypt<'a>(
+    fn nip04_decrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         encrypted_content: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>> {
-        self.as_ref().nip04_decrypt(public_key, encrypted_content)
+        self.as_ref()
+            .nip04_decrypt_async(public_key, encrypted_content)
     }
 }
 
@@ -138,21 +145,21 @@ where
     type Error = SignerError;
 
     #[inline]
-    fn nip44_encrypt<'a>(
+    fn nip44_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>> {
-        self.as_ref().nip44_encrypt(public_key, content)
+        self.as_ref().nip44_encrypt_async(public_key, content)
     }
 
     #[inline]
-    fn nip44_decrypt<'a>(
+    fn nip44_decrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         payload: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>> {
-        self.as_ref().nip44_decrypt(public_key, payload)
+        self.as_ref().nip44_decrypt_async(public_key, payload)
     }
 }
 

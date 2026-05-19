@@ -367,14 +367,17 @@ impl NostrSigner for Keys {
 }
 
 impl AsyncGetPublicKey for Keys {
-    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
         Box::pin(async move { GetPublicKey::get_public_key(self) })
     }
 }
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 impl AsyncSignEvent for Keys {
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
+    fn sign_event_async(
+        &self,
+        unsigned: UnsignedEvent,
+    ) -> BoxedFuture<'_, Result<Event, SignerError>> {
         Box::pin(async move { SignEvent::sign_event(self, unsigned) })
     }
 }
@@ -383,7 +386,7 @@ impl AsyncSignEvent for Keys {
 impl AsyncNip04 for Keys {
     type Error = SignerError;
 
-    fn nip04_encrypt<'a>(
+    fn nip04_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
@@ -391,7 +394,7 @@ impl AsyncNip04 for Keys {
         Box::pin(async move { Nip04::nip04_encrypt(self, public_key, content) })
     }
 
-    fn nip04_decrypt<'a>(
+    fn nip04_decrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         encrypted_content: &'a str,
@@ -404,7 +407,7 @@ impl AsyncNip04 for Keys {
 impl AsyncNip44 for Keys {
     type Error = SignerError;
 
-    fn nip44_encrypt<'a>(
+    fn nip44_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
@@ -412,7 +415,7 @@ impl AsyncNip44 for Keys {
         Box::pin(async move { Nip44::nip44_encrypt(self, public_key, content) })
     }
 
-    fn nip44_decrypt<'a>(
+    fn nip44_decrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         payload: &'a str,

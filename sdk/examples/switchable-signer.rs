@@ -32,14 +32,17 @@ impl MySignerSwitcher {
 }
 
 impl AsyncGetPublicKey for MySignerSwitcher {
-    fn get_public_key(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
-        Box::pin(async move { self.get().await.get_public_key().await })
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
+        Box::pin(async move { self.get().await.get_public_key_async().await })
     }
 }
 
 impl AsyncSignEvent for MySignerSwitcher {
-    fn sign_event(&self, unsigned: UnsignedEvent) -> BoxedFuture<'_, Result<Event, SignerError>> {
-        Box::pin(async move { self.get().await.sign_event(unsigned).await })
+    fn sign_event_async(
+        &self,
+        unsigned: UnsignedEvent,
+    ) -> BoxedFuture<'_, Result<Event, SignerError>> {
+        Box::pin(async move { self.get().await.sign_event_async(unsigned).await })
     }
 }
 
@@ -54,7 +57,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
 
     let authenticator = SignerAuthenticator::new(signer.clone());
 
-    let pk = signer.get_public_key().await?;
+    let pk = signer.get_public_key_async().await?;
     assert_eq!(pk, keys.public_key);
     println!("Public Key: {}", pk.to_bech32()?);
 
@@ -65,7 +68,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let new_keys = Keys::generate();
     signer.switch(new_keys.clone()).await;
 
-    let pk = signer.get_public_key().await?;
+    let pk = signer.get_public_key_async().await?;
     assert_eq!(pk, new_keys.public_key);
     println!("Public Key: {}", pk.to_bech32()?);
 

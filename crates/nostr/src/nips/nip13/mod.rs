@@ -190,7 +190,7 @@ pub trait AsyncPowAdapter: Any + Debug + Send + Sync {
 
     /// Computes Proof of Work for an unsigned event to meet the target
     /// difficulty.
-    fn compute(
+    fn compute_async(
         &self,
         unsigned: UnsignedEvent,
         difficulty: NonZeroU8,
@@ -652,7 +652,7 @@ pub mod tests {
         impl AsyncPowAdapter for AsyncTestAdapter {
             type Error = Infallible;
 
-            fn compute(
+            fn compute_async(
                 &self,
                 mut unsigned_event: UnsignedEvent,
                 target_difficulty: NonZeroU8,
