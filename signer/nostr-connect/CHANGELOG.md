@@ -23,6 +23,12 @@
 
 -->
 
+## Unreleased
+
+### Fixed
+
+- Fixed race condition in `NostrConnectRemoteSigner::serve()` where notifications subscription happened after sending connect response, potentially causing missed client messages (https://github.com/rust-nostr/nostr/pull/1353)
+
 ## v0.44.0 - 2025/11/06
 
 ### Fixed
