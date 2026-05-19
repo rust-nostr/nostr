@@ -2741,7 +2741,7 @@ dependencies = [
 
 [[package]]
 name = "nostr-connect"
-version = "0.44.0"
+version = "0.44.1"
 dependencies = [
  "async-utility",
  "dialoguer",
