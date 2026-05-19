@@ -1,6 +1,6 @@
 [package]
 name = "nostr-connect"
-version = "0.44.0"
+version = "0.45.0-alpha.1"
 edition.workspace = true
 description = "Nostr Remote Signing (NIP46)"
 authors.workspace = true
