@@ -53,6 +53,8 @@
 - Add `LocalRelay::sync_with` method (https://github.com/rust-nostr/nostr/pull/1146)
 - Reject expired events and ensure they are not sent to clients (https://github.com/rust-nostr/nostr/pull/1183)
 
+## v0.44.1 - 2026/05/19
+
 ### Fixed
 
 - Check port availability with actual relay IP (https://github.com/rust-nostr/nostr/pull/1207)
