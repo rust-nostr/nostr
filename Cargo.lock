@@ -126,13 +126,15 @@ dependencies = [
 
 [[package]]
 name = "async-wsocket"
-version = "0.13.1"
-source = "git+https://github.com/shadowylab/async-wsocket?rev=0fed6c9c6aec7393ee0e9cf3933d76914ab427d3#0fed6c9c6aec7393ee0e9cf3933d76914ab427d3"
+version = "0.14.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "aa4e4fc7052968df159d32c35df1a2cc0b638041ca80a3f90d0f83ffc4a2e276"
 dependencies = [
  "futures",
  "futures-util",
  "js-sys",
  "tokio",
+ "tokio-happy-eyeballs",
  "tokio-rustls",
  "tokio-socks",
  "tokio-tungstenite",
@@ -3027,6 +3029,15 @@ dependencies = [
  "socket2",
  "tokio-macros",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "tokio-happy-eyeballs"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8564c32dfb6f4257f8bc6edfc178a34af97520e0b7b9815500c55eb3d092f29f"
+dependencies = [
+ "tokio",
 ]
 
 [[package]]
