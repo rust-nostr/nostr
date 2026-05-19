@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::future::IntoFuture;
+use std::ops::Deref;
 use std::time::Duration;
 
 use async_utility::time;
@@ -9,6 +10,108 @@ use tokio::sync::broadcast;
 
 use crate::future::BoxedFuture;
 use crate::relay::{Error, Relay, RelayNotification};
+
+/// Output returned when sending an event to a single relay.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RelaySendEventOutput {
+    event_id: EventId,
+    status: EventSendStatus,
+}
+
+impl RelaySendEventOutput {
+    #[inline]
+    fn new(event_id: EventId, status: EventSendStatus) -> Self {
+        Self { event_id, status }
+    }
+
+    /// Get the event ID.
+    #[inline]
+    #[must_use]
+    pub fn id(&self) -> &EventId {
+        &self.event_id
+    }
+
+    /// Get the per-relay send status.
+    #[inline]
+    #[must_use]
+    pub fn status(&self) -> &EventSendStatus {
+        &self.status
+    }
+
+    /// Split into event ID and per-relay send status.
+    #[inline]
+    #[must_use]
+    pub fn into_parts(self) -> (EventId, EventSendStatus) {
+        (self.event_id, self.status)
+    }
+}
+
+impl Deref for RelaySendEventOutput {
+    type Target = EventId;
+
+    fn deref(&self) -> &Self::Target {
+        &self.event_id
+    }
+}
+
+/// Per-relay success status for an event send operation.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum EventSendStatus {
+    /// The event was sent without waiting for a relay `OK` acknowledgement.
+    Sent,
+    /// The relay returned an `OK true` acknowledgement.
+    Ack(EventSendAcknowledgement),
+}
+
+/// Relay acknowledgement for a successful event send.
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct EventSendAcknowledgement {
+    message: Option<String>,
+}
+
+impl EventSendAcknowledgement {
+    #[inline]
+    fn new(message: String) -> Self {
+        Self {
+            message: if message.is_empty() {
+                None
+            } else {
+                Some(message)
+            },
+        }
+    }
+
+    /// Return the relay `OK true` message, if available.
+    #[inline]
+    #[must_use]
+    pub fn message(&self) -> Option<&str> {
+        self.message.as_deref()
+    }
+}
+
+impl EventSendStatus {
+    #[inline]
+    fn ack(message: String) -> Self {
+        Self::Ack(EventSendAcknowledgement::new(message))
+    }
+
+    /// Return `true` if the relay returned an `OK true` acknowledgement.
+    #[inline]
+    #[must_use]
+    pub fn is_ack(&self) -> bool {
+        matches!(self, Self::Ack(..))
+    }
+
+    /// Return the relay `OK true` message, if available.
+    #[inline]
+    #[must_use]
+    pub fn message(&self) -> Option<&str> {
+        match self {
+            Self::Ack(ack) => ack.message(),
+            Self::Sent => None,
+        }
+    }
+}
 
 /// Send event to relay
 #[must_use = "Does nothing unless you await!"]
@@ -105,7 +208,7 @@ impl<'relay, 'event> IntoFuture for SendEvent<'relay, 'event>
 where
     'event: 'relay,
 {
-    type Output = Result<EventId, Error>;
+    type Output = Result<RelaySendEventOutput, Error>;
     type IntoFuture = BoxedFuture<'relay, Self::Output>;
 
     fn into_future(self) -> Self::IntoFuture {
@@ -120,7 +223,13 @@ where
 
             // Check status
             if status {
-                return Ok(self.event.id);
+                let status: EventSendStatus = if self.wait_for_ok {
+                    EventSendStatus::ack(message)
+                } else {
+                    EventSendStatus::Sent
+                };
+
+                return Ok(RelaySendEventOutput::new(self.event.id, status));
             }
 
             // If auth required, wait for authentication adn resend it
@@ -141,7 +250,10 @@ where
 
                     // Check status
                     return if status {
-                        Ok(self.event.id)
+                        Ok(RelaySendEventOutput::new(
+                            self.event.id,
+                            EventSendStatus::ack(message),
+                        ))
                     } else {
                         Err(Error::RelayMessage(message))
                     };
@@ -177,9 +289,47 @@ mod tests {
             .await
             .unwrap();
 
+        // Make an event
         let keys = Keys::generate();
         let event = EventBuilder::text_note("Test").sign(&keys).unwrap();
-        relay.send_event(&event).await.unwrap();
+
+        // Send the event
+        let output = relay.send_event(&event).await.unwrap();
+        assert_eq!(output.id(), &event.id);
+        assert!(output.status().is_ack());
+        assert_eq!(output.status().message(), None);
+
+        // Resend the same event
+        let output = relay.send_event(&event).await.unwrap();
+        assert_eq!(output.id(), &event.id);
+        assert!(output.status().is_ack());
+        assert_eq!(
+            output.status().message(),
+            Some("duplicate: already have this event")
+        );
+    }
+
+    #[tokio::test]
+    async fn test_without_ok_msg() {
+        // Mock relay
+        let mock = MockRelay::run().await.unwrap();
+        let url = mock.url().await;
+
+        let relay: Relay = Relay::new(url);
+
+        relay
+            .try_connect()
+            .timeout(Duration::from_secs(3))
+            .await
+            .unwrap();
+
+        let keys = Keys::generate();
+        let event = EventBuilder::text_note("Test").sign(&keys).unwrap();
+        let output = relay.send_event(&event).wait_for_ok(false).await.unwrap();
+
+        assert_eq!(output.id(), &event.id);
+        assert_eq!(output.status(), &EventSendStatus::Sent);
+        assert_eq!(output.status().message(), None);
     }
 
     #[tokio::test]

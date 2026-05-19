@@ -25,7 +25,7 @@ async fn main() -> Result<()> {
         .since(Timestamp::now());
 
     // Subscribe (auto generate subscription ID)
-    let Output { val: sub_id_1, .. } = client.subscribe(subscription).await?;
+    let output = client.subscribe(subscription).await?;
 
     // Subscribe with custom ID
     let sub_id_2 = SubscriptionId::new("other-id");
@@ -40,7 +40,10 @@ async fn main() -> Result<()> {
         .author(public_key)
         .kind(Kind::EncryptedDirectMessage)
         .since(Timestamp::now());
-    client.subscribe(filter).with_id(sub_id_1.clone()).await?;
+    client
+        .subscribe(filter)
+        .with_id(output.id().clone())
+        .await?;
 
     let mut notifications = client.notifications();
 
@@ -52,7 +55,7 @@ async fn main() -> Result<()> {
         } = notification
         {
             // Check subscription ID
-            if subscription_id == sub_id_1 {
+            if &subscription_id == output.id() {
                 // Handle (ex. update specific UI)
             }
 

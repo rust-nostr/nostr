@@ -42,7 +42,7 @@ async fn main() -> Result<()> {
     println!("Event ID: {}", output.to_bech32()?);
 
     println!("Sent to:");
-    for url in output.success.into_iter() {
+    for url in output.success.into_keys() {
         println!("- {url}");
     }
 

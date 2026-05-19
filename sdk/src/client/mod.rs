@@ -634,7 +634,7 @@ impl Client {
     ///
     /// // Send REQ
     /// let output = client.subscribe(filter).await?;
-    /// println!("Subscription ID: {}", output.val);
+    /// println!("Subscription ID: {}", output.id());
     /// println!("Successful relays: {:?}", output.success);
     /// println!("Failed relays: {:?}", output.failed);
     ///
@@ -675,7 +675,7 @@ impl Client {
     ///
     /// // Send REQ
     /// let output = client.subscribe(targets).await?;
-    /// println!("Subscription ID: {}", output.val);
+    /// println!("Subscription ID: {}", output.id());
     /// println!("Successful relays: {:?}", output.success);
     /// println!("Failed relays: {:?}", output.failed);
     ///
@@ -1169,7 +1169,7 @@ impl Client {
     /// - The event cannot be saved to the database,
     /// - Or sending cannot be initiated.
     ///
-    /// Relay-specific delivery failures are reported in the returned [`Output`].
+    /// Relay-specific delivery results are reported in the returned [`SendEventOutput`].
     #[inline]
     pub fn send_event<'event, 'url>(&self, event: &'event Event) -> SendEvent<'_, 'event, 'url> {
         SendEvent::new(self, event)
@@ -1189,7 +1189,7 @@ impl Client {
         &self,
         urls: I,
         event: &Event,
-    ) -> Result<Output<EventId>, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = U>,
         U: Into<RelayUrlArg<'a>>,

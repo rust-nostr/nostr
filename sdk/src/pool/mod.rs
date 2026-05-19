@@ -21,7 +21,7 @@ mod error;
 
 pub(crate) use self::builder::RelayPoolBuilder;
 pub(crate) use self::error::Error;
-use crate::client::{ClientNotification, InnerAckPolicy, Output, SyncSummary};
+use crate::client::{ClientNotification, InnerAckPolicy, Output, SendEventOutput, SyncSummary};
 use crate::monitor::Monitor;
 use crate::policy::AdmitStatus;
 use crate::relay::{
@@ -314,7 +314,7 @@ impl RelayPool {
         for (url, result) in urls.into_iter().zip(list) {
             match result {
                 Ok(..) => {
-                    output.success.insert(url);
+                    output.success.insert(url, ());
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -468,7 +468,7 @@ impl RelayPool {
             match result {
                 Ok(()) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
+                    output.success.insert(url, ());
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -486,7 +486,7 @@ impl RelayPool {
         wait_policy: InnerAckPolicy,
         wait_for_ok_timeout: Duration,
         wait_for_authentication_timeout: Duration,
-    ) -> Result<Output<EventId>, Error>
+    ) -> Result<SendEventOutput, Error>
     where
         I: IntoIterator<Item = RelayUrl>,
     {
@@ -502,7 +502,7 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         let mut futures: FuturesUnordered<_> = FuturesUnordered::new();
-        let mut output: Output<EventId> = Output::new(event.id);
+        let mut output: SendEventOutput = Output::new(event.id);
 
         let wait_for_ok: bool = match wait_policy {
             InnerAckPolicy::All => true,
@@ -531,12 +531,14 @@ impl RelayPool {
 
         while let Some((url, result)) = futures.next().await {
             match result {
-                Ok(id) => {
+                Ok(relay_output) => {
+                    let (id, status) = relay_output.into_parts();
+
                     // The ID must match
                     assert_eq!(id, event.id);
 
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
+                    output.success.insert(url, status);
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -598,7 +600,7 @@ impl RelayPool {
             match result {
                 Ok(..) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
+                    output.success.insert(url, ());
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -633,7 +635,7 @@ impl RelayPool {
             match result {
                 Ok(true) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url.clone());
+                    output.success.insert(url.clone(), ());
                 }
                 // Subscription isn't found or auto-closing: do nothing
                 Ok(false) => {}
@@ -670,7 +672,7 @@ impl RelayPool {
             match result {
                 Ok(()) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url);
+                    output.success.insert(url, ());
                 }
                 Err(e) => {
                     output.failed.insert(url, e.to_string());
@@ -723,7 +725,7 @@ impl RelayPool {
             match result {
                 Ok(reconciliation) => {
                     // Success, insert relay url in 'success' set result
-                    output.success.insert(url.clone());
+                    output.success.insert(url.clone(), ());
                     output.merge_relay_summary(url, reconciliation);
                 }
                 Err(e) => {
