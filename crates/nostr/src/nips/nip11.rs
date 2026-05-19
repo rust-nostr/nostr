@@ -57,7 +57,7 @@ impl RelayInformationDocument {
     }
 }
 
-impl_json_methods!(RelayInformationDocument, serde_json::Error);
+impl_json_methods!(RelayInformationDocument);
 
 /// These are limitations imposed by the relay on clients. Your client should
 /// expect that requests which exceed these practical limitations are rejected or fail immediately.

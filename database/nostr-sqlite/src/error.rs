@@ -4,7 +4,7 @@ use std::fmt;
 use std::num::TryFromIntError;
 
 use async_utility::tokio::task::JoinError;
-use nostr::{event, key, secp256k1};
+use nostr::secp256k1;
 
 /// Migration error
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -37,6 +37,8 @@ impl fmt::Display for MigrationError {
 /// Nostr SQL error
 #[derive(Debug)]
 pub enum Error {
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// TryFromInt error
     TryFromInt(TryFromIntError),
     /// Rusqlite error
@@ -49,10 +51,6 @@ pub enum Error {
     Json(serde_json::Error),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
-    /// Event error
-    Event(event::Error),
-    /// Key error
-    Key(key::Error),
     /// Mutex poisoned
     MutexPoisoned,
 }
@@ -62,16 +60,21 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Protocol(e) => e.fmt(f),
             Self::TryFromInt(e) => write!(f, "{e}"),
             Self::Rusqlite(e) => write!(f, "{e}"),
             Self::Migration(e) => write!(f, "Migration error: {e}"),
             Self::Thread(e) => write!(f, "{e}"),
             Self::Json(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
-            Self::Key(e) => write!(f, "{e}"),
             Self::MutexPoisoned => f.write_str("mutex is poisoned"),
         }
+    }
+}
+
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 
@@ -108,17 +111,5 @@ impl From<serde_json::Error> for Error {
 impl From<secp256k1::Error> for Error {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
     }
 }

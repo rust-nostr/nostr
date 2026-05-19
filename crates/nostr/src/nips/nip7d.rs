@@ -8,35 +8,12 @@
 
 use alloc::string::String;
 use alloc::vec;
-use core::fmt;
 
-use super::util::take_string;
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use super::util::{missing_tag_kind, take_string, unknown_tag};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 
 const TITLE: &str = "title";
-
-/// NIP-7D error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Codec(err) => err.fmt(f),
-        }
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(err: TagCodecError) -> Self {
-        Self::Codec(err)
-    }
-}
 
 /// Standardized NIP-7D tags
 ///
@@ -57,11 +34,11 @@ impl TagCodec for Nip7DTag {
     {
         let mut iter = tag.into_iter();
 
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             TITLE => Ok(Self::Title(take_string(&mut iter, "title")?)),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

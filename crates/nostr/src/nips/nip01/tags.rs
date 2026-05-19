@@ -3,11 +3,11 @@ use alloc::vec;
 use alloc::vec::Vec;
 
 use super::super::util::{
-    take_and_parse_optional_public_key, take_and_parse_optional_relay_url, take_coordinate,
-    take_event_id, take_public_key, take_string,
+    missing_tag_kind, take_and_parse_optional_public_key, take_and_parse_optional_relay_url,
+    take_coordinate, take_event_id, take_public_key, take_string, unknown_tag,
 };
 use super::{Coordinate, Error};
-use crate::event::{EventId, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{EventId, Tag, TagCodec, impl_tag_codec_conversions};
 use crate::{PublicKey, RelayUrl};
 
 /// Standardized NIP-01 tags
@@ -54,7 +54,7 @@ impl TagCodec for Nip01Tag {
         let mut iter = tag.into_iter();
 
         // Extract first value
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         // Match kind
         match kind.as_ref() {
@@ -81,7 +81,7 @@ impl TagCodec for Nip01Tag {
                     relay_hint,
                 })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -116,7 +116,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let coordinate: Coordinate = take_coordinate::<_, _, Error>(&mut iter)?;
+    let coordinate: Coordinate = take_coordinate(&mut iter)?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
 
     Ok((coordinate, relay_hint))
@@ -145,7 +145,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let id: EventId = take_event_id::<_, _, Error>(&mut iter)?;
+    let id: EventId = take_event_id(&mut iter)?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
     let public_key: Option<PublicKey> = take_and_parse_optional_public_key(&mut iter)?;
 
@@ -183,7 +183,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
+    let public_key: PublicKey = take_public_key(&mut iter)?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
 
     Ok((public_key, relay_hint))
@@ -208,7 +208,7 @@ pub(in super::super) fn serialize_p_tag(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{event, key};
+    use crate::error::ErrorKind;
 
     #[test]
     fn test_standardized_a_tag() {
@@ -242,12 +242,12 @@ mod tests {
         // Invalid coordinate
         let tag = vec!["a", "hello"];
         let err = Nip01Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::InvalidCoordinate);
+        assert_eq!(err.kind(), ErrorKind::Invalid);
 
         // Missing coordinate
         let tag = vec!["a"];
         let err = Nip01Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("coordinate")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -330,12 +330,12 @@ mod tests {
         // Invalid ID
         let tag = vec!["e", "hello"];
         let err = Nip01Tag::parse(&tag).unwrap_err();
-        assert!(matches!(err, Error::Event(event::Error::Hex(_))));
+        assert_eq!(err.kind(), ErrorKind::Malformed);
 
         // Missing ID
         let tag = vec!["e"];
         let err = Nip01Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("event ID")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
 
         // Issue: https://gitworkshop.dev/yukikishimoto.com/nostr/issues/note15xl8ae8dnmt26adfw6ec8gshxxs242vrvsa3v36ctwq2x9gglkustlxlwa
         let result = Nip01Tag::parse(["e", raw, "", "", ""]).unwrap();
@@ -359,7 +359,7 @@ mod tests {
         // Missing identifier
         let tag = vec!["d"];
         let err = Nip01Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("identifier")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -394,11 +394,11 @@ mod tests {
         // Invalid public key
         let tag = vec!["p", "hello"];
         let err = Nip01Tag::parse(&tag).unwrap_err();
-        assert!(matches!(err, Error::Keys(key::Error::Hex(_))));
+        assert_eq!(err.kind(), ErrorKind::Malformed);
 
         // Missing public key
         let tag = vec!["p"];
         let err = Nip01Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("public key")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 }

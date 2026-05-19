@@ -5,8 +5,6 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::fmt;
-use core::fmt::Debug;
 
 use aes::Aes256;
 use aes::cipher::block_padding::Pkcs7;
@@ -20,47 +18,11 @@ use rand::rand_core::UnwrapErr;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use rand::rngs::SysRng;
 
-use crate::{PublicKey, SecretKey, key, util};
+use crate::error::{Error, ErrorKind};
+use crate::{PublicKey, SecretKey, util};
 
 type Aes256CbcEnc = Encryptor<Aes256>;
 type Aes256CbcDec = Decryptor<Aes256>;
-
-/// `NIP04` error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Key error
-    Key(key::Error),
-    /// Invalid content format
-    InvalidContentFormat,
-    /// Error while decoding from base64
-    Base64Decode,
-    /// Error while encoding to UTF-8
-    Utf8Encode,
-    /// Wrong encryption block mode
-    WrongBlockMode,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::InvalidContentFormat => f.write_str("Invalid NIP04 content format"),
-            Self::Base64Decode => f.write_str("Error while decoding NIP04 from base64"),
-            Self::Utf8Encode => f.write_str("Error while encoding NIP04 to UTF-8"),
-            Self::WrongBlockMode => f.write_str(
-                "Wrong encryption block mode. The content must be encrypted using CBC mode!",
-            ),
-        }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
-    }
-}
 
 /// Encrypt
 ///
@@ -142,21 +104,24 @@ where
     let encrypted_content: String = encrypted_content.into();
     let parsed_content: Vec<&str> = encrypted_content.split("?iv=").collect();
     if parsed_content.len() != 2 {
-        return Err(Error::InvalidContentFormat);
+        return Err(Error::with_static_message(
+            ErrorKind::Malformed,
+            "invalid content format",
+        ));
     }
 
     let encrypted_content: Vec<u8> = general_purpose::STANDARD
         .decode(parsed_content[0])
-        .map_err(|_| Error::Base64Decode)?;
+        .map_err(Error::malformed_display)?;
     let iv: Vec<u8> = general_purpose::STANDARD
         .decode(parsed_content[1])
-        .map_err(|_| Error::Base64Decode)?;
+        .map_err(Error::malformed_display)?;
     let key: [u8; 32] = util::generate_shared_key(secret_key, public_key)?;
 
     let cipher = Aes256CbcDec::new(&key.into(), iv.as_slice().into());
     let result = cipher
         .decrypt_padded_vec_mut::<Pkcs7>(&encrypted_content)
-        .map_err(|_| Error::WrongBlockMode)?;
+        .map_err(|_| Error::with_static_message(ErrorKind::Crypto, "wrong block mode"))?;
 
     Ok(result)
 }
@@ -174,7 +139,7 @@ where
     T: Into<String>,
 {
     let result = decrypt_to_bytes(secret_key, public_key, encrypted_content)?;
-    String::from_utf8(result).map_err(|_| Error::Utf8Encode)
+    String::from_utf8(result).map_err(Error::malformed)
 }
 
 #[cfg(all(test, feature = "std", feature = "os-rng"))]
@@ -226,8 +191,9 @@ mod tests {
                 &receiver_pk,
                 "invalidcontentformat"
             )
-            .unwrap_err(),
-            Error::InvalidContentFormat
+            .unwrap_err()
+            .kind(),
+            ErrorKind::Malformed
         );
         assert_eq!(
             decrypt(
@@ -235,8 +201,9 @@ mod tests {
                 &receiver_pk,
                 "badbase64?iv=encode"
             )
-            .unwrap_err(),
-            Error::Base64Decode
+            .unwrap_err()
+            .kind(),
+            ErrorKind::Malformed
         );
 
         // Content encrypted with aes256 using GCM mode
@@ -246,8 +213,9 @@ mod tests {
                 &receiver_pk,
                 "nseh0cQPEFID5C0CxYdcPwp091NhRQ==?iv=8PHy8/T19vf4+fr7/P3+/w=="
             )
-            .unwrap_err(),
-            Error::WrongBlockMode
+            .unwrap_err()
+            .kind(),
+            ErrorKind::Crypto
         );
     }
 }

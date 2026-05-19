@@ -9,16 +9,13 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
-use core::num::ParseIntError;
 use core::str::FromStr;
 
-use hashes::hex::HexToArrayError;
 use hashes::sha256::Hash as Sha256Hash;
 
-use super::util::{take_and_parse_from_str, take_string};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::types::{image, url};
+use super::util::{missing_tag_kind, take_and_parse_from_str, take_string, unknown_tag};
+use crate::error::{Error, ErrorKind};
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 use crate::{ImageDimensions, Url};
 
 const URL: &str = "url";
@@ -37,86 +34,16 @@ const ALT: &str = "alt";
 const FALLBACK: &str = "fallback";
 const SERVICE: &str = "service";
 
-/// NIP-94 error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Parse int error
-    ParseInt(ParseIntError),
-    /// Hex decoding error
-    Hex(HexToArrayError),
-    /// URL parse error
-    Url(url::ParseError),
-    /// Image error
-    Image(image::Error),
-    /// Codec error
-    Codec(TagCodecError),
+fn missing_url() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "missing url")
 }
 
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Hex(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Image(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
+fn missing_mime_type() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "missing mime type")
 }
 
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<HexToArrayError> for Error {
-    fn from(e: HexToArrayError) -> Self {
-        Self::Hex(e)
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<image::Error> for Error {
-    fn from(e: image::Error) -> Self {
-        Self::Image(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
-
-/// Potential errors returned when parsing tags into a [`FileMetadata`] struct.
-#[derive(Debug, PartialEq, Eq)]
-pub enum FileMetadataError {
-    /// The URL of the file is missing (no `url` tag)
-    MissingUrl,
-    /// The mime type of the file is missing (no `m` tag)
-    MissingMimeType,
-    /// The SHA256 hash of the file is missing (no `x` tag)
-    MissingSha,
-}
-
-impl core::error::Error for FileMetadataError {}
-
-impl fmt::Display for FileMetadataError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::MissingUrl => f.write_str("missing url"),
-            Self::MissingMimeType => f.write_str("missing mime type"),
-            Self::MissingSha => f.write_str("missing file sha256"),
-        }
-    }
+fn missing_sha() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "missing file sha256")
 }
 
 /// Standardized NIP-94 tags
@@ -175,31 +102,28 @@ impl TagCodec for Nip94Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             URL => {
-                let url: Url = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "URL")?;
+                let url: Url = take_and_parse_from_str(&mut iter, "URL")?;
                 Ok(Self::Url(url))
             }
             MIME_TYPE => Ok(Self::MimeType(take_string(&mut iter, "mime type")?)),
             SHA256 => {
-                let hash: Sha256Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "sha256")?;
+                let hash: Sha256Hash = take_and_parse_from_str(&mut iter, "sha256")?;
                 Ok(Self::Sha256(hash))
             }
             ORIGINAL_HASH => {
-                let hash: Sha256Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "original hash")?;
+                let hash: Sha256Hash = take_and_parse_from_str(&mut iter, "original hash")?;
                 Ok(Self::OriginalHash(hash))
             }
             SIZE => {
-                let size: usize = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "size")?;
+                let size: usize = take_and_parse_from_str(&mut iter, "size")?;
                 Ok(Self::Size(size))
             }
             DIMENSIONS => {
-                let dim: ImageDimensions =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "dimensions")?;
+                let dim: ImageDimensions = take_and_parse_from_str(&mut iter, "dimensions")?;
                 Ok(Self::Dim(dim))
             }
             MAGNET => Ok(Self::Magnet(take_string(&mut iter, "magnet link")?)),
@@ -216,12 +140,11 @@ impl TagCodec for Nip94Tag {
             SUMMARY => Ok(Self::Summary(take_string(&mut iter, "summary")?)),
             ALT => Ok(Self::Alt(take_string(&mut iter, "alt")?)),
             FALLBACK => {
-                let url: Url =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "fallback URL")?;
+                let url: Url = take_and_parse_from_str(&mut iter, "fallback URL")?;
                 Ok(Self::Fallback(url))
             }
             SERVICE => Ok(Self::Service(take_string(&mut iter, "service name")?)),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -530,7 +453,7 @@ impl From<FileMetadata> for Vec<Tag> {
 }
 
 impl TryFrom<Vec<Tag>> for FileMetadata {
-    type Error = FileMetadataError;
+    type Error = Error;
 
     fn try_from(value: Vec<Tag>) -> Result<Self, Self::Error> {
         let mut url: Option<Url> = None;
@@ -633,9 +556,9 @@ impl TryFrom<Vec<Tag>> for FileMetadata {
             }
         }
 
-        let url = url.ok_or(FileMetadataError::MissingUrl)?;
-        let mime_type = mime_type.ok_or(FileMetadataError::MissingMimeType)?;
-        let hash = hash.ok_or(FileMetadataError::MissingSha)?;
+        let url = url.ok_or_else(missing_url)?;
+        let mime_type = mime_type.ok_or_else(missing_mime_type)?;
+        let hash = hash.ok_or_else(missing_sha)?;
 
         let mut metadata = FileMetadata::new(url, mime_type, hash);
 
@@ -707,9 +630,11 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let url: Url = take_and_parse_from_str::<_, _, _, Error>(&mut iter, missing_error)?;
+    let url: Url = take_and_parse_from_str(&mut iter, missing_error)?;
     let hash: Option<Sha256Hash> = match iter.next() {
-        Some(hash) if !hash.as_ref().is_empty() => Some(Sha256Hash::from_str(hash.as_ref())?),
+        Some(hash) if !hash.as_ref().is_empty() => {
+            Some(Sha256Hash::from_str(hash.as_ref()).map_err(Error::malformed_display)?)
+        }
         _ => None,
     };
 
@@ -810,7 +735,7 @@ mod tests {
         ];
         let got = FileMetadata::try_from(tags).unwrap_err();
 
-        assert_eq!(FileMetadataError::MissingUrl, got);
+        assert_eq!(got.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -828,7 +753,7 @@ mod tests {
         ];
         let got = FileMetadata::try_from(tags).unwrap_err();
 
-        assert_eq!(FileMetadataError::MissingMimeType, got);
+        assert_eq!(got.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -845,6 +770,6 @@ mod tests {
         ];
         let got = FileMetadata::try_from(tags).unwrap_err();
 
-        assert_eq!(FileMetadataError::MissingSha, got);
+        assert_eq!(got.kind(), ErrorKind::Missing);
     }
 }

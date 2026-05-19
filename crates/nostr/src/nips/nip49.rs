@@ -8,8 +8,6 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::array::TryFromSliceError;
-use core::fmt;
 
 use chacha20poly1305::XChaCha20Poly1305;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
@@ -20,109 +18,60 @@ use rand::rngs::SysRng;
 #[cfg(feature = "rand")]
 use rand::{CryptoRng, Rng};
 use scrypt::Params as ScryptParams;
-use scrypt::errors::{InvalidOutputLen, InvalidParams};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use unicode_normalization::UnicodeNormalization;
 
 use super::nip19::{FromBech32, ToBech32};
-use crate::{SecretKey, key};
+use crate::SecretKey;
+use crate::error::{Error, ErrorKind};
 
 const SALT_SIZE: usize = 16;
 const NONCE_SIZE: usize = 24;
 const CIPHERTEXT_SIZE: usize = 48;
 const KEY_SIZE: usize = 32;
 
-/// NIP49 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// ChaCha20Poly1305 error
-    ChaCha20Poly1305(chacha20poly1305::Error),
-    /// Invalid scrypt params
-    InvalidScryptParams(InvalidParams),
-    /// Invalid scrypt output len
-    InvalidScryptOutputLen(InvalidOutputLen),
-    /// Keys error
-    Keys(key::Error),
-    /// Try from slice
-    TryFromSlice,
-    /// Invalid len
-    InvalidLength {
-        /// Expected bytes len
-        expected: usize,
-        /// Found bytes len
-        found: usize,
-    },
-    /// Unknown version
-    UnknownVersion(u8),
-    /// Unknown Key Security
-    UnknownKeySecurity(u8),
-    /// Version not found
-    VersionNotFound,
-    /// Log2 round not found
-    Log2RoundNotFound,
-    /// Salt not found
-    SaltNotFound,
-    /// Nonce not found
-    NonceNotFound,
-    /// Key security not found
-    KeySecurityNotFound,
-    /// Cipthertext not found
-    CipherTextNotFound,
+fn unknown_version(version: u8) -> Error {
+    Error::new(
+        ErrorKind::Unsupported,
+        format!("unknown version: {version}"),
+    )
 }
 
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ChaCha20Poly1305(e) => e.fmt(f),
-            Self::InvalidScryptParams(e) => e.fmt(f),
-            Self::InvalidScryptOutputLen(e) => e.fmt(f),
-            Self::Keys(e) => e.fmt(f),
-            Self::TryFromSlice => f.write_str("From slice error"),
-            Self::InvalidLength { expected, found } => {
-                write!(f, "Invalid bytes len: expected={expected}, found={found}")
-            }
-            Self::UnknownVersion(v) => write!(f, "unknown version: {v}"),
-            Self::UnknownKeySecurity(v) => write!(f, "unknown security: {v}"),
-            Self::VersionNotFound => f.write_str("version not found"),
-            Self::Log2RoundNotFound => f.write_str("`log N` not found"),
-            Self::SaltNotFound => f.write_str("salt not found"),
-            Self::NonceNotFound => f.write_str("nonce not found"),
-            Self::KeySecurityNotFound => f.write_str("security not found"),
-            Self::CipherTextNotFound => f.write_str("ciphertext not found"),
-        }
-    }
+fn unknown_key_security(key_security: u8) -> Error {
+    Error::new(
+        ErrorKind::Unsupported,
+        format!("unknown key security: {key_security}"),
+    )
 }
 
-impl From<chacha20poly1305::Error> for Error {
-    fn from(e: chacha20poly1305::Error) -> Self {
-        Self::ChaCha20Poly1305(e)
-    }
+#[inline]
+fn version_not_found() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "version not found")
 }
 
-impl From<InvalidParams> for Error {
-    fn from(e: InvalidParams) -> Self {
-        Self::InvalidScryptParams(e)
-    }
+#[inline]
+fn log2_round_not_found() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "log2 round not found")
 }
 
-impl From<InvalidOutputLen> for Error {
-    fn from(e: InvalidOutputLen) -> Self {
-        Self::InvalidScryptOutputLen(e)
-    }
+#[inline]
+fn salt_not_found() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "salt not found")
 }
 
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
+#[inline]
+fn nonce_not_found() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "nonce not found")
 }
 
-impl From<TryFromSliceError> for Error {
-    fn from(_e: TryFromSliceError) -> Self {
-        Self::TryFromSlice
-    }
+#[inline]
+fn key_security_not_found() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "key security not found")
+}
+
+#[inline]
+fn cipher_text_not_found() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "cipher text not found")
 }
 
 /// Encrypted Secret Key version (NIP49)
@@ -140,7 +89,7 @@ impl TryFrom<u8> for Version {
         match version {
             // 0x01 => deprecated,
             0x02 => Ok(Self::V2),
-            v => Err(Error::UnknownVersion(v)),
+            v => Err(unknown_version(v)),
         }
     }
 }
@@ -165,7 +114,7 @@ impl TryFrom<u8> for KeySecurity {
             0x00 => Ok(Self::Weak),
             0x01 => Ok(Self::Medium),
             0x02 => Ok(Self::Unknown),
-            v => Err(Error::UnknownKeySecurity(v)),
+            v => Err(unknown_key_security(v)),
         }
     }
 }
@@ -260,8 +209,11 @@ impl EncryptedSecretKey {
         };
 
         // Encrypt
-        let ciphertext: Vec<u8> = cipher.encrypt(&nonce.into(), payload)?;
-        let ciphertext: [u8; CIPHERTEXT_SIZE] = ciphertext.as_slice().try_into()?;
+        let ciphertext: Vec<u8> = cipher
+            .encrypt(&nonce.into(), payload)
+            .map_err(Error::crypto_display)?;
+        let ciphertext: [u8; CIPHERTEXT_SIZE] =
+            ciphertext.as_slice().try_into().map_err(Error::malformed)?;
 
         Ok(Self {
             version: Version::default(),
@@ -276,41 +228,41 @@ impl EncryptedSecretKey {
     /// Parse encrypted secret key from bytes
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         if slice.len() != Self::LEN {
-            return Err(Error::InvalidLength {
-                expected: Self::LEN,
-                found: slice.len(),
-            });
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid length",
+            ));
         }
 
         // Version
-        let version: u8 = slice.first().copied().ok_or(Error::VersionNotFound)?;
+        let version: u8 = slice.first().copied().ok_or(version_not_found())?;
         let version: Version = Version::try_from(version)?;
 
         // Log 2 rounds
-        let log_n: u8 = slice.get(1).copied().ok_or(Error::Log2RoundNotFound)?;
+        let log_n: u8 = slice.get(1).copied().ok_or(log2_round_not_found())?;
 
         // Salt
-        let salt: &[u8] = slice.get(2..2 + SALT_SIZE).ok_or(Error::SaltNotFound)?;
-        let salt: [u8; SALT_SIZE] = salt.try_into()?;
+        let salt: &[u8] = slice.get(2..2 + SALT_SIZE).ok_or(salt_not_found())?;
+        let salt: [u8; SALT_SIZE] = salt.try_into().map_err(Error::malformed)?;
 
         // Nonce
         let nonce: &[u8] = slice
             .get(2 + SALT_SIZE..2 + SALT_SIZE + NONCE_SIZE)
-            .ok_or(Error::NonceNotFound)?;
-        let nonce: [u8; NONCE_SIZE] = nonce.try_into()?;
+            .ok_or(nonce_not_found())?;
+        let nonce: [u8; NONCE_SIZE] = nonce.try_into().map_err(Error::malformed)?;
 
         // Key security
         let key_security: u8 = slice
             .get(2 + SALT_SIZE + NONCE_SIZE)
             .copied()
-            .ok_or(Error::KeySecurityNotFound)?;
+            .ok_or(key_security_not_found())?;
         let key_security: KeySecurity = KeySecurity::try_from(key_security)?;
 
         // Ciphertext
         let ciphertext: &[u8] = slice
             .get(2 + SALT_SIZE + NONCE_SIZE + 1..)
-            .ok_or(Error::CipherTextNotFound)?;
-        let ciphertext: [u8; CIPHERTEXT_SIZE] = ciphertext.try_into()?;
+            .ok_or(cipher_text_not_found())?;
+        let ciphertext: [u8; CIPHERTEXT_SIZE] = ciphertext.try_into().map_err(Error::malformed)?;
 
         Ok(Self {
             version,
@@ -367,10 +319,12 @@ impl EncryptedSecretKey {
         };
 
         // Decrypt
-        let bytes: Vec<u8> = cipher.decrypt(&self.nonce.into(), payload)?;
+        let bytes: Vec<u8> = cipher
+            .decrypt(&self.nonce.into(), payload)
+            .map_err(Error::crypto_display)?;
 
         // Parse secret key from bytes
-        Ok(SecretKey::from_slice(&bytes)?)
+        SecretKey::from_slice(&bytes)
     }
 }
 
@@ -399,11 +353,11 @@ fn derive_key(password: &str, salt: &[u8; SALT_SIZE], log_n: u8) -> Result<[u8; 
     let password: String = password.nfkc().collect();
 
     // Compose params
-    let params: ScryptParams = ScryptParams::new(log_n, 8, 1)?;
+    let params: ScryptParams = ScryptParams::new(log_n, 8, 1).map_err(Error::invalid)?;
 
     // Derive key
     let mut key: [u8; KEY_SIZE] = [0u8; KEY_SIZE];
-    scrypt::scrypt(password.as_bytes(), salt, &params, &mut key)?;
+    scrypt::scrypt(password.as_bytes(), salt, &params, &mut key).map_err(Error::invalid)?;
     Ok(key)
 }
 

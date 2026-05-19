@@ -9,13 +9,16 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
 
 use super::nip01::Nip01Tag;
-use super::util::{take_and_parse_from_str, take_and_parse_optional_from_str, take_string};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::types::url::{self, Url};
-use crate::types::{RelayUrl, image};
+use super::util::{
+    missing_tag_kind, take_and_parse_from_str, take_and_parse_optional_from_str, take_string,
+    unknown_tag,
+};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::types::RelayUrl;
+use crate::types::url::Url;
 use crate::{Event, ImageDimensions, Kind, PublicKey};
 
 const IDENTIFIER: &str = "d";
@@ -23,66 +26,6 @@ const NAME: &str = "name";
 const DESCRIPTION: &str = "description";
 const IMAGE: &str = "image";
 const THUMB: &str = "thumb";
-
-#[derive(Debug, PartialEq, Eq)]
-/// Badge Award error
-pub enum Error {
-    /// Image error
-    Image(image::Error),
-    /// Url error
-    Url(url::ParseError),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Invalid length
-    InvalidLength,
-    /// Invalid kind
-    InvalidKind,
-    /// Identifier tag not found
-    IdentifierTagNotFound,
-    /// Mismatched badge definition or award
-    MismatchedBadgeDefinitionOrAward,
-    /// Badge awards lack the awarded public key
-    BadgeAwardsLackAwardedPublicKey,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Image(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidLength => f.write_str("invalid length"),
-            Self::InvalidKind => f.write_str("invalid kind"),
-            Self::IdentifierTagNotFound => f.write_str("identifier tag not found"),
-            Self::MismatchedBadgeDefinitionOrAward => {
-                f.write_str("mismatched badge definition/award")
-            }
-            Self::BadgeAwardsLackAwardedPublicKey => {
-                f.write_str("badge award events lack the awarded public key")
-            }
-        }
-    }
-}
-
-impl From<image::Error> for Error {
-    fn from(e: image::Error) -> Self {
-        Self::Image(e)
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-58 tags
 ///
@@ -110,7 +53,7 @@ impl TagCodec for Nip58Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             IDENTIFIER => Ok(Self::Identifier(take_string(&mut iter, "identifier")?)),
@@ -124,7 +67,7 @@ impl TagCodec for Nip58Tag {
                 let (url, dimensions) = parse_url_and_dimensions_tag(iter, "thumbnail URL")?;
                 Ok(Self::Thumb(url, dimensions))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -153,7 +96,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let url: Url = take_and_parse_from_str::<_, _, _, Error>(&mut iter, missing_error)?;
+    let url: Url = take_and_parse_from_str(&mut iter, missing_error)?;
     let dimensions: Option<ImageDimensions> = take_and_parse_optional_from_str(&mut iter)?;
 
     Ok((url, dimensions))

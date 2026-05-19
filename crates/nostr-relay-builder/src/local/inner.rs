@@ -237,7 +237,7 @@ impl InnerLocalRelay {
         &self,
         stream: S,
         addr: SocketAddr,
-    ) -> Result<()>
+    ) -> Result<(), Error>
     where
         S: AsyncRead + AsyncWrite + Unpin,
     {
@@ -254,7 +254,7 @@ impl InnerLocalRelay {
     }
 
     /// Pass bare [TcpStream] for handling
-    async fn handle_connection<S>(self, raw_stream: S, addr: SocketAddr) -> Result<()>
+    async fn handle_connection<S>(self, raw_stream: S, addr: SocketAddr) -> Result<(), Error>
     where
         S: AsyncRead + AsyncWrite + Unpin,
     {
@@ -275,7 +275,7 @@ impl InnerLocalRelay {
         &self,
         ws_stream: WebSocketStream<S>,
         addr: SocketAddr,
-    ) -> Result<()>
+    ) -> Result<(), Error>
     where
         S: AsyncRead + AsyncWrite + Unpin,
     {
@@ -361,7 +361,7 @@ impl InnerLocalRelay {
         ws_tx: &mut WsTx<S>,
         msg: ClientMessage<'_>,
         addr: &SocketAddr,
-    ) -> Result<()>
+    ) -> Result<(), Error>
     where
         S: AsyncRead + AsyncWrite + Unpin,
     {
@@ -807,7 +807,7 @@ impl InnerLocalRelay {
         addr: &SocketAddr,
         subscription_id: Cow<'_, SubscriptionId>,
         mut filters: Vec<Filter>,
-    ) -> Result<()>
+    ) -> Result<(), Error>
     where
         S: AsyncRead + AsyncWrite + Unpin,
     {
@@ -1008,11 +1008,13 @@ impl InnerLocalRelay {
 }
 
 #[inline]
-async fn send_msg<S>(tx: &mut WsTx<S>, msg: RelayMessage<'_>) -> Result<()>
+async fn send_msg<S>(tx: &mut WsTx<S>, msg: RelayMessage<'_>) -> Result<(), Error>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
-    tx.send(Message::Text(msg.as_json().into())).await?;
+    tx.send(Message::Text(msg.as_json().into()))
+        .await
+        .map_err(|e| Error::Other(e.to_string()))?;
     Ok(())
 }
 
@@ -1020,7 +1022,7 @@ async fn send_auth_and_close<S>(
     tx: &mut WsTx<S>,
     subscription_id: Cow<'_, SubscriptionId>,
     challenge: String,
-) -> Result<()>
+) -> Result<(), Error>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
@@ -1074,7 +1076,7 @@ fn find_filters_with_kind<'a>(filters: &'a [Filter], kind: &Kind) -> Option<Vec<
 async fn send_gift_wrap_error<S>(
     tx: &mut WsTx<S>,
     subscription_id: Cow<'_, SubscriptionId>,
-) -> Result<()>
+) -> Result<(), Error>
 where
     S: AsyncRead + AsyncWrite + Unpin,
 {
@@ -1092,12 +1094,14 @@ where
 }
 
 #[inline]
-async fn send_json_msgs<I, S>(tx: &mut WsTx<S>, json_msgs: I) -> Result<()>
+async fn send_json_msgs<I, S>(tx: &mut WsTx<S>, json_msgs: I) -> Result<(), Error>
 where
     I: IntoIterator<Item = String>,
     S: AsyncRead + AsyncWrite + Unpin,
 {
     let mut stream = stream::iter(json_msgs).map(|msg| Ok(Message::Text(msg.into())));
-    tx.send_all(&mut stream).await?;
+    tx.send_all(&mut stream)
+        .await
+        .map_err(|e| Error::Other(e.to_string()))?;
     Ok(())
 }

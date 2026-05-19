@@ -9,91 +9,14 @@
 use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::fmt;
 use core::str::FromStr;
 
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 use crate::nips::nip01::{self, Coordinate};
 use crate::nips::nip73::{self, ExternalContentId, Nip73Kind};
-use crate::types::url;
-use crate::{Event, EventId, Kind, PublicKey, RelayUrl, Url, event, key};
-
-/// NIP-22 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Event error
-    Event(event::Error),
-    /// Keys error
-    Keys(key::Error),
-    /// NIP-01 error
-    Nip01(nip01::Error),
-    /// NIP-73 error
-    Nip73(nip73::Error),
-    /// Relay URL error
-    RelayUrl(url::Error),
-    /// URL error
-    Url(url::ParseError),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Event(e) => e.fmt(f),
-            Self::Keys(e) => e.fmt(f),
-            Self::Nip01(e) => e.fmt(f),
-            Self::Nip73(e) => e.fmt(f),
-            Self::RelayUrl(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<nip01::Error> for Error {
-    fn from(e: nip01::Error) -> Self {
-        Self::Nip01(e)
-    }
-}
-
-impl From<nip73::Error> for Error {
-    fn from(e: nip73::Error) -> Self {
-        Self::Nip73(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::RelayUrl(e)
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
+use crate::nips::util::{missing_tag_kind, missing_value, unknown_tag};
+use crate::{Event, EventId, Kind, PublicKey, RelayUrl, Url};
 
 /// Standardized NIP-22 tags
 ///
@@ -163,7 +86,7 @@ impl TagCodec for Nip22Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             "a" => parse_a_tag(iter, false),
@@ -176,7 +99,7 @@ impl TagCodec for Nip22Tag {
             "K" => parse_k_tag(iter, true),
             "p" => parse_p_tag(iter, false),
             "P" => parse_p_tag(iter, true),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -645,7 +568,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let kind: S = iter.next().ok_or(TagCodecError::Missing("kind"))?;
+    let kind: S = iter.next().ok_or_else(|| missing_value("kind"))?;
 
     if let Ok(kind_number) = u16::from_str(kind.as_ref()) {
         Ok(Nip22Tag::Kind {
@@ -827,7 +750,7 @@ mod tests {
         ];
 
         let err = Nip22Tag::parse(&tag).unwrap_err();
-        assert!(matches!(err, super::Error::Nip01(nip01::Error::Keys(_))));
+        assert_eq!(err.kind(), ErrorKind::Malformed);
     }
 
     #[test]

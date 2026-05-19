@@ -5,34 +5,9 @@
 //! Image
 
 use core::fmt;
-use core::num::ParseIntError;
 use core::str::{FromStr, Split};
 
-/// Image error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Impossible to parse integer
-    ParseIntError(ParseIntError),
-    /// Invalid Image Dimensions
-    InvalidDimensions,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ParseIntError(e) => e.fmt(f),
-            Self::InvalidDimensions => f.write_str("Invalid dimensions"),
-        }
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseIntError(e)
-    }
-}
+use crate::error::{Error, ErrorKind};
 
 /// Simple struct to hold `width` x `height`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -63,9 +38,15 @@ impl FromStr for ImageDimensions {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut spitted: Split<char> = s.split('x');
         if let (Some(width), Some(height)) = (spitted.next(), spitted.next()) {
-            Ok(Self::new(width.parse()?, height.parse()?))
+            Ok(Self::new(
+                width.parse().map_err(Error::malformed)?,
+                height.parse().map_err(Error::malformed)?,
+            ))
         } else {
-            Err(Error::InvalidDimensions)
+            Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid dimensions",
+            ))
         }
     }
 }

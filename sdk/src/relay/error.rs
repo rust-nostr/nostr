@@ -1,8 +1,6 @@
 use std::fmt;
 use std::time::Duration;
 
-use nostr::event;
-use nostr::message::MessageHandleError;
 use nostr_database::DatabaseError;
 use nostr_gossip::error::GossipError;
 use tokio::sync::{broadcast, oneshot};
@@ -13,6 +11,8 @@ use crate::transport::error::TransportError;
 /// Relay error
 #[derive(Debug)]
 pub enum Error {
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// Any error
     Any(Box<dyn std::error::Error + Send + Sync>),
     /// Transport error
@@ -23,10 +23,6 @@ pub enum Error {
     Database(DatabaseError),
     /// Gossip error
     Gossip(GossipError),
-    /// MessageHandle error
-    MessageHandle(MessageHandleError),
-    /// Event error
-    Event(event::Error),
     /// Hex error
     Hex(faster_hex::Error),
     /// Negentropy error
@@ -135,13 +131,12 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Protocol(e) => e.fmt(f),
             Self::Any(e) => e.fmt(f),
             Self::Transport(e) => write!(f, "transport: {e}"),
             Self::Policy(e) => write!(f, "policy: {e}"),
             Self::Database(e) => write!(f, "database: {e}"),
             Self::Gossip(e) => write!(f, "gossip: {e}"),
-            Self::MessageHandle(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
             Self::Hex(e) => e.fmt(f),
             Self::Negentropy(e) => e.fmt(f),
             Self::OneshotRecv(e) => e.fmt(f),
@@ -206,6 +201,12 @@ impl fmt::Display for Error {
     }
 }
 
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
+    }
+}
+
 impl From<Box<dyn std::error::Error + Send + Sync>> for Error {
     #[inline]
     fn from(e: Box<dyn std::error::Error + Send + Sync>) -> Self {
@@ -234,18 +235,6 @@ impl From<DatabaseError> for Error {
 impl From<GossipError> for Error {
     fn from(e: GossipError) -> Self {
         Self::Gossip(e)
-    }
-}
-
-impl From<MessageHandleError> for Error {
-    fn from(e: MessageHandleError) -> Self {
-        Self::MessageHandle(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
     }
 }
 

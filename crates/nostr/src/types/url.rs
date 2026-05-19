@@ -15,34 +15,7 @@ use core::str::FromStr;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 pub use url::*;
 
-/// Relay URL error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Url parse error
-    Url(ParseError),
-    /// Unsupported URL scheme
-    UnsupportedScheme,
-    /// Multiple scheme separators
-    MultipleSchemeSeparators,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(e) => e.fmt(f),
-            Self::UnsupportedScheme => f.write_str("Unsupported scheme"),
-            Self::MultipleSchemeSeparators => f.write_str("Multiple scheme separators"),
-        }
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
-        Self::Url(e)
-    }
-}
+use crate::error::{Error, ErrorKind};
 
 /// Relay URL scheme
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -60,7 +33,10 @@ impl RelayUrlScheme {
         match scheme {
             "ws" => Ok(Self::Ws),
             "wss" => Ok(Self::Wss),
-            _ => Err(Error::UnsupportedScheme),
+            _ => Err(Error::with_static_message(
+                ErrorKind::Unsupported,
+                "unsupported URL scheme",
+            )),
         }
     }
 
@@ -127,14 +103,17 @@ impl RelayUrl {
     pub fn parse(url: &str) -> Result<Self, Error> {
         // Check that "://" appears only once in the URL
         if url.matches("://").count() > 1 {
-            return Err(Error::MultipleSchemeSeparators);
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "multiple scheme separators",
+            ));
         }
 
         // Check if it has a trailing slash
         let has_trailing_slash: bool = url.ends_with('/');
 
         // Parse URL
-        let url: Url = Url::parse(url)?;
+        let url: Url = Url::parse(url).map_err(Error::malformed)?;
 
         // Parse scheme
         let scheme: RelayUrlScheme = RelayUrlScheme::parse(url.scheme())?;
@@ -220,7 +199,7 @@ impl RelayUrl {
     /// # Examples
     ///
     /// ```
-    /// use nostr::types::url::{Error, RelayUrl};
+    /// use nostr::types::url::RelayUrl;
     ///
     /// let url = RelayUrl::parse("wss://127.0.0.1:7777").unwrap();
     /// assert_eq!(url.domain(), None);
@@ -392,12 +371,12 @@ mod tests {
 
         // Invalid
         assert_eq!(
-            RelayUrlScheme::parse("http").unwrap_err(),
-            Error::UnsupportedScheme
+            RelayUrlScheme::parse("http").unwrap_err().kind(),
+            ErrorKind::Unsupported
         );
         assert_eq!(
-            RelayUrlScheme::parse("https").unwrap_err(),
-            Error::UnsupportedScheme
+            RelayUrlScheme::parse("https").unwrap_err().kind(),
+            ErrorKind::Unsupported
         );
     }
 
@@ -412,24 +391,30 @@ mod tests {
     #[test]
     fn test_relay_url_invalid() {
         assert_eq!(
-            RelayUrl::parse("https://relay.damus.io").unwrap_err(),
-            Error::UnsupportedScheme
+            RelayUrl::parse("https://relay.damus.io")
+                .unwrap_err()
+                .kind(),
+            ErrorKind::Unsupported
         );
         assert_eq!(
-            RelayUrl::parse("ftp://relay.damus.io").unwrap_err(),
-            Error::UnsupportedScheme
+            RelayUrl::parse("ftp://relay.damus.io").unwrap_err().kind(),
+            ErrorKind::Unsupported
         );
         assert_eq!(
-            RelayUrl::parse("wss://relay.damus.io,ws://127.0.0.1:7777").unwrap_err(),
-            Error::MultipleSchemeSeparators
+            RelayUrl::parse("wss://relay.damus.io,ws://127.0.0.1:7777")
+                .unwrap_err()
+                .kind(),
+            ErrorKind::Invalid
         );
         assert_eq!(
-            RelayUrl::parse("wss://relay.damus.iowss://127.0.0.1:8888").unwrap_err(),
-            Error::MultipleSchemeSeparators
+            RelayUrl::parse("wss://relay.damus.iowss://127.0.0.1:8888")
+                .unwrap_err()
+                .kind(),
+            ErrorKind::Invalid
         );
         assert_eq!(
-            RelayUrl::parse("wss://").unwrap_err(),
-            Error::Url(ParseError::EmptyHost)
+            RelayUrl::parse("wss://").unwrap_err().kind(),
+            ErrorKind::Malformed
         );
     }
 

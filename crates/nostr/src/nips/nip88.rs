@@ -9,15 +9,18 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
-use core::num::ParseIntError;
 use core::str::FromStr;
 
-use super::util::{take_and_parse_from_str, take_relay_url, take_string, take_timestamp};
-use crate::event::{
-    EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+use super::util::{
+    missing_tag_kind, take_and_parse_from_str, take_relay_url, take_string, take_timestamp,
+    unknown_tag,
 };
-use crate::types::url;
-use crate::{Event, EventBuilder, EventId, Kind, RelayUrl, Timestamp};
+use crate::error::{Error, ErrorKind};
+use crate::event::{
+    Event, EventBuilder, EventBuilderTemplate, EventId, Kind, Tag, TagCodec,
+    impl_tag_codec_conversions,
+};
+use crate::{RelayUrl, Timestamp};
 
 const ENDS_AT: &str = "endsAt";
 const POLL_TYPE: &str = "polltype";
@@ -25,48 +28,9 @@ const POLL_OPTION: &str = "option";
 const POLL_RESPONSE: &str = "response";
 const RELAY: &str = "relay";
 
-/// NIP88 error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Url error
-    Url(url::Error),
-    /// Parse Int error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Unknown poll type
-    UnknownPollType,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(e) => e.fmt(f),
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::UnknownPollType => f.write_str("unknown poll type"),
-        }
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
+#[inline]
+fn unknown_poll_type() -> Error {
+    Error::with_static_message(ErrorKind::Unsupported, "unknown poll type")
 }
 
 /// Poll type
@@ -101,7 +65,7 @@ impl FromStr for PollType {
         match poll_type {
             "singlechoice" => Ok(Self::SingleChoice),
             "multiplechoice" => Ok(Self::MultipleChoice),
-            _ => Err(Error::UnknownPollType),
+            _ => Err(unknown_poll_type()),
         }
     }
 }
@@ -141,7 +105,7 @@ impl TagCodec for Nip88Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             POLL_OPTION => Ok(Self::PollOption(PollOption {
@@ -150,19 +114,18 @@ impl TagCodec for Nip88Tag {
             })),
             POLL_RESPONSE => Ok(Self::PollResponse(take_string(&mut iter, "poll response")?)),
             POLL_TYPE => {
-                let poll_type: PollType =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "poll type")?;
+                let poll_type: PollType = take_and_parse_from_str(&mut iter, "poll type")?;
                 Ok(Self::PollType(poll_type))
             }
             RELAY => {
-                let relay: RelayUrl = take_relay_url::<_, _, Error>(&mut iter)?;
+                let relay: RelayUrl = take_relay_url(&mut iter)?;
                 Ok(Self::Relay(relay))
             }
             ENDS_AT => {
-                let timestamp: Timestamp = take_timestamp::<_, _, Error>(&mut iter)?;
+                let timestamp: Timestamp = take_timestamp(&mut iter)?;
                 Ok(Self::PollEndsAt(timestamp))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -218,9 +181,15 @@ impl Poll {
                 Ok(Nip88Tag::PollOption(option)) => options.push(option),
                 Ok(Nip88Tag::Relay(url)) => relays.push(url),
                 Ok(Nip88Tag::PollEndsAt(timestamp)) => ends_at = Some(timestamp),
-                Ok(Nip88Tag::PollResponse(..)) | Err(Error::Codec(TagCodecError::Unknown)) => (),
-                Err(Error::UnknownPollType)
-                | Err(Error::Codec(TagCodecError::Missing("poll type"))) => (),
+                Ok(Nip88Tag::PollResponse(..)) => (),
+                Err(e)
+                    if matches!(
+                        e.kind(),
+                        ErrorKind::Invalid
+                            | ErrorKind::Missing
+                            | ErrorKind::Unsupported
+                            | ErrorKind::Malformed
+                    ) => {}
                 Err(e) => return Err(e),
             }
         }

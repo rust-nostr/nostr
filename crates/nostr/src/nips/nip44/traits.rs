@@ -13,7 +13,7 @@ use crate::util::BoxedFuture;
 /// Synchronous NIP-44
 pub trait Nip44: Any + Debug + Send + Sync {
     /// NIP-44 error
-    type Error: core::error::Error;
+    type Error: core::error::Error + Send + Sync;
 
     /// Encrypts synchronously using NIP-44.
     ///
@@ -27,7 +27,7 @@ pub trait Nip44: Any + Debug + Send + Sync {
 /// Asynchronous NIP-44
 pub trait AsyncNip44: Any + Debug + Send + Sync {
     /// NIP-44 error
-    type Error: core::error::Error;
+    type Error: core::error::Error + Send + Sync;
 
     /// Encrypts asynchronously using NIP-44.
     ///

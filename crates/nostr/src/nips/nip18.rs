@@ -8,90 +8,21 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::fmt;
-use core::num::ParseIntError;
 
-use super::nip01::{self, Coordinate};
+use super::nip01::Coordinate;
 use super::util::{
-    take_and_parse_from_str, take_and_parse_optional_public_key, take_and_parse_optional_relay_url,
-    take_event_id, take_public_key,
+    missing_tag_kind, missing_value, take_and_parse_from_str, take_and_parse_optional_public_key,
+    take_and_parse_optional_relay_url, take_event_id, take_public_key, unknown_tag,
 };
-use crate::event::{self, EventId, Kind, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::key::{self, PublicKey};
-use crate::types::url::{self, RelayUrl};
+use crate::error::Error;
+use crate::event::{EventId, Kind, Tag, TagCodec, impl_tag_codec_conversions};
+use crate::key::PublicKey;
+use crate::types::url::RelayUrl;
 
 const EVENT: &str = "e";
 const KIND: &str = "k";
 const PUBLIC_KEY: &str = "p";
 const QUOTE: &str = "q";
-
-/// NIP-18 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Event error
-    Event(event::Error),
-    /// Keys error
-    Keys(key::Error),
-    /// NIP-01 error
-    Nip01(nip01::Error),
-    /// Relay URL error
-    RelayUrl(url::Error),
-    /// Parse int error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Event(e) => e.fmt(f),
-            Self::Keys(e) => e.fmt(f),
-            Self::Nip01(e) => e.fmt(f),
-            Self::RelayUrl(e) => e.fmt(f),
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<nip01::Error> for Error {
-    fn from(e: nip01::Error) -> Self {
-        Self::Nip01(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::RelayUrl(e)
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-18 tags
 ///
@@ -141,7 +72,7 @@ impl TagCodec for Nip18Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             EVENT => {
@@ -149,7 +80,7 @@ impl TagCodec for Nip18Tag {
                 Ok(Self::Event { id, relay_hint })
             }
             KIND => {
-                let kind: Kind = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "kind")?;
+                let kind: Kind = take_and_parse_from_str(&mut iter, "kind")?;
                 Ok(Self::Kind(kind))
             }
             PUBLIC_KEY => {
@@ -160,7 +91,7 @@ impl TagCodec for Nip18Tag {
                 })
             }
             QUOTE => parse_q_tag(iter),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -240,7 +171,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let id: EventId = take_event_id::<_, _, Error>(&mut iter)?;
+    let id: EventId = take_event_id(&mut iter)?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
 
     Ok((id, relay_hint))
@@ -251,7 +182,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
+    let public_key: PublicKey = take_public_key(&mut iter)?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
 
     Ok((public_key, relay_hint))
@@ -262,7 +193,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let value: S = iter.next().ok_or(TagCodecError::Missing("event ID"))?;
+    let value: S = iter.next().ok_or_else(|| missing_value("event ID"))?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
 
     match EventId::from_hex(value.as_ref()) {

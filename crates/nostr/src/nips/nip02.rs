@@ -8,56 +8,17 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::fmt;
 
-use super::util::{take_and_parse_optional_relay_url, take_optional_string, take_public_key};
-use crate::event::{
-    EventBuilder, EventBuilderTemplate, Kind, Tag, TagCodec, TagCodecError,
-    impl_tag_codec_conversions,
+use super::util::{
+    missing_tag_kind, take_and_parse_optional_relay_url, take_optional_string, take_public_key,
+    unknown_tag,
 };
-use crate::key::{self, PublicKey};
-use crate::types::url::{self, RelayUrl};
-
-/// NIP-02 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Keys error
-    Keys(key::Error),
-    /// Url error
-    Url(url::Error),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Keys(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
+use crate::error::Error;
+use crate::event::{
+    EventBuilder, EventBuilderTemplate, Kind, Tag, TagCodec, impl_tag_codec_conversions,
+};
+use crate::key::PublicKey;
+use crate::types::url::RelayUrl;
 
 /// Contact
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -122,7 +83,7 @@ impl TagCodec for Nip02Tag {
         let mut iter = tag.into_iter();
 
         // Extract first value
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         // Match kind
         match kind.as_ref() {
@@ -134,7 +95,7 @@ impl TagCodec for Nip02Tag {
                     alias,
                 })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -171,7 +132,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
+    let public_key: PublicKey = take_public_key(&mut iter)?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
     let alias: Option<String> = take_optional_string(&mut iter);
 
@@ -217,7 +178,7 @@ impl EventBuilderTemplate for ContactListBuilder {
 
 #[cfg(test)]
 mod tests {
-    use super::{Error, *};
+    use super::*;
     use crate::prelude::*;
 
     #[test]
@@ -280,12 +241,12 @@ mod tests {
         // Invalid public key
         let tag = vec!["p", "hello"];
         let err = Nip02Tag::parse(&tag).unwrap_err();
-        assert!(matches!(err, Error::Keys(key::Error::Hex(_))));
+        assert_eq!(err.kind(), ErrorKind::Malformed);
 
         // Missing public key
         let tag = vec!["p"];
         let err = Nip02Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("public key")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]

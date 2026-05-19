@@ -7,7 +7,7 @@ use std::str::FromStr;
 use nwc::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let mut nwc_uri_string = String::new();

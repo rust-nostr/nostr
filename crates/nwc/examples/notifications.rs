@@ -9,7 +9,7 @@ use nostr::nips::nip47::{NotificationType, PaymentNotification};
 use nwc::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let log_level = env::var("RUST_LOG")
         .unwrap_or_else(|_| "info,nwc=debug,nostr_relay_pool=debug".to_string());
 

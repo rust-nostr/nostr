@@ -4,7 +4,7 @@ use nostr_lmdb::NostrLmdb;
 use nostr_relay_builder::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let db = NostrLmdb::open("./db/nostr-lmdb").await?;

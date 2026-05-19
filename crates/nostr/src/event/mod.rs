@@ -20,7 +20,6 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 mod borrow;
 mod builder;
-mod error;
 mod id;
 mod kind;
 mod tag;
@@ -28,15 +27,15 @@ mod unsigned;
 
 pub use self::borrow::*;
 pub use self::builder::*;
-pub use self::error::Error;
 pub use self::id::*;
 pub use self::kind::*;
 pub use self::tag::*;
 pub use self::unsigned::*;
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::error::{Error, ErrorKind};
 use crate::nips::nip01::Coordinate;
-use crate::nips::nip19::{self, Nip19Event, ToBech32};
+use crate::nips::nip19::{Nip19Event, ToBech32};
 use crate::nips::nip21::ToNostrUri;
 use crate::util::{BoxedFuture, impl_json_methods};
 use crate::{Metadata, PublicKey, Timestamp};
@@ -169,12 +168,18 @@ impl Event {
     {
         // Verify ID
         if !self.verify_id() {
-            return Err(Error::InvalidId);
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "Invalid event ID",
+            ));
         }
 
         // Verify signature
         if !self.verify_signature_with_ctx(secp) {
-            return Err(Error::InvalidSignature);
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "Invalid signature",
+            ));
         }
 
         Ok(())
@@ -269,10 +274,10 @@ impl Event {
     }
 }
 
-impl_json_methods!(Event, Error);
+impl_json_methods!(Event);
 
 impl ToBech32 for Event {
-    type Err = nip19::Error;
+    type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
         match self.coordinate() {
@@ -285,7 +290,7 @@ impl ToBech32 for Event {
 impl ToNostrUri for Event {}
 
 impl TryFrom<&Event> for Metadata {
-    type Error = serde_json::Error;
+    type Error = Error;
 
     fn try_from(event: &Event) -> Result<Self, Self::Error> {
         Metadata::from_json(&event.content)
@@ -359,7 +364,7 @@ impl<'de> Deserialize<'de> for Event {
 /// Sign event
 pub trait SignEvent: Any + Debug + Send + Sync {
     /// Error type
-    type Error: core::error::Error;
+    type Error: core::error::Error + Send + Sync;
 
     /// Sign an unsigned event
     fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Self::Error>;
@@ -368,7 +373,7 @@ pub trait SignEvent: Any + Debug + Send + Sync {
 /// Sign event
 pub trait AsyncSignEvent: Any + Debug + Send + Sync {
     /// Error type
-    type Error: core::error::Error;
+    type Error: core::error::Error + Send + Sync;
 
     /// Sign an unsigned event
     fn sign_event_async(
@@ -382,8 +387,8 @@ pub trait FinalizeEvent<S>: Sized
 where
     S: ?Sized,
 {
-    /// Finalization error.
-    type Error: core::error::Error;
+    /// Error type
+    type Error: core::error::Error + Send + Sync;
 
     /// Build and sign the event.
     fn finalize(self, signer: &S) -> Result<Event, Self::Error>;
@@ -394,8 +399,8 @@ pub trait FinalizeEventAsync<S>: Sized
 where
     S: ?Sized,
 {
-    /// Finalization error.
-    type Error: core::error::Error;
+    /// Error type
+    type Error: core::error::Error + Send + Sync;
 
     /// Build and sign the event.
     fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>

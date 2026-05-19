@@ -8,45 +8,13 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec;
-use core::fmt;
 
-use super::util::take_and_parse_from_str;
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::types::url::{self, Url};
+use super::util::{missing_tag_kind, take_and_parse_from_str, unknown_tag};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::types::url::Url;
 
 const SERVER: &str = "server";
-
-/// NIP-B7 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Url error
-    Url(url::ParseError),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-B7 tags
 ///
@@ -66,15 +34,14 @@ impl TagCodec for NipB7Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             SERVER => {
-                let server_url: Url =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "server URL")?;
+                let server_url: Url = take_and_parse_from_str(&mut iter, "server URL")?;
                 Ok(Self::Server(server_url))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

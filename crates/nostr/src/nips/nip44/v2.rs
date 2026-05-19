@@ -6,7 +6,6 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/44.md>
 
-use alloc::string::{FromUtf8Error, String};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
@@ -16,9 +15,9 @@ use chacha20::ChaCha20;
 use chacha20::cipher::{KeyIvInit, StreamCipher};
 use hashes::hmac::{Hmac, HmacEngine};
 use hashes::sha256::Hash as Sha256Hash;
-use hashes::{FromSliceError, Hash, HashEngine};
+use hashes::{Hash, HashEngine};
 
-use super::Error;
+use crate::error::{Error, ErrorKind};
 use crate::util::{self, hkdf};
 use crate::{PublicKey, SecretKey};
 
@@ -31,53 +30,37 @@ const MESSAGES_KEYS_NONCE_RANGE: Range<usize> =
 const MESSAGES_KEYS_AUTH_RANGE: Range<usize> =
     MESSAGES_KEYS_ENCRYPTION_SIZE + MESSAGES_KEYS_NONCE_SIZE..MESSAGE_KEYS_SIZE;
 
-/// Error
-#[derive(Debug, PartialEq, Eq)]
-pub enum ErrorV2 {
-    /// From slice error
-    FromSlice(FromSliceError),
-    /// Error while encoding to UTF-8
-    Utf8Encode(FromUtf8Error),
-    /// HKDF Length
-    HkdfLength(usize),
-    /// Try from slice
+enum ErrorV2 {
+    HkdfLength,
+    NotFound(&'static str),
     TryFromSlice,
-    /// Message is empty
     MessageEmpty,
-    /// Message is too long
     MessageTooLong,
-    /// Invalid HMAC
     InvalidHmac,
-    /// Invalid padding
     InvalidPadding,
 }
 
-impl core::error::Error for ErrorV2 {}
-
-impl fmt::Display for ErrorV2 {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::FromSlice(e) => e.fmt(f),
-            Self::Utf8Encode(e) => write!(f, "error while encoding to UTF-8: {e}"),
-            Self::HkdfLength(size) => write!(f, "invalid Length for HKDF: {size}"),
-            Self::TryFromSlice => f.write_str("could not convert slice to array"),
-            Self::MessageEmpty => f.write_str("message empty"),
-            Self::MessageTooLong => f.write_str("message too long"),
-            Self::InvalidHmac => f.write_str("invalid HMAC"),
-            Self::InvalidPadding => f.write_str("invalid padding"),
+impl From<ErrorV2> for Error {
+    fn from(e: ErrorV2) -> Self {
+        match e {
+            ErrorV2::HkdfLength => {
+                Error::with_static_message(ErrorKind::Invalid, "invalid HKDF length")
+            }
+            ErrorV2::NotFound(value) => Error::with_static_message(ErrorKind::Missing, value),
+            ErrorV2::TryFromSlice => {
+                Error::with_static_message(ErrorKind::Malformed, "invalid slice length")
+            }
+            ErrorV2::MessageEmpty => {
+                Error::with_static_message(ErrorKind::Invalid, "message empty")
+            }
+            ErrorV2::MessageTooLong => {
+                Error::with_static_message(ErrorKind::Invalid, "message too long")
+            }
+            ErrorV2::InvalidHmac => Error::with_static_message(ErrorKind::Crypto, "invalid HMAC"),
+            ErrorV2::InvalidPadding => {
+                Error::with_static_message(ErrorKind::Invalid, "invalid padding")
+            }
         }
-    }
-}
-
-impl From<FromSliceError> for ErrorV2 {
-    fn from(e: FromSliceError) -> Self {
-        Self::FromSlice(e)
-    }
-}
-
-impl From<FromUtf8Error> for ErrorV2 {
-    fn from(e: FromUtf8Error) -> Self {
-        Self::Utf8Encode(e)
     }
 }
 
@@ -141,7 +124,7 @@ impl ConversationKey {
     #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         Ok(Self(
-            Hmac::from_slice(slice).map_err(|e| Error::from(ErrorV2::from(e)))?,
+            Hmac::from_slice(slice).map_err(Error::malformed_display)?,
         ))
     }
 
@@ -196,15 +179,11 @@ pub fn decrypt_to_bytes(
 ) -> Result<Vec<u8>, Error> {
     // Get data from payload
     let len: usize = payload.len();
-    let nonce: &[u8] = payload
-        .get(1..33)
-        .ok_or_else(|| Error::NotFound(String::from("nonce")))?;
+    let nonce: &[u8] = payload.get(1..33).ok_or(ErrorV2::NotFound("nonce"))?;
     let buffer: &[u8] = payload
         .get(33..len - 32)
-        .ok_or_else(|| Error::NotFound(String::from("buffer")))?;
-    let mac: &[u8] = payload
-        .get(len - 32..)
-        .ok_or_else(|| Error::NotFound(String::from("hmac")))?;
+        .ok_or(ErrorV2::NotFound("buffer"))?;
+    let mac: &[u8] = payload.get(len - 32..).ok_or(ErrorV2::NotFound("hmac"))?;
 
     // Compose Message Keys
     let keys: MessageKeys = get_message_keys(conversation_key, nonce)?;
@@ -254,7 +233,7 @@ fn get_message_keys(
     nonce: &[u8],
 ) -> Result<MessageKeys, ErrorV2> {
     let expanded_key: Vec<u8> = hkdf::expand(conversation_key.as_bytes(), nonce, MESSAGE_KEYS_SIZE);
-    MessageKeys::from_slice(&expanded_key).map_err(|_| ErrorV2::HkdfLength(expanded_key.len()))
+    MessageKeys::from_slice(&expanded_key).map_err(|_| ErrorV2::HkdfLength)
 }
 
 fn pad(unpadded: &[u8]) -> Result<Vec<u8>, ErrorV2> {
@@ -554,13 +533,13 @@ mod tests {
     fn test_invalid_decrypt() {
         let json: serde_json::Value = serde_json::from_str(JSON_VECTORS).unwrap();
 
-        let known_errors = [
-            Error::V2(ErrorV2::InvalidHmac),
-            Error::V2(ErrorV2::InvalidHmac),
-            Error::V2(ErrorV2::InvalidPadding),
-            Error::V2(ErrorV2::MessageEmpty),
-            Error::V2(ErrorV2::InvalidPadding),
-            Error::V2(ErrorV2::InvalidPadding),
+        let known_error_kinds = [
+            ErrorKind::Crypto,
+            ErrorKind::Crypto,
+            ErrorKind::Invalid,
+            ErrorKind::Invalid,
+            ErrorKind::Invalid,
+            ErrorKind::Invalid,
         ];
 
         for (i, vectorobj) in json
@@ -595,7 +574,8 @@ mod tests {
 
             let err = result.unwrap_err();
             assert_eq!(
-                err, known_errors[i],
+                err.kind(),
+                known_error_kinds[i],
                 "Unexpected error in invalid decrypt #{}",
                 i
             );

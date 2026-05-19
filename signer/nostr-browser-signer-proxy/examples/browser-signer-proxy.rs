@@ -8,7 +8,7 @@ use nostr_browser_signer_proxy::prelude::*;
 use tokio::{signal, time};
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let proxy = BrowserSignerProxy::new(BrowserSignerProxyOptions::default());

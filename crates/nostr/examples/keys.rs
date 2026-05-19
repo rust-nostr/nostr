@@ -4,7 +4,7 @@
 
 use nostr::prelude::*;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Error> {
     // Random keys
     let keys = Keys::generate();
     let public_key = keys.public_key();

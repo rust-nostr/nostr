@@ -11,35 +11,14 @@ use alloc::vec;
 use core::fmt;
 use core::str::FromStr;
 
-use super::util::take_string;
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use super::util::{missing_tag_kind, take_string, unknown_tag};
+use crate::error::{Error, ErrorKind};
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 
 const IDENTITY: &str = "i";
 
-/// NIP-39 error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Codec error
-    Codec(TagCodecError),
-    /// Invalid identity
-    InvalidIdentity,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidIdentity => f.write_str("Invalid identity tag"),
-        }
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
+fn invalid_identity() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "invalid identity")
 }
 
 /// Supported external identity providers
@@ -84,7 +63,7 @@ impl FromStr for ExternalIdentity {
             "twitter" => Ok(Self::Twitter),
             "mastodon" => Ok(Self::Mastodon),
             "telegram" => Ok(Self::Telegram),
-            _ => Err(Error::InvalidIdentity),
+            _ => Err(invalid_identity()),
         }
     }
 }
@@ -110,7 +89,7 @@ impl Identity {
         S2: Into<String>,
     {
         let i: &str = platform_iden.as_ref();
-        let (platform, ident) = i.rsplit_once(':').ok_or(Error::InvalidIdentity)?;
+        let (platform, ident) = i.rsplit_once(':').ok_or_else(invalid_identity)?;
 
         Ok(Self {
             platform: ExternalIdentity::from_str(platform)?,
@@ -143,7 +122,7 @@ impl TagCodec for Nip39Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             IDENTITY => {
@@ -152,7 +131,7 @@ impl TagCodec for Nip39Tag {
 
                 Ok(Self::Identity(Identity::new(platform_ident, proof)?))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -215,6 +194,6 @@ mod tests {
     #[test]
     fn test_identity_tag_missing_proof() {
         let err = Nip39Tag::parse(["i", "github:semisol"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("proof")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 }

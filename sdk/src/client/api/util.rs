@@ -1,6 +1,5 @@
 use std::collections::{HashMap, HashSet};
 
-use nostr::types::url;
 use nostr::{Filter, RelayUrl, RelayUrlArg};
 
 use super::req_target::{InnerReqTarget, ReqTarget};
@@ -38,7 +37,7 @@ async fn make_targets_from_filter_list(
 async fn convert_filters_arg_to_targets(
     pool: &RelayPool,
     target: ReqTarget<'_>,
-) -> Result<HashMap<RelayUrl, Vec<Filter>>, url::Error> {
+) -> Result<HashMap<RelayUrl, Vec<Filter>>, Error> {
     match target.into_inner() {
         InnerReqTarget::Auto(filters) => Ok(make_targets_from_filter_list(pool, filters).await),
         InnerReqTarget::Manual(targets) => convert_filters_arg_vec_to_map(targets),
@@ -47,7 +46,7 @@ async fn convert_filters_arg_to_targets(
 
 pub(super) fn convert_filters_arg_vec_to_map(
     targeted: Vec<(RelayUrlArg<'_>, Vec<Filter>)>,
-) -> Result<HashMap<RelayUrl, Vec<Filter>>, url::Error> {
+) -> Result<HashMap<RelayUrl, Vec<Filter>>, Error> {
     let mut map: HashMap<RelayUrl, Vec<Filter>> = HashMap::with_capacity(targeted.len());
     for (url_arg, filters) in targeted {
         let url: RelayUrl = url_arg.try_into_relay_url()?.into_owned();

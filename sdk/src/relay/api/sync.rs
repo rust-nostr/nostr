@@ -111,7 +111,7 @@ async fn handle_neg_msg<I>(
     have_ids: &mut Vec<EventId>,
     need_ids: &mut Vec<EventId>,
     sync_done: &mut bool,
-) -> nostr::Result<(), Error>
+) -> Result<(), Error>
 where
     I: Iterator<Item = EventId>,
 {
@@ -162,7 +162,7 @@ async fn upload_neg_events(
     have_ids: &mut Vec<EventId>,
     in_flight_up: &mut HashSet<EventId>,
     opts: &SyncOptions,
-) -> nostr::Result<(), Error> {
+) -> Result<(), Error> {
     // Check if it should skip the upload
     if !opts.do_up() || have_ids.is_empty() || in_flight_up.len() > NEGENTROPY_LOW_WATER_UP {
         return Ok(());
@@ -216,7 +216,7 @@ async fn req_neg_events(
     in_flight_down: &mut bool,
     down_sub_id: &SubscriptionId,
     opts: &SyncOptions,
-) -> nostr::Result<(), Error> {
+) -> Result<(), Error> {
     // Check if it should skip the download
     if !opts.do_down() || need_ids.is_empty() || *in_flight_down {
         return Ok(());
@@ -309,7 +309,7 @@ pub(super) async fn sync(
     items: Vec<(EventId, Timestamp)>,
     opts: &SyncOptions,
     output: &mut SyncSummary,
-) -> nostr::Result<(), Error> {
+) -> Result<(), Error> {
     // Prepare the negentropy client
     let storage: NegentropyStorageVector = prepare_negentropy_storage(items)?;
     let mut negentropy: Negentropy<NegentropyStorageVector> =
@@ -518,7 +518,7 @@ pub(super) async fn sync(
 
 fn prepare_negentropy_storage(
     items: Vec<(EventId, Timestamp)>,
-) -> nostr::Result<NegentropyStorageVector, Error> {
+) -> Result<NegentropyStorageVector, Error> {
     // Compose negentropy storage
     let mut storage = NegentropyStorageVector::with_capacity(items.len());
 
@@ -541,7 +541,7 @@ async fn check_negentropy_support(
     sub_id: &SubscriptionId,
     opts: &SyncOptions,
     temp_notifications: &mut broadcast::Receiver<RelayNotification>,
-) -> nostr::Result<(), Error> {
+) -> Result<(), Error> {
     time::timeout(Some(opts.initial_timeout), async {
         loop {
             let notification = temp_notifications.recv().await?;

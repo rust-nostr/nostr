@@ -11,9 +11,8 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::any::Any;
-use core::fmt;
 use core::fmt::Debug;
-use core::num::{NonZeroU8, ParseIntError};
+use core::num::NonZeroU8;
 
 #[cfg(feature = "std")]
 mod blocking_wrapper;
@@ -24,44 +23,13 @@ mod single_thread;
 #[cfg(feature = "pow-multi-thread")]
 pub use self::multi_thread::*;
 pub use self::single_thread::*;
-use super::util::take_and_parse_from_str;
+use super::util::{missing_tag_kind, take_and_parse_from_str, unknown_tag};
 use crate::UnsignedEvent;
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 use crate::util::BoxedFuture;
 
 const NONCE: &str = "nonce";
-
-/// NIP-13 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Parse Int error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ParseInt(e) => fmt::Display::fmt(e, f),
-            Self::Codec(e) => fmt::Display::fmt(e, f),
-        }
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-13 tags
 ///
@@ -87,14 +55,14 @@ impl TagCodec for Nip13Tag {
     {
         let mut iter = tag.into_iter();
 
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             NONCE => {
                 let (nonce, difficulty) = parse_nonce_tag(iter)?;
                 Ok(Self::Nonce { nonce, difficulty })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -116,8 +84,8 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let nonce: u128 = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "nonce")?;
-    let difficulty: u8 = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "difficulty")?;
+    let nonce: u128 = take_and_parse_from_str(&mut iter, "nonce")?;
+    let difficulty: u8 = take_and_parse_from_str(&mut iter, "difficulty")?;
 
     Ok((nonce, difficulty))
 }
@@ -207,7 +175,7 @@ pub mod tests {
 
     use hashes::sha256::Hash as Sha256Hash;
 
-    use super::{Error, *};
+    use super::*;
     use crate::prelude::*;
 
     #[test]
@@ -228,7 +196,7 @@ pub mod tests {
     fn test_parse_nonce_tag_missing_difficulty() {
         let tag = vec!["nonce", "776797"];
         let err = Nip13Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("difficulty")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]

@@ -9,46 +9,13 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
-use core::num::ParseIntError;
 
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::nips::util::take_timestamp;
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::nips::util::{missing_tag_kind, take_timestamp, unknown_tag};
 use crate::types::time::Timestamp;
 
 const EXPIRATION: &str = "expiration";
-
-/// NIP-40 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Parse Int error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-40 tags
 ///
@@ -71,15 +38,15 @@ impl TagCodec for Nip40Tag {
         let mut iter = tag.into_iter();
 
         // Extract first value
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         // Match kind
         match kind.as_ref() {
             EXPIRATION => {
-                let timestamp: Timestamp = take_timestamp::<_, _, Error>(&mut iter)?;
+                let timestamp: Timestamp = take_timestamp(&mut iter)?;
                 Ok(Self::Expiration(timestamp))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -95,19 +62,20 @@ impl_tag_codec_conversions!(Nip40Tag);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorKind;
 
     #[test]
     fn test_parse_empty_tag() {
         let tag: Vec<String> = Vec::new();
         let err = Nip40Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::missing_tag_kind()));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
     fn test_non_existing_tag() {
         let tag = vec!["hello"];
         let err = Nip40Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Unknown));
+        assert_eq!(err.kind(), ErrorKind::Malformed);
     }
 
     #[test]
@@ -124,11 +92,11 @@ mod tests {
         // Invalid timestamp
         let tag = vec!["expiration", "hello"];
         let err = Nip40Tag::parse(&tag).unwrap_err();
-        assert!(matches!(err, Error::ParseInt(_)));
+        assert_eq!(err.kind(), ErrorKind::Malformed);
 
         // Missing timestamp
         let tag = vec!["expiration"];
         let err = Nip40Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("timestamp")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 }

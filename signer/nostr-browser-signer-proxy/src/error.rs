@@ -7,20 +7,19 @@
 use std::{fmt, io};
 
 use hyper::http;
-use nostr::event;
 use tokio::sync::oneshot::error::RecvError;
 
 /// Error
 #[derive(Debug)]
 pub enum Error {
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// I/O error
     Io(io::Error),
     /// HTTP error
     Http(http::Error),
     /// Json error
     Json(serde_json::Error),
-    /// Event error
-    Event(event::Error),
     /// Oneshot channel receive error
     OneShotRecv(RecvError),
     /// Generic error
@@ -36,15 +35,21 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Protocol(e) => write!(f, "{e}"),
             Self::Io(e) => write!(f, "{e}"),
             Self::Http(e) => write!(f, "{e}"),
             Self::Json(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
             Self::OneShotRecv(e) => write!(f, "{e}"),
             Self::Generic(e) => write!(f, "{e}"),
             Self::Timeout => write!(f, "timeout"),
             Self::Shutdown => write!(f, "server is shutdown"),
         }
+    }
+}
+
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 
@@ -63,12 +68,6 @@ impl From<http::Error> for Error {
 impl From<serde_json::Error> for Error {
     fn from(e: serde_json::Error) -> Self {
         Self::Json(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
     }
 }
 

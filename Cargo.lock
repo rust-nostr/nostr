@@ -1842,6 +1842,7 @@ dependencies = [
  "chacha20poly1305",
  "faster-hex",
  "nostr-ots",
+ "opaquerr",
  "rand 0.10.1",
  "reqwest",
  "scrypt",
@@ -2173,6 +2174,11 @@ name = "opaque-debug"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08d65885ee38876c4f86fa503fb49d7b507c2b62552df7c70b2fce627e06381"
+
+[[package]]
+name = "opaquerr"
+version = "0.1.0"
+source = "git+https://github.com/shadowylab/opaquerr?rev=1d4a95bb39d7f2fa1638d84af8540e898a3d902f#1d4a95bb39d7f2fa1638d84af8540e898a3d902f"
 
 [[package]]
 name = "openssl"

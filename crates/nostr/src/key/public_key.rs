@@ -17,7 +17,8 @@ use core::str::{self, FromStr};
 use secp256k1::{Secp256k1, Signing, XOnlyPublicKey};
 use serde::{Deserialize, Deserializer, Serialize};
 
-use super::{Error, SecretKey};
+use super::secret_key::SecretKey;
+use crate::error::{Error, ErrorKind};
 use crate::nips::nip19::{FromBech32, PREFIX_BECH32_PROFILE, PREFIX_BECH32_PUBLIC_KEY};
 use crate::nips::nip21::{FromNostrUri, SCHEME_WITH_COLON};
 use crate::util::BoxedFuture;
@@ -25,7 +26,7 @@ use crate::util::BoxedFuture;
 /// Get public key
 pub trait GetPublicKey: Any + Debug + Send + Sync {
     /// Error type
-    type Error: core::error::Error;
+    type Error: core::error::Error + Send + Sync;
 
     /// Get public key
     fn get_public_key(&self) -> Result<PublicKey, Self::Error>;
@@ -34,7 +35,7 @@ pub trait GetPublicKey: Any + Debug + Send + Sync {
 /// Get public key
 pub trait AsyncGetPublicKey: Any + Debug + Send + Sync {
     /// Error type
-    type Error: core::error::Error;
+    type Error: core::error::Error + Send + Sync;
 
     /// Get public key
     fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, Self::Error>>;
@@ -107,18 +108,18 @@ impl PublicKey {
         if public_key.starts_with(PREFIX_BECH32_PUBLIC_KEY)
             || public_key.starts_with(PREFIX_BECH32_PROFILE)
         {
-            Self::from_bech32(public_key).map_err(|_| Error::InvalidPublicKey)
+            Self::from_bech32(public_key)
         } else if public_key.starts_with(SCHEME_WITH_COLON) {
-            Self::from_nostr_uri(public_key).map_err(|_| Error::InvalidPublicKey)
+            Self::from_nostr_uri(public_key)
         } else {
-            Self::from_hex(public_key).map_err(|_| Error::InvalidPublicKey)
+            Self::from_hex(public_key)
         }
     }
 
     /// Parse from hex string
     pub fn from_hex(hex: &str) -> Result<Self, Error> {
         let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
-        faster_hex::hex_decode(hex.as_bytes(), &mut bytes)?;
+        faster_hex::hex_decode(hex.as_bytes(), &mut bytes).map_err(Error::malformed_display)?;
         Ok(Self::from_byte_array(bytes))
     }
 
@@ -126,7 +127,10 @@ impl PublicKey {
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         // Check len
         if slice.len() != Self::LEN {
-            return Err(Error::InvalidPublicKey);
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "public key must be 32 bytes long",
+            ));
         }
 
         // Copy bytes
@@ -176,8 +180,7 @@ impl PublicKey {
 
     /// Get the x-only public key
     pub fn xonly(&self) -> Result<XOnlyPublicKey, Error> {
-        // TODO: use a OnceCell
-        Ok(XOnlyPublicKey::from_slice(self.as_bytes())?)
+        XOnlyPublicKey::from_slice(self.as_bytes()).map_err(Error::invalid_display)
     }
 }
 

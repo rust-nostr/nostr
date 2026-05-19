@@ -4,7 +4,7 @@
 
 use nostr_keyring::prelude::*;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
 
     let keyring = NostrKeyring::new("rust-nostr-test");

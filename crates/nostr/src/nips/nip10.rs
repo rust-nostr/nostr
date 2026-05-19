@@ -12,66 +12,15 @@ use core::fmt;
 use core::str::FromStr;
 
 use super::util::{
-    take_and_parse_optional_public_key, take_and_parse_optional_relay_url, take_event_id,
+    missing_tag_kind, take_and_parse_optional_public_key, take_and_parse_optional_relay_url,
+    take_event_id, unknown_tag,
 };
-use crate::event::{self, EventId, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::key::{self, PublicKey};
-use crate::types::url::{self, RelayUrl};
+use crate::error::{Error, ErrorKind};
+use crate::event::{EventId, Tag, TagCodec, impl_tag_codec_conversions};
+use crate::key::PublicKey;
+use crate::types::url::RelayUrl;
 
 const EVENT: &str = "e";
-
-/// NIP10 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Keys error
-    Keys(key::Error),
-    /// Event error
-    Event(event::Error),
-    /// Url error
-    Url(url::Error),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Invalid marker
-    InvalidMarker,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Keys(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidMarker => f.write_str("invalid marker"),
-        }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Marker
 ///
@@ -100,7 +49,10 @@ impl FromStr for Marker {
         match marker {
             "root" => Ok(Self::Root),
             "reply" => Ok(Self::Reply),
-            _ => Err(Error::InvalidMarker),
+            _ => Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid marker",
+            )),
         }
     }
 }
@@ -158,7 +110,7 @@ impl TagCodec for Nip10Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             EVENT => {
@@ -170,7 +122,7 @@ impl TagCodec for Nip10Tag {
                     public_key,
                 })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -229,7 +181,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let id: EventId = take_event_id::<_, _, Error>(&mut iter)?;
+    let id: EventId = take_event_id(&mut iter)?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
 
     let marker: Option<Marker> = match iter.next() {
@@ -259,14 +211,14 @@ mod tests {
     fn test_parse_empty_tag() {
         let tag: Vec<String> = Vec::new();
         let err = Nip10Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::missing_tag_kind()));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
     fn test_non_existing_tag() {
         let tag = vec!["p"];
         let err = Nip10Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Unknown));
+        assert_eq!(err.kind(), ErrorKind::Malformed);
     }
 
     #[test]
@@ -353,7 +305,7 @@ mod tests {
             public_key.to_hex(),
         ];
         let err = Nip10Tag::parse(&tag).unwrap_err();
-        assert_eq!(err, Error::InvalidMarker);
+        assert_eq!(err.kind(), ErrorKind::Invalid);
     }
 
     #[test]
@@ -361,16 +313,16 @@ mod tests {
         let hex = "19bb195b83fd26db217b6feebb444de4808d90eb4375c31c75ba5bb5c5c10cfc";
         let id = EventId::from_hex(hex).unwrap();
 
-        let result = Nip10Tag::parse(["e", hex, "", "mention"]);
+        let result = Nip10Tag::parse(["e", hex, "", "mention"]).unwrap();
 
         assert_eq!(
             result,
-            Ok(Nip10Tag::Event {
+            Nip10Tag::Event {
                 id,
                 relay_hint: None,
                 marker: None,
                 public_key: None,
-            })
+            }
         );
     }
 }

@@ -2,7 +2,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/60.md>
 
-use alloc::string::{String, ToString};
+use alloc::string::String;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use alloc::string::ToString;
 use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
@@ -10,12 +12,14 @@ use core::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use super::nip44;
-use crate::event::{self, Event, EventId};
+use crate::error::{Error, ErrorKind};
+use crate::event::{Event, EventId};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::event::{EventBuilder, Kind, Tag};
 use crate::key::{PublicKey, SecretKey};
 use crate::types::time::Timestamp;
-use crate::types::url::{ParseError, Url};
+use crate::types::url::Url;
+use crate::util::parse_json;
 
 const E_TAG_STR: &str = "e";
 const PRIVKEY: &str = "privkey";
@@ -26,72 +30,13 @@ const EVENT_MARKER_CREATED: &str = "created";
 const EVENT_MARKER_DESTROYED: &str = "destroyed";
 const EVENT_MARKER_REDEEMED: &str = "redeemed";
 
-/// NIP-60 error
-#[derive(Debug)]
-pub enum Error {
-    /// NIP44 error
-    Nip44(nip44::Error),
-    /// JSON error
-    Json(serde_json::Error),
-    /// Event error
-    Event(event::Error),
-    /// URL error
-    Url(ParseError),
-    /// Invalid direction
-    InvalidDirection,
-    /// Found multiple private keys
-    FoundMultiplePrivKeys,
-    /// Missing required field
-    MissingField(String),
-    /// Invalid amount
-    InvalidAmount,
-    /// Missing mint tag
-    MissingMintTag,
-    /// Invalid mint URL
-    InvalidMintUrl,
+#[inline]
+fn found_multiple_priv_keys() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "found multiple private keys")
 }
 
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Nip44(e) => e.fmt(f),
-            Self::Json(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::InvalidDirection => f.write_str("Invalid direction"),
-            Self::FoundMultiplePrivKeys => f.write_str("Found multiple private keys"),
-            Self::MissingField(field) => write!(f, "Missing required field: {field}"),
-            Self::InvalidAmount => f.write_str("Invalid amount"),
-            Self::MissingMintTag => f.write_str("Missing mint tag"),
-            Self::InvalidMintUrl => f.write_str("Invalid mint URL"),
-        }
-    }
-}
-
-impl From<nip44::Error> for Error {
-    fn from(e: nip44::Error) -> Self {
-        Self::Nip44(e)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
-        Self::Url(e)
-    }
+fn missing_field(field: &'static str) -> Error {
+    Error::with_static_message(ErrorKind::Missing, field)
 }
 
 /// Cashu proof
@@ -139,7 +84,7 @@ impl WalletEvent {
         event: &Event,
     ) -> Result<Self, Error> {
         let decrypted: String = nip44::decrypt(secret_key, public_key, &event.content)?;
-        let wallet_data: Vec<Vec<String>> = serde_json::from_str(&decrypted)?;
+        let wallet_data: Vec<Vec<String>> = parse_json(&decrypted)?;
 
         let mut privkey: String = String::new();
         let mut mints: Vec<Url> = Vec::new();
@@ -153,7 +98,7 @@ impl WalletEvent {
                         if privkey.is_empty() {
                             privkey = value
                         } else {
-                            return Err(Error::FoundMultiplePrivKeys);
+                            return Err(found_multiple_priv_keys());
                         }
                     }
                     MINT => {
@@ -167,11 +112,11 @@ impl WalletEvent {
         }
 
         if privkey.is_empty() {
-            return Err(Error::MissingField(PRIVKEY.to_string()));
+            return Err(missing_field(PRIVKEY));
         }
 
         if mints.is_empty() {
-            return Err(Error::MissingField(MINT.to_string()));
+            return Err(missing_field(MINT));
         }
 
         Ok(Self { privkey, mints })
@@ -190,14 +135,9 @@ impl WalletEvent {
             wallet_data.push(vec![MINT, mint.as_str()]);
         }
 
-        let json: String = serde_json::to_string(&wallet_data)?;
+        let json: String = serde_json::to_string(&wallet_data).map_err(Error::malformed)?;
 
-        Ok(nip44::encrypt(
-            secret_key,
-            public_key,
-            json,
-            nip44::Version::V2,
-        )?)
+        nip44::encrypt(secret_key, public_key, json, nip44::Version::V2)
     }
 
     /// Convert to [`EventBuilder`].
@@ -245,7 +185,7 @@ impl TokenEvent {
         event: &Event,
     ) -> Result<Self, Error> {
         let decrypted: String = nip44::decrypt(secret_key, public_key, &event.content)?;
-        Ok(serde_json::from_str(&decrypted)?)
+        parse_json(&decrypted)
     }
 
     /// Add destroyed token event ID
@@ -260,13 +200,8 @@ impl TokenEvent {
         secret_key: &SecretKey,
         public_key: &PublicKey,
     ) -> Result<String, Error> {
-        let json: String = serde_json::to_string(self)?;
-        Ok(nip44::encrypt(
-            secret_key,
-            public_key,
-            json,
-            nip44::Version::V2,
-        )?)
+        let json: String = serde_json::to_string(self).map_err(Error::malformed)?;
+        nip44::encrypt(secret_key, public_key, json, nip44::Version::V2)
     }
 
     /// Convert to [`EventBuilder`].
@@ -316,7 +251,10 @@ impl FromStr for TransactionDirection {
         match s {
             "in" => Ok(Self::In),
             "out" => Ok(Self::Out),
-            _ => Err(Error::InvalidDirection),
+            _ => Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid direction",
+            )),
         }
     }
 }
@@ -355,7 +293,7 @@ impl SpendingHistory {
         event: &Event,
     ) -> Result<Self, Error> {
         let decrypted: String = nip44::decrypt(secret_key, public_key, &event.content)?;
-        let data: Vec<Vec<String>> = serde_json::from_str(&decrypted)?;
+        let data: Vec<Vec<String>> = parse_json(&decrypted)?;
 
         let mut direction = None;
         let mut amount = None;
@@ -371,7 +309,9 @@ impl SpendingHistory {
                         direction = Some(TransactionDirection::from_str(&item[1])?);
                     }
                     AMOUNT => {
-                        amount = Some(item[1].parse().map_err(|_| Error::InvalidAmount)?);
+                        amount = Some(item[1].parse().map_err(|_| {
+                            Error::with_static_message(ErrorKind::Invalid, "invalid amount")
+                        })?);
                     }
                     E_TAG_STR if item.len() >= 4 => {
                         let event_id: EventId = EventId::from_hex(&item[1])?;
@@ -395,9 +335,8 @@ impl SpendingHistory {
             }
         }
 
-        let direction: TransactionDirection =
-            direction.ok_or_else(|| Error::MissingField(DIRECTION.to_string()))?;
-        let amount: u64 = amount.ok_or_else(|| Error::MissingField(AMOUNT.to_string()))?;
+        let direction: TransactionDirection = direction.ok_or_else(|| missing_field(DIRECTION))?;
+        let amount: u64 = amount.ok_or_else(|| missing_field(AMOUNT))?;
 
         Ok(Self {
             direction,
@@ -463,14 +402,9 @@ impl SpendingHistory {
             data.push(tag.to_vec());
         }
 
-        let json: String = serde_json::to_string(&data)?;
+        let json: String = serde_json::to_string(&data).map_err(Error::malformed)?;
 
-        Ok(nip44::encrypt(
-            secret_key,
-            public_key,
-            json,
-            nip44::Version::V2,
-        )?)
+        nip44::encrypt(secret_key, public_key, json, nip44::Version::V2)
     }
 
     /// Convert to event builder
@@ -536,9 +470,9 @@ impl QuoteEvent {
             .iter()
             .find(|t| t.kind() == MINT)
             .and_then(|tag| tag.content())
-            .ok_or(Error::MissingMintTag)?
+            .ok_or_else(|| Error::with_static_message(ErrorKind::Missing, "missing mint tag"))?
             .parse()
-            .map_err(|_| Error::InvalidMintUrl)?;
+            .map_err(|_| Error::with_static_message(ErrorKind::Invalid, "invalid mint URL"))?;
 
         // Extract NIP-40 expiration from tags if present
         let expiration: Option<Timestamp> = event.tags.expiration();
@@ -562,12 +496,7 @@ impl QuoteEvent {
         secret_key: &SecretKey,
         public_key: &PublicKey,
     ) -> Result<String, Error> {
-        Ok(nip44::encrypt(
-            secret_key,
-            public_key,
-            &self.quote_id,
-            nip44::Version::V2,
-        )?)
+        nip44::encrypt(secret_key, public_key, &self.quote_id, nip44::Version::V2)
     }
 
     /// Convert to event builder
@@ -594,6 +523,8 @@ impl QuoteEvent {
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString;
+
     use super::*;
 
     #[test]
@@ -626,10 +557,10 @@ mod tests {
     fn test_token_event_data() {
         let mint_url = Url::parse("https://example.com").unwrap();
         let proof = CashuProof {
-            id: "test_id".to_string(),
+            id: String::from("test_id"),
             amount: 100,
-            secret: "test_secret".to_string(),
-            c: "test_c".to_string(),
+            secret: String::from("test_secret"),
+            c: String::from("test_c"),
         };
 
         let token_data = TokenEvent::new(mint_url.clone(), vec![proof.clone()]);

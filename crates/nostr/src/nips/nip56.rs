@@ -11,52 +11,16 @@ use alloc::vec;
 use core::fmt;
 use core::str::FromStr;
 
-use super::util::{take_and_parse_from_str, take_event_id, take_public_key};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::{EventId, PublicKey, event, key};
+use super::util::{
+    missing_tag_kind, take_and_parse_from_str, take_event_id, take_public_key, unknown_tag,
+};
+use crate::error::{Error, ErrorKind};
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::{EventId, PublicKey};
 
-/// NIP56 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Keys error
-    Keys(key::Error),
-    /// Event error
-    Event(event::Error),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Unknown [`Report`]
-    UnknownReportType,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Keys(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::UnknownReportType => f.write_str("Unknown report type"),
-        }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
+#[inline]
+fn unknown_report_type() -> Error {
+    Error::with_static_message(ErrorKind::Unsupported, "unknown report type")
 }
 
 /// Report
@@ -113,7 +77,7 @@ impl FromStr for Report {
             "spam" => Ok(Self::Spam),
             "impersonation" => Ok(Self::Impersonation),
             "other" => Ok(Self::Other),
-            _ => Err(Error::UnknownReportType),
+            _ => Err(unknown_report_type()),
         }
     }
 }
@@ -151,7 +115,7 @@ impl TagCodec for Nip56Tag {
         let mut iter = tag.into_iter();
 
         // Extract first value
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         // Match kind
         match kind.as_ref() {
@@ -163,7 +127,7 @@ impl TagCodec for Nip56Tag {
                 let (public_key, report) = parse_p_tag(iter)?;
                 Ok(Self::PublicKey { public_key, report })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -188,8 +152,8 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let id: EventId = take_event_id::<_, _, Error>(&mut iter)?;
-    let report: Report = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "report")?;
+    let id: EventId = take_event_id(&mut iter)?;
+    let report: Report = take_and_parse_from_str(&mut iter, "report")?;
 
     Ok((id, report))
 }
@@ -199,8 +163,8 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
-    let report: Report = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "report")?;
+    let public_key: PublicKey = take_public_key(&mut iter)?;
+    let report: Report = take_and_parse_from_str(&mut iter, "report")?;
 
     Ok((public_key, report))
 }
@@ -259,19 +223,19 @@ mod tests {
             "p",
             "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
         ];
-        assert!(matches!(
-            Nip56Tag::parse(&tag).unwrap_err(),
-            Error::Codec(TagCodecError::Missing("report"))
-        ));
+        assert_eq!(
+            Nip56Tag::parse(&tag).unwrap_err().kind(),
+            ErrorKind::Missing
+        );
 
         let tag = vec![
             "e",
             "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
         ];
-        assert!(matches!(
-            Nip56Tag::parse(&tag).unwrap_err(),
-            Error::Codec(TagCodecError::Missing("report"))
-        ));
+        assert_eq!(
+            Nip56Tag::parse(&tag).unwrap_err().kind(),
+            ErrorKind::Missing
+        );
     }
 
     #[test]
@@ -281,19 +245,19 @@ mod tests {
             "13adc511de7e1cfcf1c6b7f6365fb5a03442d7bcacf565ea57fa7770912c023d",
             "",
         ];
-        assert!(matches!(
-            Nip56Tag::parse(&tag).unwrap_err(),
-            Error::UnknownReportType
-        ));
+        assert_eq!(
+            Nip56Tag::parse(&tag).unwrap_err().kind(),
+            ErrorKind::Malformed
+        );
 
         let tag = vec![
             "e",
             "378f145897eea948952674269945e88612420db35791784abf0616b4fed56ef7",
             "",
         ];
-        assert!(matches!(
-            Nip56Tag::parse(&tag).unwrap_err(),
-            Error::UnknownReportType
-        ));
+        assert_eq!(
+            Nip56Tag::parse(&tag).unwrap_err().kind(),
+            ErrorKind::Malformed
+        );
     }
 }

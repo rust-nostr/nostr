@@ -24,8 +24,8 @@ mod list;
 pub use self::codec::*;
 pub use self::cow::*;
 pub use self::list::*;
-use super::error::Error;
 use super::id::EventId;
+use crate::error::{Error, ErrorKind};
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip13::Nip13Tag;
 use crate::nips::nip31::Nip31Tag;
@@ -108,7 +108,7 @@ impl Tag {
 
         // Check if it's empty
         if tag.is_empty() {
-            return Err(Error::EmptyTag);
+            return Err(Error::with_static_message(ErrorKind::Invalid, "empty tag"));
         }
 
         // Construct without an empty cell
@@ -394,8 +394,8 @@ mod tests {
     #[test]
     fn test_parse_empty_tag() {
         assert_eq!(
-            Tag::parse::<Vec<_>, String>(vec![]).unwrap_err(),
-            Error::EmptyTag
+            Tag::parse::<Vec<_>, String>(vec![]).unwrap_err().kind(),
+            ErrorKind::Invalid
         );
     }
 

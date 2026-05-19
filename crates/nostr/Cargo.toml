@@ -18,6 +18,7 @@ rustdoc-args = ["--cfg", "docsrs"]
 [features]
 default = ["std"]
 std = [
+    "alloc",
     "base64?/std",
     "bech32/std",
     "bip39?/std",
@@ -41,6 +42,7 @@ alloc = [
     "cbc?/alloc",
     "chacha20poly1305?/alloc",
     "faster-hex/alloc",
+    "opaquerr/alloc",
     "rand?/alloc",
     "secp256k1/alloc",
     "serde/alloc",
@@ -75,6 +77,7 @@ chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, optional = true }
 faster-hex.workspace = true
 nostr-ots = { version = "0.2", optional = true }
+opaquerr.workspace = true
 rand = { version = "0.10", default-features = false, optional = true }
 scrypt = { version = "0.12", default-features = false, optional = true }
 secp256k1 = { version = "0.29", default-features = false, features = ["serde"] }

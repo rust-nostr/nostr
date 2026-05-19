@@ -4,7 +4,6 @@
 
 use alloc::string::String;
 use alloc::vec::Vec;
-use core::fmt;
 use core::fmt::Debug;
 
 use base64::engine::{Engine, general_purpose};
@@ -16,62 +15,10 @@ use rand::rand_core::UnwrapErr;
 use rand::rngs::SysRng;
 
 use super::v2::{self, ConversationKey};
+use crate::error::{Error, ErrorKind};
+use crate::key::{PublicKey, SecretKey};
 #[cfg(feature = "rand")]
 use crate::util;
-use crate::{PublicKey, SecretKey, key};
-
-/// Error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Key error
-    Key(key::Error),
-    /// NIP44 V2 error
-    V2(v2::ErrorV2),
-    /// Error while decoding from base64
-    Base64Decode(base64::DecodeError),
-    /// Error while encoding to UTF-8
-    Utf8Encode,
-    /// Unknown version
-    UnknownVersion(u8),
-    /// Version not found in payload
-    VersionNotFound,
-    /// Not found in payload
-    NotFound(String),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Key(e) => write!(f, "{e}"),
-            Self::V2(e) => write!(f, "{e}"),
-            Self::Base64Decode(e) => write!(f, "Error while decoding from base64: {e}"),
-            Self::Utf8Encode => f.write_str("Error while encoding to UTF-8"),
-            Self::UnknownVersion(v) => write!(f, "unknown version: {v}"),
-            Self::VersionNotFound => f.write_str("Version not found in payload"),
-            Self::NotFound(value) => write!(f, "{value} not found in payload"),
-        }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
-    }
-}
-
-impl From<v2::ErrorV2> for Error {
-    fn from(e: v2::ErrorV2) -> Self {
-        Self::V2(e)
-    }
-}
-
-impl From<base64::DecodeError> for Error {
-    fn from(e: base64::DecodeError) -> Self {
-        Self::Base64Decode(e)
-    }
-}
 
 /// Payload version
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -96,7 +43,10 @@ impl TryFrom<u8> for Version {
     fn try_from(version: u8) -> Result<Self, Self::Error> {
         match version {
             0x02 => Ok(Self::V2),
-            v => Err(Error::UnknownVersion(v)),
+            _ => Err(Error::new(
+                ErrorKind::Unsupported,
+                format!("unknown version: {version}"),
+            )),
         }
     }
 }
@@ -198,7 +148,7 @@ where
     T: AsRef<[u8]>,
 {
     let bytes: Vec<u8> = decrypt_to_bytes(secret_key, public_key, payload)?;
-    String::from_utf8(bytes).map_err(|_| Error::Utf8Encode)
+    String::from_utf8(bytes).map_err(Error::malformed)
 }
 
 /// Decrypt **without** converting bytes to UTF-8 string
@@ -211,10 +161,14 @@ where
     T: AsRef<[u8]>,
 {
     // Decode base64 payload
-    let payload: Vec<u8> = general_purpose::STANDARD.decode(payload)?;
+    let payload: Vec<u8> = general_purpose::STANDARD
+        .decode(payload)
+        .map_err(Error::malformed_display)?;
 
     // Get version byte
-    let version: u8 = *payload.first().ok_or(Error::VersionNotFound)?;
+    let version: u8 = *payload
+        .first()
+        .ok_or_else(|| Error::with_static_message(ErrorKind::Missing, "version not found"))?;
 
     match Version::try_from(version)? {
         Version::V2 => {

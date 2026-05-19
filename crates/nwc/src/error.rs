@@ -6,14 +6,13 @@
 
 use std::fmt;
 
-use nostr::nips::nip47;
 use nostr_sdk::{client, relay};
 
 /// NWC error
 #[derive(Debug)]
 pub enum Error {
-    /// NIP47 error
-    NIP47(nip47::Error),
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// Client error
     Client(client::Error),
     /// Relay error
@@ -31,7 +30,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NIP47(e) => e.fmt(f),
+            Self::Protocol(e) => e.fmt(f),
             Self::Client(e) => e.fmt(f),
             Self::Relay(e) => e.fmt(f),
             Self::ResponseNotReceived => f.write_str("response not received"),
@@ -41,9 +40,9 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<nip47::Error> for Error {
-    fn from(e: nip47::Error) -> Self {
-        Self::NIP47(e)
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 

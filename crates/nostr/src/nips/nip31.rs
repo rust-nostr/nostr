@@ -8,35 +8,12 @@
 
 use alloc::string::String;
 use alloc::vec;
-use core::fmt;
 
-use super::util::take_string;
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use super::util::{missing_tag_kind, take_string, unknown_tag};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 
 const ALT: &str = "alt";
-
-/// NIP-31 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-31 tags
 ///
@@ -56,14 +33,14 @@ impl TagCodec for Nip31Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             ALT => {
                 let alt: String = take_string(&mut iter, "alt value")?;
                 Ok(Self::Alt(alt))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -79,6 +56,7 @@ impl_tag_codec_conversions!(Nip31Tag);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorKind;
 
     #[test]
     fn test_nip31_alt_tag() {
@@ -93,8 +71,8 @@ mod tests {
     fn test_invalid_alt_tag_missing_value() {
         let tag = vec!["alt"];
         assert_eq!(
-            Nip31Tag::parse(&tag).unwrap_err(),
-            Error::Codec(TagCodecError::Missing("alt value"))
+            Nip31Tag::parse(&tag).unwrap_err().kind(),
+            ErrorKind::Missing
         );
     }
 }

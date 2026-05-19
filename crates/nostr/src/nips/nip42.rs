@@ -8,47 +8,14 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec;
-use core::fmt;
 
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::nips::util::{take_relay_url, take_string};
-use crate::types::url;
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::nips::util::{missing_tag_kind, take_relay_url, take_string, unknown_tag};
 use crate::{Event, Kind, RelayUrl};
 
 const CHALLENGE: &str = "challenge";
 const RELAY: &str = "relay";
-
-/// NIP-42 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Url error
-    Url(url::Error),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-42 tags
 ///
@@ -70,15 +37,15 @@ impl TagCodec for Nip42Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             CHALLENGE => Ok(Self::Challenge(take_string(&mut iter, "challenge")?)),
             RELAY => {
-                let relay_url: RelayUrl = take_relay_url::<_, _, Error>(&mut iter)?;
+                let relay_url: RelayUrl = take_relay_url(&mut iter)?;
                 Ok(Self::Relay(relay_url))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

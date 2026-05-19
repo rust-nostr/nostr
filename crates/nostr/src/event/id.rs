@@ -13,8 +13,8 @@ use hashes::sha256::Hash as Sha256Hash;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{Value, json};
 
-use super::error::Error;
 use super::{Kind, Tag, Tags};
+use crate::error::{Error, ErrorKind};
 use crate::nips::nip13;
 use crate::nips::nip19::FromBech32;
 use crate::nips::nip21::FromNostrUri;
@@ -81,13 +81,16 @@ impl EventId {
             return Ok(id);
         }
 
-        Err(Error::InvalidId)
+        Err(Error::with_static_message(
+            ErrorKind::Invalid,
+            "invalid event ID",
+        ))
     }
 
     /// Parse from hex string
     pub fn from_hex(hex: &str) -> Result<Self, Error> {
         let mut bytes: [u8; Self::LEN] = [0u8; Self::LEN];
-        faster_hex::hex_decode(hex.as_bytes(), &mut bytes)?;
+        faster_hex::hex_decode(hex.as_bytes(), &mut bytes).map_err(Error::malformed_display)?;
         Ok(Self::from_byte_array(bytes))
     }
 
@@ -95,7 +98,10 @@ impl EventId {
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         // Check len
         if slice.len() != Self::LEN {
-            return Err(Error::InvalidId);
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid event ID",
+            ));
         }
 
         // Copy bytes

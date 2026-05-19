@@ -8,58 +8,17 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::fmt;
 
-use super::nip01::{self, Coordinate};
-use super::util::{take_and_parse_from_str, take_and_parse_optional_coordinate, take_string};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::types::url::{self, Url};
+use super::nip01::Coordinate;
+use super::util::{
+    missing_tag_kind, take_and_parse_from_str, take_and_parse_optional_coordinate, take_string,
+    unknown_tag,
+};
+use crate::error::{Error, ErrorKind};
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::types::url::Url;
 
 const EMOJI: &str = "emoji";
-
-/// NIP-30 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// NIP-01 error
-    Nip01(nip01::Error),
-    /// URL parse error
-    Url(url::ParseError),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Invalid shortcode
-    InvalidShortcode,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Nip01(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidShortcode => f.write_str("Invalid shortcode"),
-        }
-    }
-}
-
-impl From<nip01::Error> for Error {
-    fn from(e: nip01::Error) -> Self {
-        Self::Nip01(e)
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-30 tags
 ///
@@ -86,7 +45,7 @@ impl TagCodec for Nip30Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             EMOJI => {
@@ -97,7 +56,7 @@ impl TagCodec for Nip30Tag {
                     emoji_set,
                 })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -133,10 +92,13 @@ where
     let shortcode: String = take_string(&mut iter, "shortcode")?;
 
     if !is_valid_shortcode(&shortcode) {
-        return Err(Error::InvalidShortcode);
+        return Err(Error::with_static_message(
+            ErrorKind::Invalid,
+            "invalid shortcode",
+        ));
     }
 
-    let image_url: Url = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "image URL")?;
+    let image_url: Url = take_and_parse_from_str(&mut iter, "image URL")?;
     let emoji_set: Option<Coordinate> = take_and_parse_optional_coordinate(&mut iter)?;
 
     Ok((shortcode, image_url, emoji_set))
@@ -202,6 +164,9 @@ mod tests {
     #[test]
     fn test_nip30_invalid_shortcode() {
         let tag = vec!["emoji", "soap box", "https://example.com/emoji.png"];
-        assert_eq!(Nip30Tag::parse(&tag).unwrap_err(), Error::InvalidShortcode);
+        assert_eq!(
+            Nip30Tag::parse(&tag).unwrap_err().kind(),
+            ErrorKind::Invalid
+        );
     }
 }

@@ -6,7 +6,7 @@
 use std::{fmt, io};
 
 use async_utility::tokio::task::JoinError;
-use nostr::{key, secp256k1};
+use nostr::secp256k1;
 use nostr_database::flatbuffers;
 use tokio::sync::oneshot;
 
@@ -39,6 +39,8 @@ impl fmt::Display for MigrationError {
 
 #[derive(Debug)]
 pub enum Error {
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// An upstream I/O error
     Io(io::Error),
     /// An error from LMDB
@@ -46,7 +48,6 @@ pub enum Error {
     /// Flatbuffers error
     FlatBuffers(flatbuffers::Error),
     Thread(JoinError),
-    Key(key::Error),
     Secp256k1(secp256k1::Error),
     OneshotRecv(oneshot::error::RecvError),
     /// Database migration error
@@ -66,11 +67,11 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Protocol(e) => e.fmt(f),
             Self::Io(e) => write!(f, "{e}"),
             Self::Heed(e) => write!(f, "{e}"),
             Self::FlatBuffers(e) => write!(f, "{e}"),
             Self::Thread(e) => write!(f, "{e}"),
-            Self::Key(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::OneshotRecv(e) => write!(f, "{e}"),
             Self::Migration(e) => write!(f, "Migration error: {e}"),
@@ -79,6 +80,12 @@ impl fmt::Display for Error {
             Self::WrongEventKind => write!(f, "Wrong event kind"),
             Self::BatchTransactionFailed => write!(f, "Batched transaction failed"),
         }
+    }
+}
+
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 
@@ -103,12 +110,6 @@ impl From<flatbuffers::Error> for Error {
 impl From<JoinError> for Error {
     fn from(e: JoinError) -> Self {
         Self::Thread(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
     }
 }
 

@@ -10,17 +10,16 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
-use core::num::ParseIntError;
 use core::str::FromStr;
 
 use super::util::{
-    take_and_parse_from_str, take_and_parse_optional_relay_url, take_optional_string, take_string,
+    missing_tag_kind, missing_value, take_and_parse_from_str, take_and_parse_optional_relay_url,
+    take_optional_string, take_string, unknown_tag,
 };
 use crate::PublicKey;
-use crate::event::{
-    self, Event, EventId, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
-};
-use crate::types::url::{self, RelayUrl};
+use crate::error::{Error, ErrorKind};
+use crate::event::{Event, EventId, Tag, TagCodec, impl_tag_codec_conversions};
+use crate::types::url::RelayUrl;
 
 const INPUT: &str = "i";
 const OUTPUT: &str = "output";
@@ -32,60 +31,14 @@ const AMOUNT: &str = "amount";
 const STATUS: &str = "status";
 const ENCRYPTED: &str = "encrypted";
 
-/// DVM Error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Event error
-    Event(event::Error),
-    /// Parse int error
-    ParseInt(ParseIntError),
-    /// Url error
-    Url(url::Error),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Unknown input type
-    UnknownInputType,
-    /// Unknown status
-    UnknownStatus,
+#[inline]
+fn unknown_status() -> Error {
+    Error::with_static_message(ErrorKind::Unsupported, "unknown status")
 }
 
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Event(e) => e.fmt(f),
-            Self::ParseInt(e) => fmt::Display::fmt(e, f),
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::UnknownInputType => f.write_str("Unknown input type"),
-            Self::UnknownStatus => f.write_str("Unknown status"),
-        }
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
+#[inline]
+fn unknown_input_type() -> Error {
+    Error::with_static_message(ErrorKind::Unsupported, "unknown input type")
 }
 
 /// Data Vending Machine Status
@@ -132,7 +85,7 @@ impl FromStr for DataVendingMachineStatus {
             "error" => Ok(Self::Error),
             "success" => Ok(Self::Success),
             "partial" => Ok(Self::Partial),
-            _ => Err(Error::UnknownStatus),
+            _ => Err(unknown_status()),
         }
     }
 }
@@ -177,7 +130,7 @@ impl FromStr for JobInputType {
             "event" => Ok(Self::Event),
             "job" => Ok(Self::Job),
             "text" => Ok(Self::Text),
-            _ => Err(Error::UnknownInputType),
+            _ => Err(unknown_input_type()),
         }
     }
 }
@@ -240,7 +193,7 @@ impl TagCodec for Nip90Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             INPUT => {
@@ -258,12 +211,12 @@ impl TagCodec for Nip90Tag {
                 value: take_string(&mut iter, "param value")?,
             }),
             BID => {
-                let bid: u64 = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "bid")?;
+                let bid: u64 = take_and_parse_from_str(&mut iter, "bid")?;
                 Ok(Self::Bid(bid))
             }
             RELAYS => Ok(Self::Relays(parse_relays_tag(iter)?)),
             REQUEST => {
-                let request: S = iter.next().ok_or(TagCodecError::Missing("request"))?;
+                let request: S = iter.next().ok_or(missing_value("request"))?;
                 Ok(Self::Request(Event::from_json(request.as_ref())?))
             }
             AMOUNT => {
@@ -275,7 +228,7 @@ impl TagCodec for Nip90Tag {
                 Ok(Self::Status { status, extra_info })
             }
             ENCRYPTED => Ok(Self::Encrypted),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -350,8 +303,7 @@ where
     S: AsRef<str>,
 {
     let data: String = take_string(&mut iter, "input data")?;
-    let input_type: JobInputType =
-        take_and_parse_from_str::<_, _, _, Error>(&mut iter, "input type")?;
+    let input_type: JobInputType = take_and_parse_from_str(&mut iter, "input type")?;
     let relay_hint: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
     let marker: Option<String> = take_optional_string(&mut iter);
 
@@ -375,7 +327,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let millisats: u64 = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "amount")?;
+    let millisats: u64 = take_and_parse_from_str(&mut iter, "amount")?;
     let bolt11: Option<String> = take_optional_string(&mut iter);
 
     Ok((millisats, bolt11))
@@ -386,8 +338,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let status: DataVendingMachineStatus =
-        take_and_parse_from_str::<_, _, _, Error>(&mut iter, "status")?;
+    let status: DataVendingMachineStatus = take_and_parse_from_str(&mut iter, "status")?;
     let extra_info: Option<String> = take_optional_string(&mut iter);
 
     Ok((status, extra_info))

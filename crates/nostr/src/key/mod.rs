@@ -27,8 +27,9 @@ mod secret_key;
 
 pub use self::public_key::*;
 pub use self::secret_key::*;
+use crate::error::Error;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use crate::event::{self, AsyncSignEvent, Event, EventId, SignEvent, UnsignedEvent};
+use crate::event::{AsyncSignEvent, Event, EventId, SignEvent, UnsignedEvent};
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip04"))]
 use crate::nips::nip04::{AsyncNip04, Nip04};
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip44"))]
@@ -38,44 +39,6 @@ use crate::util;
 use crate::util::BoxedFuture;
 #[cfg(feature = "std")]
 use crate::util::SECP256K1;
-
-/// [`Keys`] error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
-    /// Hex decode error
-    Hex(faster_hex::Error),
-    /// Invalid secret key
-    InvalidSecretKey,
-    /// Invalid public key
-    InvalidPublicKey,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Secp256k1(e) => e.fmt(f),
-            Self::Hex(e) => e.fmt(f),
-            Self::InvalidSecretKey => f.write_str("Invalid secret key"),
-            Self::InvalidPublicKey => f.write_str("Invalid public key"),
-        }
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
-    }
-}
-
-impl From<faster_hex::Error> for Error {
-    fn from(e: faster_hex::Error) -> Self {
-        Self::Hex(e)
-    }
-}
 
 /// Nostr keys
 #[derive(Clone)]
@@ -280,7 +243,7 @@ impl GetPublicKey for Keys {
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 impl SignEvent for Keys {
-    type Error = event::Error;
+    type Error = Error;
 
     fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Self::Error> {
         let id: EventId = unsigned.id.unwrap_or_else(|| unsigned.compute_id());
@@ -292,7 +255,7 @@ impl SignEvent for Keys {
 
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip04"))]
 impl Nip04 for Keys {
-    type Error = crate::nips::nip04::Error;
+    type Error = Error;
 
     fn nip04_encrypt(&self, public_key: &PublicKey, content: &str) -> Result<String, Self::Error> {
         let secret_key: &SecretKey = self.secret_key();
@@ -311,7 +274,7 @@ impl Nip04 for Keys {
 
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip44"))]
 impl Nip44 for Keys {
-    type Error = crate::nips::nip44::Error;
+    type Error = Error;
 
     fn nip44_encrypt(&self, public_key: &PublicKey, content: &str) -> Result<String, Self::Error> {
         use crate::nips::nip44::{self, Version};
@@ -335,7 +298,7 @@ impl AsyncGetPublicKey for Keys {
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 impl AsyncSignEvent for Keys {
-    type Error = event::Error;
+    type Error = Error;
 
     fn sign_event_async(
         &self,
@@ -347,7 +310,7 @@ impl AsyncSignEvent for Keys {
 
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip04"))]
 impl AsyncNip04 for Keys {
-    type Error = crate::nips::nip04::Error;
+    type Error = Error;
 
     fn nip04_encrypt_async<'a>(
         &'a self,
@@ -368,7 +331,7 @@ impl AsyncNip04 for Keys {
 
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip44"))]
 impl AsyncNip44 for Keys {
-    type Error = crate::nips::nip44::Error;
+    type Error = Error;
 
     fn nip44_encrypt_async<'a>(
         &'a self,
@@ -391,6 +354,7 @@ impl AsyncNip44 for Keys {
 #[cfg(feature = "std")]
 mod tests {
     use super::*;
+    use crate::error::ErrorKind;
 
     const SECRET_KEY_BECH32: &str =
         "nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99";
@@ -405,15 +369,19 @@ mod tests {
 
     #[test]
     fn parse_invalid_keys() {
-        assert_eq!(Keys::parse("nsec...").unwrap_err(), Error::InvalidSecretKey);
         assert_eq!(
-            Keys::parse("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
-                .unwrap_err(),
-            Error::InvalidSecretKey
+            Keys::parse("nsec...").unwrap_err().kind(),
+            ErrorKind::Invalid
         );
         assert_eq!(
-            Keys::parse("6b911fd37cdf5c8").unwrap_err(),
-            Error::InvalidSecretKey
+            Keys::parse("npub14f8usejl26twx0dhuxjh9cas7keav9vr0v8nvtwtrjqx3vycc76qqh9nsy")
+                .unwrap_err()
+                .kind(),
+            ErrorKind::Invalid
+        );
+        assert_eq!(
+            Keys::parse("6b911fd37cdf5c8").unwrap_err().kind(),
+            ErrorKind::Invalid
         );
     }
 }

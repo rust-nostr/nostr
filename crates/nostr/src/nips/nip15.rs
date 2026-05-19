@@ -60,7 +60,7 @@ impl From<StallData> for Vec<Tag> {
     }
 }
 
-impl_json_methods!(StallData, serde_json::Error);
+impl_json_methods!(StallData);
 
 /// Payload for creating or updating product
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -174,7 +174,7 @@ impl From<ProductData> for Vec<Tag> {
     }
 }
 
-impl_json_methods!(ProductData, serde_json::Error);
+impl_json_methods!(ProductData);
 
 /// A shipping method as defined by the merchant
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -229,7 +229,7 @@ impl ShippingMethod {
     }
 }
 
-impl_json_methods!(ShippingMethod, serde_json::Error);
+impl_json_methods!(ShippingMethod);
 
 /// Delivery cost for shipping method as defined by the merchant in the product
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -240,7 +240,7 @@ pub struct ShippingCost {
     pub cost: f64,
 }
 
-impl_json_methods!(ShippingCost, serde_json::Error);
+impl_json_methods!(ShippingCost);
 
 /// Payload for customer creating an order
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -264,7 +264,7 @@ pub struct CustomerOrder {
     pub shipping_id: String,
 }
 
-impl_json_methods!(CustomerOrder, serde_json::Error);
+impl_json_methods!(CustomerOrder);
 
 /// Payload for a merchant to create a payment request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -278,7 +278,7 @@ pub struct MerchantPaymentRequest {
     pub payment_options: Vec<PaymentOption>,
 }
 
-impl_json_methods!(MerchantPaymentRequest, serde_json::Error);
+impl_json_methods!(MerchantPaymentRequest);
 
 /// Payload to notify a customer about the received payment and or shipping
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -294,7 +294,7 @@ pub struct MerchantVerifyPayment {
     pub shipped: bool,
 }
 
-impl_json_methods!(MerchantVerifyPayment, serde_json::Error);
+impl_json_methods!(MerchantVerifyPayment);
 
 /// A customers contact options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -307,7 +307,7 @@ pub struct CustomerContact {
     pub email: Option<String>,
 }
 
-impl_json_methods!(CustomerContact, serde_json::Error);
+impl_json_methods!(CustomerContact);
 
 /// An item in the order
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -318,7 +318,7 @@ pub struct CustomerOrderItem {
     pub quantity: u64,
 }
 
-impl_json_methods!(CustomerOrderItem, serde_json::Error);
+impl_json_methods!(CustomerOrderItem);
 
 /// A payment option of an invoice
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -330,7 +330,7 @@ pub struct PaymentOption {
     pub link: String,
 }
 
-impl_json_methods!(PaymentOption, serde_json::Error);
+impl_json_methods!(PaymentOption);
 
 #[cfg(test)]
 mod tests {

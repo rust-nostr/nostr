@@ -9,15 +9,14 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
-use core::num::ParseIntError;
 
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 use crate::nips::util::{
-    take_and_parse_from_str, take_and_parse_optional_from_str, take_string, take_timestamp,
+    missing_tag_kind, take_and_parse_from_str, take_and_parse_optional_from_str, take_string,
+    take_timestamp, unknown_tag,
 };
-use crate::types::image;
-use crate::types::url::{self, Url};
+use crate::types::url::Url;
 use crate::{ImageDimensions, Timestamp};
 
 const TITLE: &str = "title";
@@ -25,62 +24,6 @@ const IMAGE: &str = "image";
 const SUMMARY: &str = "summary";
 const PUBLISHED_AT: &str = "published_at";
 const HASHTAG: &str = "t";
-
-/// NIP-23 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Image error
-    Image(image::Error),
-    /// Parse Int error
-    ParseInt(ParseIntError),
-    /// Url error
-    Url(url::Error),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Image(e) => e.fmt(f),
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<image::Error> for Error {
-    fn from(e: image::Error) -> Self {
-        Self::Image(e)
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(url::Error::Url(e))
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-23 tags
 ///
@@ -109,7 +52,7 @@ impl TagCodec for Nip23Tag {
     {
         let mut iter = tag.into_iter();
 
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             TITLE => Ok(Self::Title(take_string(&mut iter, "title")?)),
@@ -119,13 +62,13 @@ impl TagCodec for Nip23Tag {
             }
             SUMMARY => Ok(Self::Summary(take_string(&mut iter, "summary")?)),
             PUBLISHED_AT => {
-                let timestamp: Timestamp = take_timestamp::<_, _, Error>(&mut iter)?;
+                let timestamp: Timestamp = take_timestamp(&mut iter)?;
                 Ok(Self::PublishedAt(timestamp))
             }
             HASHTAG => Ok(Self::Hashtag(
                 take_string(&mut iter, "hashtag")?.to_lowercase(),
             )),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -157,7 +100,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let url: Url = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "image URL")?;
+    let url: Url = take_and_parse_from_str(&mut iter, "image URL")?;
     let dimensions: Option<ImageDimensions> = take_and_parse_optional_from_str(&mut iter)?;
 
     Ok((url, dimensions))

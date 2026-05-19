@@ -60,6 +60,7 @@ nostr-lmdb = { version = "0.45.0-alpha.1", path = "./database/nostr-lmdb", defau
 nostr-ndb = { version = "0.45.0-alpha.1", path = "./database/nostr-ndb", default-features = false }
 nostr-relay-builder = { version = "0.45.0-alpha.1", path = "./crates/nostr-relay-builder", default-features = false }
 nostr-sdk = { version = "0.45.0-alpha.1", path = "./sdk", default-features = false }
+opaquerr = { git = "https://github.com/shadowylab/opaquerr", rev = "1d4a95bb39d7f2fa1638d84af8540e898a3d902f" }
 reqwest = { version = "0.12", default-features = false }
 rusqlite = { version = "0.38", default-features = false }
 serde = { version = "1.0", default-features = false }

@@ -10,22 +10,21 @@ use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
 use core::fmt;
-use core::num::ParseIntError;
 use core::str::FromStr;
 
 use secp256k1::schnorr::Signature;
 
-use super::nip01::{self, Coordinate};
+use super::nip01::Coordinate;
 use super::util::{
-    take_and_parse_from_str, take_and_parse_optional_from_str, take_and_parse_optional_relay_url,
-    take_coordinate, take_event_id, take_optional_string, take_public_key, take_string,
-    take_timestamp,
+    invalid_value, missing_tag_kind, missing_value, take_and_parse_from_str,
+    take_and_parse_optional_from_str, take_and_parse_optional_relay_url, take_coordinate,
+    take_event_id, take_optional_string, take_public_key, take_string, take_timestamp, unknown_tag,
 };
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::key::{self, PublicKey};
-use crate::types::image;
-use crate::types::url::{self, RelayUrl, Url};
-use crate::{Event, EventId, ImageDimensions, Kind, Timestamp, event};
+use crate::error::{Error, ErrorKind};
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::key::PublicKey;
+use crate::types::url::{RelayUrl, Url};
+use crate::{Event, EventId, ImageDimensions, Kind, Timestamp};
 
 const TITLE: &str = "title";
 const SUMMARY: &str = "summary";
@@ -44,102 +43,9 @@ const ENDPOINT: &str = "endpoint";
 const PINNED: &str = "pinned";
 const HAND: &str = "hand";
 
-/// NIP53 Error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
-    /// Keys error
-    Keys(key::Error),
-    /// Event error
-    Event(event::Error),
-    /// Url error
-    Url(url::Error),
-    /// URL parse error
-    UrlParse(url::ParseError),
-    /// Image error
-    Image(image::Error),
-    /// NIP-01 error
-    NIP01(nip01::Error),
-    /// Parse int error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Description missing from event
-    DescriptionMissing,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Secp256k1(e) => e.fmt(f),
-            Self::Keys(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::UrlParse(e) => e.fmt(f),
-            Self::Image(e) => e.fmt(f),
-            Self::NIP01(e) => e.fmt(f),
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::DescriptionMissing => f.write_str("Event missing a description"),
-        }
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::UrlParse(e)
-    }
-}
-
-impl From<image::Error> for Error {
-    fn from(e: image::Error) -> Self {
-        Self::Image(e)
-    }
-}
-
-impl From<nip01::Error> for Error {
-    fn from(e: nip01::Error) -> Self {
-        Self::NIP01(e)
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
+#[inline]
+fn description_missing() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "description missing")
 }
 
 /// Live Event Marker
@@ -316,13 +222,13 @@ impl TagCodec for Nip53Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             TITLE => Ok(Self::Title(take_string(&mut iter, "title")?)),
             SUMMARY => Ok(Self::Summary(take_string(&mut iter, "summary")?)),
             IMAGE => {
-                let image: Url = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "image URL")?;
+                let image: Url = take_and_parse_from_str(&mut iter, "image URL")?;
                 let dimensions: Option<ImageDimensions> =
                     take_and_parse_optional_from_str(&mut iter)?;
                 Ok(Self::Image(image, dimensions))
@@ -330,42 +236,36 @@ impl TagCodec for Nip53Tag {
             "t" => {
                 let hashtag: String = take_string(&mut iter, "hashtag")?;
                 if hashtag.chars().any(char::is_uppercase) {
-                    return Err(
-                        TagCodecError::Invalid("hashtag contains uppercase characters").into(),
-                    );
+                    return Err(invalid_value("hashtag contains uppercase characters"));
                 }
 
                 Ok(Self::Hashtag(hashtag))
             }
             STREAMING => {
-                let url: Url =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "streaming URL")?;
+                let url: Url = take_and_parse_from_str(&mut iter, "streaming URL")?;
                 Ok(Self::Streaming(url))
             }
             RECORDING => {
-                let url: Url =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "recording URL")?;
+                let url: Url = take_and_parse_from_str(&mut iter, "recording URL")?;
                 Ok(Self::Recording(url))
             }
             STARTS => {
-                let timestamp: Timestamp = take_timestamp::<_, _, Error>(&mut iter)?;
+                let timestamp: Timestamp = take_timestamp(&mut iter)?;
                 Ok(Self::Starts(timestamp))
             }
             ENDS => {
-                let timestamp: Timestamp = take_timestamp::<_, _, Error>(&mut iter)?;
+                let timestamp: Timestamp = take_timestamp(&mut iter)?;
                 Ok(Self::Ends(timestamp))
             }
             STATUS => Ok(Self::Status(LiveEventStatus::from(take_string(
                 &mut iter, "status",
             )?))),
             CURRENT_PARTICIPANTS => {
-                let num: u64 =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "current participants")?;
+                let num: u64 = take_and_parse_from_str(&mut iter, "current participants")?;
                 Ok(Self::CurrentParticipants(num))
             }
             TOTAL_PARTICIPANTS => {
-                let num: u64 =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "total participants")?;
+                let num: u64 = take_and_parse_from_str(&mut iter, "total participants")?;
                 Ok(Self::TotalParticipants(num))
             }
             RELAYS => {
@@ -378,21 +278,20 @@ impl TagCodec for Nip53Tag {
             "p" => parse_p_tag(iter),
             ROOM => Ok(Self::Room(take_string(&mut iter, "room")?)),
             SERVICE => {
-                let url: Url = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "service URL")?;
+                let url: Url = take_and_parse_from_str(&mut iter, "service URL")?;
                 Ok(Self::Service(url))
             }
             ENDPOINT => {
-                let url: Url =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "endpoint URL")?;
+                let url: Url = take_and_parse_from_str(&mut iter, "endpoint URL")?;
                 Ok(Self::Endpoint(url))
             }
             PINNED => {
-                let event_id: EventId = take_event_id::<_, _, Error>(&mut iter)?;
+                let event_id: EventId = take_event_id(&mut iter)?;
                 Ok(Self::Pinned(event_id))
             }
             "a" => parse_a_tag(iter),
             HAND => parse_hand_tag(iter),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -475,10 +374,11 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
+    let public_key: PublicKey = take_public_key(&mut iter)?;
     let relay_url: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
-    let marker: LiveEventMarker = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "marker")?;
-    let proof: Option<Signature> = take_and_parse_optional_from_str(&mut iter)?;
+    let marker: LiveEventMarker = take_and_parse_from_str(&mut iter, "marker")?;
+    let proof: Option<Signature> =
+        take_and_parse_optional_from_str(&mut iter).map_err(Error::malformed_display)?;
 
     Ok(Nip53Tag::Participant(LiveEventParticipant {
         public_key,
@@ -493,7 +393,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let coordinate = take_coordinate::<_, _, Error>(&mut iter)?;
+    let coordinate = take_coordinate(&mut iter)?;
     let relay_url: Option<RelayUrl> = take_and_parse_optional_relay_url(&mut iter)?;
     let marker: Option<String> = take_optional_string(&mut iter);
 
@@ -509,11 +409,11 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let hand: S = iter.next().ok_or(TagCodecError::Missing("hand"))?;
+    let hand: S = iter.next().ok_or(missing_value("hand"))?;
     let hand: bool = match hand.as_ref() {
         "1" => true,
         "0" => false,
-        _ => return Err(TagCodecError::Unknown.into()),
+        _ => return Err(unknown_tag()),
     };
 
     Ok(Nip53Tag::Hand(hand))
@@ -625,7 +525,7 @@ impl LiveEvent {
         let id = if event.kind == Kind::Custom(10312) {
             String::new()
         } else {
-            event.tags.identifier().ok_or(Error::DescriptionMissing)?
+            event.tags.identifier().ok_or(description_missing())?
         };
 
         let mut live_event = Self::new(id);
@@ -634,7 +534,7 @@ impl LiveEvent {
         for tag in event.tags.iter() {
             let parsed = match Nip53Tag::try_from(tag) {
                 Ok(tag) => tag,
-                Err(Error::Codec(TagCodecError::Unknown)) => continue,
+                Err(e) if e.kind() == ErrorKind::Malformed => continue,
                 Err(err) => return Err(err),
             };
 
@@ -879,14 +779,14 @@ impl TryFrom<Vec<Tag>> for LiveEvent {
             .find(|t| t.kind() == "d")
             .and_then(|t| t.content())
             .map(|value| value.to_string())
-            .ok_or(Error::DescriptionMissing)?;
+            .ok_or(description_missing())?;
 
         let mut live_event = LiveEvent::new(id);
 
         for tag in tags.into_iter() {
             let parsed = match Nip53Tag::try_from(tag) {
                 Ok(tag) => tag,
-                Err(Error::Codec(TagCodecError::Unknown)) => continue,
+                Err(e) if e.kind() == ErrorKind::Malformed => continue,
                 Err(err) => return Err(err),
             };
 

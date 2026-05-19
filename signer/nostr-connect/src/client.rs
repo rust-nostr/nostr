@@ -452,7 +452,7 @@ fn is_valid_connect_response(response: &ResponseResult, expected_secret: Option<
 /// Nostr Connect auth_url handler
 pub trait AuthUrlHandler: fmt::Debug + Send + Sync {
     /// Handle `auth_url` message
-    fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<'_, Result<()>>;
+    fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<'_, Result<(), Error>>;
 }
 
 #[doc(hidden)]

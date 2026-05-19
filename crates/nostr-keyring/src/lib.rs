@@ -15,20 +15,20 @@ use std::fmt;
 #[cfg(feature = "async")]
 use async_utility::{task, tokio};
 pub use keyring::{Entry, Error as KeyringError};
-use nostr::{Keys, SecretKey, key};
+use nostr::key::{Keys, SecretKey};
 
 pub mod prelude;
 
 /// Keyring error
 #[derive(Debug)]
 pub enum Error {
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// Join error
     #[cfg(feature = "async")]
     Join(tokio::task::JoinError),
     /// Keyring error
     Keyring(KeyringError),
-    /// Nostr keys error
-    Keys(key::Error),
 }
 
 impl std::error::Error for Error {}
@@ -36,11 +36,17 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Protocol(e) => e.fmt(f),
             #[cfg(feature = "async")]
             Self::Join(e) => write!(f, "{e}"),
             Self::Keyring(e) => write!(f, "{e}"),
-            Self::Keys(e) => write!(f, "{e}"),
         }
+    }
+}
+
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 
@@ -54,12 +60,6 @@ impl From<tokio::task::JoinError> for Error {
 impl From<KeyringError> for Error {
     fn from(e: KeyringError) -> Self {
         Self::Keyring(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
     }
 }
 

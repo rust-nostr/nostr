@@ -7,27 +7,16 @@
 use std::fmt;
 
 use nostr::PublicKey;
-use nostr::nips::{nip04, nip44, nip46};
-use nostr::signer::SignerError;
-use nostr::types::url;
 use nostr_sdk::client;
 use tokio::sync::SetError;
 
 /// Nostr Connect error
 #[derive(Debug)]
 pub enum Error {
-    /// Signer error
-    Signer(SignerError),
-    /// NIP04 error
-    NIP04(nip04::Error),
-    /// NIP44 error
-    NIP44(nip44::Error),
-    /// NIP46 error
-    NIP46(nip46::Error),
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// Client
     Client(client::Error),
-    /// Url parse error
-    RelayUrl(url::Error),
     /// Set user public key error
     SetUserPublicKey(SetError<PublicKey>),
     /// Invalid response from remote signer
@@ -51,12 +40,8 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Signer(e) => e.fmt(f),
-            Self::NIP04(e) => e.fmt(f),
-            Self::NIP44(e) => e.fmt(f),
-            Self::NIP46(e) => e.fmt(f),
+            Self::Protocol(e) => e.fmt(f),
             Self::Client(e) => e.fmt(f),
-            Self::RelayUrl(e) => e.fmt(f),
             Self::SetUserPublicKey(e) => e.fmt(f),
             Self::InvalidResponse(e) => e.fmt(f),
             Self::Response(e) => e.fmt(f),
@@ -69,39 +54,15 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Signer(e)
-    }
-}
-
-impl From<nip04::Error> for Error {
-    fn from(e: nip04::Error) -> Self {
-        Self::NIP04(e)
-    }
-}
-
-impl From<nip44::Error> for Error {
-    fn from(e: nip44::Error) -> Self {
-        Self::NIP44(e)
-    }
-}
-
-impl From<nip46::Error> for Error {
-    fn from(e: nip46::Error) -> Self {
-        Self::NIP46(e)
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 
 impl From<client::Error> for Error {
     fn from(e: client::Error) -> Self {
         Self::Client(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::RelayUrl(e)
     }
 }
 

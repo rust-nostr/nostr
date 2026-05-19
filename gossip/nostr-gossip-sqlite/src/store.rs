@@ -31,7 +31,7 @@ pub struct NostrGossipSqlite {
 }
 
 impl NostrGossipSqlite {
-    async fn new(pool: Pool) -> nostr::Result<Self, Error> {
+    async fn new(pool: Pool) -> Result<Self, Error> {
         pool.interact(|conn| {
             if conn.pragma_update(None, "journal_mode", "WAL").is_err() {
                 conn.pragma_update(None, "journal_mode", "DELETE")?;
@@ -53,14 +53,14 @@ impl NostrGossipSqlite {
     }
 
     /// Creates an in-memory database
-    pub async fn in_memory() -> nostr::Result<Self, Error> {
+    pub async fn in_memory() -> Result<Self, Error> {
         let pool: Pool = Pool::open_in_memory()?;
         Self::new(pool).await
     }
 
     /// Connect to a SQL database
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn open<P>(path: P) -> nostr::Result<Self, Error>
+    pub async fn open<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
@@ -72,7 +72,7 @@ impl NostrGossipSqlite {
     }
 
     /// Connect to a SQL database
-    pub async fn open_with_vfs<P>(path: P, vfs: &str) -> nostr::Result<Self, Error>
+    pub async fn open_with_vfs<P>(path: P, vfs: &str) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {

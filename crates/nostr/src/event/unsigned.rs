@@ -11,13 +11,18 @@ use core::num::NonZeroU8;
 use secp256k1::schnorr::Signature;
 use secp256k1::{Secp256k1, Verification};
 
-use super::error::Error;
 use super::{AsyncSignEvent, FinalizeEvent, FinalizeEventAsync, SignEvent};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::error::{Error, ErrorKind};
 use crate::nips::nip13::{AsyncPowAdapter, PowAdapter};
 use crate::util::{BoxedFuture, impl_json_methods};
 use crate::{Event, EventId, Kind, PublicKey, Tag, Tags, Timestamp};
+
+#[inline]
+fn invalid_event_id() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "invalid event ID")
+}
 
 /// Unsigned event
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -98,7 +103,7 @@ impl UnsignedEvent {
         if let Some(id) = self.id {
             let computed_id: EventId = self.compute_id();
             if id != computed_id {
-                return Err(Error::InvalidId);
+                return Err(invalid_event_id());
             }
         }
 
@@ -162,12 +167,15 @@ impl UnsignedEvent {
 
         // Verify the event ID
         if verify_id && !event.verify_id() {
-            return Err(Error::InvalidId);
+            return Err(invalid_event_id());
         }
 
         // Verify event signature
         if !event.verify_signature_with_ctx(secp) {
-            return Err(Error::InvalidSignature);
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid signature",
+            ));
         }
 
         Ok(event)
@@ -178,11 +186,11 @@ impl<S> FinalizeEvent<S> for UnsignedEvent
 where
     S: SignEvent + ?Sized,
 {
-    type Error = S::Error;
+    type Error = Error;
 
     #[inline]
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
-        signer.sign_event(self)
+        signer.sign_event(self).map_err(Error::other)
     }
 }
 
@@ -190,7 +198,7 @@ impl<S> FinalizeEventAsync<S> for UnsignedEvent
 where
     S: AsyncSignEvent + ?Sized,
 {
-    type Error = S::Error;
+    type Error = Error;
 
     #[inline]
     fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
@@ -198,11 +206,11 @@ where
         Self: 'a,
         S: 'a,
     {
-        Box::pin(async move { signer.sign_event_async(self).await })
+        Box::pin(async move { signer.sign_event_async(self).await.map_err(Error::other) })
     }
 }
 
-impl_json_methods!(UnsignedEvent, Error);
+impl_json_methods!(UnsignedEvent);
 
 impl From<Event> for UnsignedEvent {
     fn from(event: Event) -> Self {

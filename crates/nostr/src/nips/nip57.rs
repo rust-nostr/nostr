@@ -9,18 +9,15 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
-use core::num::ParseIntError;
 
 use super::nip01::Coordinate;
 use super::util::{
-    take_and_parse_from_str, take_and_parse_optional_from_str, take_public_key, take_relay_url,
-    take_string,
+    missing_tag_kind, take_and_parse_from_str, take_and_parse_optional_from_str, take_public_key,
+    take_relay_url, take_string, unknown_tag,
 };
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::key::Error as KeyError;
-use crate::types::url;
-use crate::{EventId, PublicKey, RelayUrl, event};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::{EventId, PublicKey, RelayUrl};
 
 const AMOUNT: &str = "amount";
 const BOLT11: &str = "bolt11";
@@ -30,89 +27,6 @@ const PREIMAGE: &str = "preimage";
 const RELAYS: &str = "relays";
 const SENDER: &str = "P";
 const ZAP: &str = "zap";
-
-#[allow(missing_docs)]
-#[derive(Debug)]
-pub enum Error {
-    Key(KeyError),
-    Event(event::Error),
-    Url(url::Error),
-    ParseInt(ParseIntError),
-    Bech32Decode(bech32::DecodeError),
-    Bech32Encode(bech32::EncodeError),
-    /// Codec error
-    Codec(TagCodecError),
-    InvalidPrivateZapMessage,
-    PrivateZapMessageNotFound,
-    /// Wrong prefix or variant
-    WrongBech32Prefix,
-    /// Wrong encryption block mode
-    WrongBlockMode,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Key(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Bech32Decode(e) => e.fmt(f),
-            Self::Bech32Encode(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidPrivateZapMessage => f.write_str("Invalid private zap message"),
-            Self::PrivateZapMessageNotFound => f.write_str("Private zap message not found"),
-            Self::WrongBech32Prefix => f.write_str("Wrong bech32 prefix"),
-            Self::WrongBlockMode => f.write_str(
-                "Wrong encryption block mode. The content must be encrypted using CBC mode!",
-            ),
-        }
-    }
-}
-
-impl From<KeyError> for Error {
-    fn from(e: KeyError) -> Self {
-        Self::Key(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<bech32::DecodeError> for Error {
-    fn from(e: bech32::DecodeError) -> Self {
-        Self::Bech32Decode(e)
-    }
-}
-
-impl From<bech32::EncodeError> for Error {
-    fn from(e: bech32::EncodeError) -> Self {
-        Self::Bech32Encode(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-57 tags
 ///
@@ -158,7 +72,7 @@ impl TagCodec for Nip57Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             RELAYS => Ok(Self::Relays(parse_relays(iter)?)),
@@ -171,7 +85,7 @@ impl TagCodec for Nip57Tag {
             DESCRIPTION => Ok(Self::Description(take_string(&mut iter, "description")?)),
             PREIMAGE => Ok(Self::Preimage(take_string(&mut iter, "preimage")?)),
             SENDER => {
-                let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
+                let public_key: PublicKey = take_public_key(&mut iter)?;
                 Ok(Self::Sender(public_key))
             }
             ZAP => {
@@ -182,7 +96,7 @@ impl TagCodec for Nip57Tag {
                     weight,
                 })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -250,7 +164,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let millisats: u64 = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "amount")?;
+    let millisats: u64 = take_and_parse_from_str(&mut iter, "amount")?;
     let bolt11: Option<String> = iter.next().map(|bolt11| bolt11.as_ref().to_string());
 
     Ok((millisats, bolt11))
@@ -261,9 +175,10 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
-    let relay_url: RelayUrl = take_relay_url::<_, _, Error>(&mut iter)?;
-    let weight: Option<u64> = take_and_parse_optional_from_str(&mut iter)?;
+    let public_key: PublicKey = take_public_key(&mut iter)?;
+    let relay_url: RelayUrl = take_relay_url(&mut iter)?;
+    let weight: Option<u64> =
+        take_and_parse_optional_from_str(&mut iter).map_err(Error::malformed)?;
 
     Ok((public_key, relay_url, weight))
 }

@@ -9,13 +9,13 @@ use alloc::borrow::ToOwned;
 use alloc::string::{String, ToString};
 use core::convert::Infallible;
 use core::fmt;
-use core::num::ParseIntError;
 use core::str::FromStr;
 use core::time::Duration;
 
-use super::util::take_string;
+use super::util::{missing_tag_kind, missing_value, take_string, unknown_tag};
 use crate::Kind;
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 use crate::util::UnwrapInfallible;
 
 const RTT_OPEN: &str = "rtt-open";
@@ -28,38 +28,6 @@ const REQUIREMENT: &str = "R";
 const TOPIC: &str = "t";
 const KIND: &str = "k";
 const GEOHASH: &str = "g";
-
-/// NIP-66 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Parse int error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-66 tags
 ///
@@ -107,7 +75,7 @@ impl TagCodec for Nip66Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
         match kind.as_ref() {
             RTT_OPEN => Ok(Self::RttOpen(parse_time(iter, RTT_OPEN)?)),
             RTT_READ => Ok(Self::RttRead(parse_time(iter, RTT_READ)?)),
@@ -138,12 +106,12 @@ impl TagCodec for Nip66Tag {
                 let value = take_string(&mut iter, "kind")?;
                 let BoolTag { value, yes } = BoolTag::parse(&value);
                 Ok(Self::Kind {
-                    kind: value.parse().map_err(Error::ParseInt)?,
+                    kind: value.parse()?,
                     is_accepted: yes,
                 })
             }
             GEOHASH => Ok(Self::Geohash(take_string(&mut iter, "geohash")?)),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -382,10 +350,10 @@ where
 {
     let time = iter
         .next()
-        .ok_or(TagCodecError::Missing(tag))?
+        .ok_or(missing_value(tag))?
         .as_ref()
         .parse::<u64>()
-        .map_err(Error::ParseInt)?;
+        .map_err(Error::malformed)?;
     Ok(Duration::from_millis(time))
 }
 
@@ -415,6 +383,7 @@ impl_tag_codec_conversions!(Nip66Tag);
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorKind;
 
     #[test]
     fn test_standardized_rtt_open_tag() {
@@ -425,7 +394,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["rtt-open"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("rtt-open")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -437,7 +406,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["rtt-read"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("rtt-read")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -449,7 +418,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["rtt-write"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("rtt-write")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -468,7 +437,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["n"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("network type")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -483,7 +452,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["T"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("relay type")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -495,7 +464,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["N"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("NIP")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -534,7 +503,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["R"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("requirement")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -546,7 +515,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["t"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("topic")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -574,7 +543,7 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["k"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("kind")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 
     #[test]
@@ -586,6 +555,6 @@ mod tests {
         assert_eq!(parsed.to_tag(), Tag::parse(tag).unwrap());
 
         let err = Nip66Tag::parse(["g"]).unwrap_err();
-        assert_eq!(err, Error::Codec(TagCodecError::Missing("geohash")));
+        assert_eq!(err.kind(), ErrorKind::Missing);
     }
 }

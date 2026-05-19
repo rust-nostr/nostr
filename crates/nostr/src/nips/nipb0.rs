@@ -9,51 +9,18 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
-use core::num::ParseIntError;
 
-use super::util::{take_string, take_timestamp};
+use super::util::{missing_tag_kind, take_string, take_timestamp, unknown_tag};
+use crate::Timestamp;
+use crate::error::Error;
 use crate::event::{
-    EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+    EventBuilder, EventBuilderTemplate, Kind, Tag, TagCodec, impl_tag_codec_conversions,
 };
-use crate::{EventBuilder, Kind, Timestamp};
 
 const URL: &str = "d";
 const PUBLISHED_AT: &str = "published_at";
 const TITLE: &str = "title";
 const HASHTAG: &str = "t";
-
-/// NIP-B0 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Parse Int error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-B0 tags
 ///
@@ -80,19 +47,19 @@ impl TagCodec for NipB0Tag {
     {
         let mut iter = tag.into_iter();
 
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             URL => Ok(Self::Url(take_string(&mut iter, "URL")?)),
             PUBLISHED_AT => {
-                let timestamp: Timestamp = take_timestamp::<_, _, Error>(&mut iter)?;
+                let timestamp: Timestamp = take_timestamp(&mut iter)?;
                 Ok(Self::PublishedAt(timestamp))
             }
             TITLE => Ok(Self::Title(take_string(&mut iter, "title")?)),
             HASHTAG => Ok(Self::Hashtag(
                 take_string(&mut iter, "hashtag")?.to_lowercase(),
             )),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

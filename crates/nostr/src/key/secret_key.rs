@@ -16,10 +16,10 @@ use rand::rand_core::UnwrapErr;
 use rand::rngs::SysRng;
 use serde::{Deserialize, Deserializer};
 
-use super::Error;
+use crate::error::{Error, ErrorKind};
 use crate::nips::nip19::FromBech32;
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip49"))]
-use crate::nips::nip49::{self, EncryptedSecretKey, KeySecurity};
+use crate::nips::nip49::{EncryptedSecretKey, KeySecurity};
 #[cfg(feature = "rand")]
 use crate::util;
 
@@ -65,14 +65,17 @@ impl SecretKey {
             return Ok(secret_key);
         }
 
-        Err(Error::InvalidSecretKey)
+        Err(Error::with_static_message(
+            ErrorKind::Invalid,
+            "invalid secret key",
+        ))
     }
 
     /// Parse from `bytes`
     #[inline]
     pub fn from_slice(slice: &[u8]) -> Result<Self, Error> {
         Ok(Self {
-            inner: secp256k1::SecretKey::from_slice(slice)?,
+            inner: secp256k1::SecretKey::from_slice(slice).map_err(Error::malformed_display)?,
         })
     }
 
@@ -80,7 +83,7 @@ impl SecretKey {
     #[inline]
     pub fn from_hex(hex: &str) -> Result<Self, Error> {
         Ok(Self {
-            inner: secp256k1::SecretKey::from_str(hex)?,
+            inner: secp256k1::SecretKey::from_str(hex).map_err(Error::malformed_display)?,
         })
     }
 
@@ -141,7 +144,7 @@ impl SecretKey {
     /// To use custom values check [`EncryptedSecretKey`] constructors.
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng", feature = "nip49"))]
-    pub fn encrypt(&self, password: &str) -> Result<EncryptedSecretKey, nip49::Error> {
+    pub fn encrypt(&self, password: &str) -> Result<EncryptedSecretKey, Error> {
         EncryptedSecretKey::new(self, password, 16, KeySecurity::Unknown)
     }
 }

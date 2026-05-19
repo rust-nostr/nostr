@@ -5,7 +5,7 @@
 use nostr::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn core::error::Error>> {
     let keys = Keys::parse("nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")?;
 
     let server_url: Url = Url::parse("https://example.com")?;

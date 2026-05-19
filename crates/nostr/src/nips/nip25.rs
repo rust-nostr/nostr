@@ -2,50 +2,17 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP25: Reactions
+//! NIP-25: Reactions
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/25.md>
 
 use alloc::string::{String, ToString};
-use core::fmt;
-use core::num::ParseIntError;
 
 use super::nip01::{Coordinate, Nip01Tag};
-use super::util::take_and_parse_from_str;
-use crate::event::{Tag, TagCodec, TagCodecError, Tags, impl_tag_codec_conversions};
+use super::util::{missing_tag_kind, take_and_parse_from_str, unknown_tag};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, Tags, impl_tag_codec_conversions};
 use crate::{Event, EventId, Kind, PublicKey, RelayUrl};
-
-/// NIP-25 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Failed to parse integer
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-25 tags
 ///
@@ -65,14 +32,14 @@ impl TagCodec for Nip25Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             "k" => {
-                let kind: Kind = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "kind")?;
+                let kind: Kind = take_and_parse_from_str(&mut iter, "kind")?;
                 Ok(Self::Kind(kind))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

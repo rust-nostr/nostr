@@ -22,118 +22,34 @@ use rand::rngs::SysRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::nip44::{AsyncNip44, Nip44};
+use super::util::{invalid_uri, unexpected_result, unsupported_method};
+use crate::error::{Error, ErrorKind};
 use crate::event::{AsyncSignEvent, FinalizeEvent, FinalizeEventAsync, SignEvent, UnsignedEvent};
 use crate::key::{AsyncGetPublicKey, GetPublicKey};
-use crate::signer::SignerError;
-use crate::types::url::{self, ParseError, RelayUrl, Url};
+use crate::types::url::{RelayUrl, Url};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::util;
-use crate::util::{BoxedFuture, impl_json_methods};
-use crate::{Event, EventBuilder, Kind, PublicKey, Tag, event, key};
+use crate::util::{BoxedFuture, impl_json_methods, parse_json};
+use crate::{Event, EventBuilder, Kind, PublicKey, Tag};
 
 /// NIP46 URI Scheme
 pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
 /// NIP46 bunker URI Scheme
 pub const NOSTR_CONNECT_BUNKER_URI_SCHEME: &str = "bunker";
 
-/// NIP46 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Signer error
-    Signer(SignerError),
-    /// Key error
-    Key(key::Error),
-    /// JSON error
-    Json(String),
-    /// Relay Url parse error
-    RelayUrl(url::Error),
-    /// Url parse error
-    Url(ParseError),
-    /// Event error
-    Event(event::Error),
-    /// Invalid request
-    InvalidRequest,
-    /// Too many/few params
-    InvalidParamsLength,
-    /// Unsupported method
-    UnsupportedMethod(String),
-    /// Invalid URI
-    InvalidURI,
-    /// Not a request
-    NotRequest,
-    /// Unexpected result
-    UnexpectedResponse {
-        /// Request method
-        method: NostrConnectMethod,
-        /// Expected response
-        expected: String,
-        /// Received response
-        received: String,
-    },
+#[inline]
+fn invalid_params_length() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "invalid params length")
 }
 
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Signer(e) => e.fmt(f),
-            Self::Key(e) => e.fmt(f),
-            Self::Json(e) => e.fmt(f),
-            Self::RelayUrl(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
-            Self::InvalidRequest => f.write_str("Invalid request"),
-            Self::InvalidParamsLength => f.write_str("Invalid params len"),
-            Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
-            Self::InvalidURI => f.write_str("Invalid uri"),
-            Self::NotRequest => f.write_str("Not a request"),
-            Self::UnexpectedResponse {
-                method,
-                received,
-                expected,
-            } => write!(
-                f,
-                "Unexpected response: method={method}, expected={expected}, received={received}"
-            ),
-        }
-    }
+#[inline]
+fn invalid_request() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "invalid request")
 }
 
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Signer(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e.to_string())
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::RelayUrl(e)
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
+#[inline]
+fn not_request() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "not a request")
 }
 
 /// NIP46 method
@@ -185,7 +101,7 @@ impl FromStr for NostrConnectMethod {
             "nip44_encrypt" => Ok(Self::Nip44Encrypt),
             "nip44_decrypt" => Ok(Self::Nip44Decrypt),
             "ping" => Ok(Self::Ping),
-            other => Err(Error::UnsupportedMethod(other.to_string())),
+            other => Err(unsupported_method(other)),
         }
     }
 }
@@ -260,8 +176,7 @@ impl NostrConnectRequest {
     pub fn from_message(method: NostrConnectMethod, params: Vec<String>) -> Result<Self, Error> {
         match method {
             NostrConnectMethod::Connect => {
-                let remote_signer_public_key: &String =
-                    params.first().ok_or(Error::InvalidRequest)?;
+                let remote_signer_public_key: &String = params.first().ok_or(invalid_request())?;
                 let remote_signer_public_key: PublicKey =
                     PublicKey::from_hex(remote_signer_public_key)?;
                 let secret: Option<String> = params.get(1).cloned();
@@ -272,13 +187,13 @@ impl NostrConnectRequest {
             }
             NostrConnectMethod::GetPublicKey => Ok(Self::GetPublicKey),
             NostrConnectMethod::SignEvent => {
-                let unsigned: &String = params.first().ok_or(Error::InvalidRequest)?;
+                let unsigned: &String = params.first().ok_or(invalid_request())?;
                 let unsigned_event: UnsignedEvent = UnsignedEvent::from_json(unsigned)?;
                 Ok(Self::SignEvent(unsigned_event))
             }
             NostrConnectMethod::Nip04Encrypt => {
                 if params.len() != 2 {
-                    return Err(Error::InvalidParamsLength);
+                    return Err(invalid_params_length());
                 }
 
                 Ok(Self::Nip04Encrypt {
@@ -288,7 +203,7 @@ impl NostrConnectRequest {
             }
             NostrConnectMethod::Nip04Decrypt => {
                 if params.len() != 2 {
-                    return Err(Error::InvalidParamsLength);
+                    return Err(invalid_params_length());
                 }
 
                 Ok(Self::Nip04Decrypt {
@@ -298,7 +213,7 @@ impl NostrConnectRequest {
             }
             NostrConnectMethod::Nip44Encrypt => {
                 if params.len() != 2 {
-                    return Err(Error::InvalidParamsLength);
+                    return Err(invalid_params_length());
                 }
 
                 Ok(Self::Nip44Encrypt {
@@ -308,7 +223,7 @@ impl NostrConnectRequest {
             }
             NostrConnectMethod::Nip44Decrypt => {
                 if params.len() != 2 {
-                    return Err(Error::InvalidParamsLength);
+                    return Err(invalid_params_length());
                 }
 
                 Ok(Self::Nip44Decrypt {
@@ -538,11 +453,7 @@ impl ResponseResult {
                 if response == "pong" {
                     Ok(Self::Pong)
                 } else {
-                    Err(Error::UnexpectedResponse {
-                        method,
-                        expected: String::from("pong"),
-                        received: response,
-                    })
+                    Err(unexpected_result())
                 }
             }
         }
@@ -563,11 +474,7 @@ impl ResponseResult {
         if let Self::GetPublicKey(val) = self {
             Ok(val)
         } else {
-            Err(Error::UnexpectedResponse {
-                method: NostrConnectMethod::GetPublicKey,
-                expected: String::from("user public key"),
-                received: self.to_string(),
-            })
+            Err(unexpected_result())
         }
     }
 
@@ -576,11 +483,7 @@ impl ResponseResult {
         if let Self::SignEvent(val) = self {
             Ok(*val)
         } else {
-            Err(Error::UnexpectedResponse {
-                method: NostrConnectMethod::SignEvent,
-                expected: String::from("signed event"),
-                received: self.to_string(),
-            })
+            Err(unexpected_result())
         }
     }
 
@@ -589,11 +492,7 @@ impl ResponseResult {
         if let Self::Nip04Encrypt { ciphertext } = self {
             Ok(ciphertext)
         } else {
-            Err(Error::UnexpectedResponse {
-                method: NostrConnectMethod::Nip04Encrypt,
-                expected: String::from("NIP-04 encrypted text"),
-                received: self.to_string(),
-            })
+            Err(unexpected_result())
         }
     }
 
@@ -602,11 +501,7 @@ impl ResponseResult {
         if let Self::Nip04Decrypt { plaintext } = self {
             Ok(plaintext)
         } else {
-            Err(Error::UnexpectedResponse {
-                method: NostrConnectMethod::Nip04Decrypt,
-                expected: String::from("NIP-04 decrypted text"),
-                received: self.to_string(),
-            })
+            Err(unexpected_result())
         }
     }
 
@@ -615,11 +510,7 @@ impl ResponseResult {
         if let Self::Nip44Encrypt { ciphertext } = self {
             Ok(ciphertext)
         } else {
-            Err(Error::UnexpectedResponse {
-                method: NostrConnectMethod::Nip44Encrypt,
-                expected: String::from("NIP-44 encrypted text"),
-                received: self.to_string(),
-            })
+            Err(unexpected_result())
         }
     }
 
@@ -628,11 +519,7 @@ impl ResponseResult {
         if let Self::Nip44Decrypt { plaintext } = self {
             Ok(plaintext)
         } else {
-            Err(Error::UnexpectedResponse {
-                method: NostrConnectMethod::Nip44Decrypt,
-                expected: String::from("NIP-44 decrypted text"),
-                received: self.to_string(),
-            })
+            Err(unexpected_result())
         }
     }
 
@@ -641,11 +528,7 @@ impl ResponseResult {
         if let Self::Pong = self {
             Ok(())
         } else {
-            Err(Error::UnexpectedResponse {
-                method: NostrConnectMethod::Ping,
-                expected: String::from("pong"),
-                received: self.to_string(),
-            })
+            Err(unexpected_result())
         }
     }
 }
@@ -745,7 +628,7 @@ impl NostrConnectMessage {
             Self::Request { method, params, .. } => {
                 NostrConnectRequest::from_message(method, params)
             }
-            _ => Err(Error::NotRequest),
+            _ => Err(not_request()),
         }
     }
 
@@ -756,12 +639,12 @@ impl NostrConnectMessage {
             Self::Response { result, error, .. } => {
                 NostrConnectResponse::parse(method, result, error)
             }
-            _ => Err(Error::NotRequest),
+            _ => Err(not_request()),
         }
     }
 }
 
-impl_json_methods!(NostrConnectMessage, Error);
+impl_json_methods!(NostrConnectMessage);
 
 /// Nostr Connect Metadata
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -822,7 +705,7 @@ impl NostrConnectMetadata {
     }
 }
 
-impl_json_methods!(NostrConnectMetadata, Error);
+impl_json_methods!(NostrConnectMetadata);
 
 #[allow(missing_docs)]
 #[deprecated(since = "0.45.0", note = "use `NostrConnectUri` instead")]
@@ -901,7 +784,7 @@ impl NostrConnectUri {
         S: AsRef<str>,
     {
         let uri: &str = uri.as_ref();
-        let uri: Url = Url::parse(uri)?;
+        let uri: Url = Url::parse(uri).map_err(|_| invalid_uri())?;
 
         match uri.scheme() {
             NOSTR_CONNECT_BUNKER_URI_SCHEME => {
@@ -931,7 +814,7 @@ impl NostrConnectUri {
                     });
                 }
 
-                Err(Error::InvalidURI)
+                Err(invalid_uri())
             }
             NOSTR_CONNECT_URI_SCHEME => {
                 if let Some(pubkey) = uri.domain() {
@@ -949,7 +832,7 @@ impl NostrConnectUri {
                             }
                             Cow::Borrowed("metadata") => {
                                 let value = value.to_string();
-                                metadata = Some(serde_json::from_str(&value)?);
+                                metadata = Some(parse_json(&value)?);
                             }
                             Cow::Borrowed("secret") => {
                                 secret = Some(value.to_string());
@@ -968,9 +851,9 @@ impl NostrConnectUri {
                     }
                 }
 
-                Err(Error::InvalidURI)
+                Err(invalid_uri())
             }
-            _ => Err(Error::InvalidURI),
+            _ => Err(invalid_uri()),
         }
     }
 
@@ -1045,8 +928,8 @@ where
         let json: String = self.message.as_json();
         let content: String = signer
             .nip44_encrypt(&self.receiver, &json)
-            .map_err(SignerError::backend)?;
-        Ok(make_event_builder(content, self.receiver).finalize(signer)?)
+            .map_err(Error::crypto)?;
+        make_event_builder(content, self.receiver).finalize(signer)
     }
 }
 
@@ -1066,10 +949,10 @@ where
             let content: String = signer
                 .nip44_encrypt_async(&self.receiver, &json)
                 .await
-                .map_err(SignerError::backend)?;
-            Ok(make_event_builder(content, self.receiver)
+                .map_err(Error::crypto)?;
+            make_event_builder(content, self.receiver)
                 .finalize_async(signer)
-                .await?)
+                .await
         })
     }
 }
@@ -1264,14 +1147,7 @@ mod test {
         assert_eq!(res, ResponseResult::Ack);
 
         let res = ResponseResult::parse(NostrConnectMethod::Ping, "ack");
-        assert_eq!(
-            res.unwrap_err(),
-            Error::UnexpectedResponse {
-                method: NostrConnectMethod::Ping,
-                expected: String::from("pong"),
-                received: String::from("ack"),
-            }
-        );
+        assert_eq!(res.unwrap_err().kind(), ErrorKind::Invalid);
 
         let res: ResponseResult = ResponseResult::parse(
             NostrConnectMethod::GetPublicKey,

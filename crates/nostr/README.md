@@ -22,7 +22,7 @@ use std::num::NonZeroU8;
 
 use nostr::prelude::*;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate new random keys
     let keys = Keys::generate();
 

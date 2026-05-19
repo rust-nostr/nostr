@@ -20,82 +20,19 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 use super::nip04;
+use super::util::{invalid_uri, unexpected_result, unsupported_method};
+use crate::error::{Error, ErrorKind};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::event::FinalizeEvent;
-#[cfg(all(feature = "std", feature = "os-rng"))]
-use crate::signer::SignerError;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{RelayUrl, Url};
-use crate::util::impl_json_methods;
+use crate::util::{impl_json_methods, parse_json_from_value};
 use crate::{Event, PublicKey, SecretKey, Timestamp};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::{EventBuilder, Keys, Kind, Tag};
 
-/// NIP47 error
-#[derive(Debug)]
-pub enum Error {
-    /// JSON error
-    Json(serde_json::Error),
-    /// NIP04 error
-    NIP04(nip04::Error),
-    /// Signer error
-    #[cfg(all(feature = "std", feature = "os-rng"))]
-    Signer(SignerError),
-    /// Error code
-    ErrorCode(NIP47Error),
-    /// Can't deserialize NIP-47 response
-    CantDeserializeResponse {
-        /// NIP-47 response
-        response: String,
-        /// Deserialization error
-        error: String,
-    },
-    /// Unsupported method
-    UnsupportedMethod(Method),
-    /// Unexpected result
-    UnexpectedResult,
-    /// Invalid URI
-    InvalidURI,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Json(e) => e.fmt(f),
-            Self::NIP04(e) => e.fmt(f),
-            #[cfg(all(feature = "std", feature = "os-rng"))]
-            Self::Signer(e) => e.fmt(f),
-            Self::ErrorCode(e) => e.fmt(f),
-            Self::CantDeserializeResponse { response, error } => write!(
-                f,
-                "Can't deserialize response: response={response}, error={error}"
-            ),
-            Self::UnsupportedMethod(name) => write!(f, "Unsupported method: {name}"),
-            Self::UnexpectedResult => f.write_str("Unexpected result"),
-            Self::InvalidURI => f.write_str("Invalid URI"),
-        }
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
-    }
-}
-
-impl From<nip04::Error> for Error {
-    fn from(e: nip04::Error) -> Self {
-        Self::NIP04(e)
-    }
-}
-
-#[cfg(all(feature = "std", feature = "os-rng"))]
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Signer(e)
-    }
+fn error_code(code: NIP47Error) -> Error {
+    Error::new(ErrorKind::Other, code.to_string())
 }
 
 /// NIP47 Response Error codes
@@ -574,45 +511,45 @@ impl Request {
 
     /// Deserialize from [`Value`]
     pub fn from_value(value: Value) -> Result<Self, Error> {
-        let template: RequestTemplate = serde_json::from_value(value)?;
+        let template: RequestTemplate = parse_json_from_value(value)?;
 
         let params = match template.method {
             Method::PayInvoice => {
-                let params: PayInvoiceRequest = serde_json::from_value(template.params)?;
+                let params: PayInvoiceRequest = parse_json_from_value(template.params)?;
                 RequestParams::PayInvoice(params)
             }
             Method::PayKeysend => {
-                let params: PayKeysendRequest = serde_json::from_value(template.params)?;
+                let params: PayKeysendRequest = parse_json_from_value(template.params)?;
                 RequestParams::PayKeysend(params)
             }
             Method::MakeInvoice => {
-                let params: MakeInvoiceRequest = serde_json::from_value(template.params)?;
+                let params: MakeInvoiceRequest = parse_json_from_value(template.params)?;
                 RequestParams::MakeInvoice(params)
             }
             Method::LookupInvoice => {
-                let params: LookupInvoiceRequest = serde_json::from_value(template.params)?;
+                let params: LookupInvoiceRequest = parse_json_from_value(template.params)?;
                 RequestParams::LookupInvoice(params)
             }
             Method::ListTransactions => {
-                let params: ListTransactionsRequest = serde_json::from_value(template.params)?;
+                let params: ListTransactionsRequest = parse_json_from_value(template.params)?;
                 RequestParams::ListTransactions(params)
             }
             Method::GetBalance => RequestParams::GetBalance,
             Method::GetInfo => RequestParams::GetInfo,
             Method::MakeHoldInvoice => {
-                let params: MakeHoldInvoiceRequest = serde_json::from_value(template.params)?;
+                let params: MakeHoldInvoiceRequest = parse_json_from_value(template.params)?;
                 RequestParams::MakeHoldInvoice(params)
             }
             Method::SettleHoldInvoice => {
-                let params: SettleHoldInvoiceRequest = serde_json::from_value(template.params)?;
+                let params: SettleHoldInvoiceRequest = parse_json_from_value(template.params)?;
                 RequestParams::SettleHoldInvoice(params)
             }
             Method::CancelHoldInvoice => {
-                let params: CancelHoldInvoiceRequest = serde_json::from_value(template.params)?;
+                let params: CancelHoldInvoiceRequest = parse_json_from_value(template.params)?;
                 RequestParams::CancelHoldInvoice(params)
             }
             Method::Unknown(name) => {
-                return Err(Error::UnsupportedMethod(Method::Unknown(name)));
+                return Err(unsupported_method(&name));
             }
         };
 
@@ -627,13 +564,13 @@ impl Request {
     pub fn to_event(self, uri: &NostrWalletConnectUri) -> Result<Event, Error> {
         let encrypted = nip04::encrypt(&uri.secret, &uri.public_key, self.as_json())?;
         let keys: Keys = Keys::new(uri.secret.clone());
-        Ok(EventBuilder::new(Kind::WalletConnectRequest, encrypted)
+        EventBuilder::new(Kind::WalletConnectRequest, encrypted)
             .tag(Tag::public_key(uri.public_key))
-            .finalize(&keys)?)
+            .finalize(&keys)
     }
 }
 
-impl_json_methods!(Request, Error);
+impl_json_methods!(Request);
 
 impl<'de> Deserialize<'de> for Request {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -920,64 +857,61 @@ impl Response {
     #[inline]
     pub fn from_event(uri: &NostrWalletConnectUri, event: &Event) -> Result<Self, Error> {
         let decrypt_res: String = nip04::decrypt(&uri.secret, &event.pubkey, &event.content)?;
-        Self::from_json(&decrypt_res).map_err(|e| Error::CantDeserializeResponse {
-            response: decrypt_res,
-            error: e.to_string(),
-        })
+        Self::from_json(&decrypt_res)
     }
 
     /// Deserialize from JSON string
     pub fn from_value(value: Value) -> Result<Self, Error> {
-        let template: ResponseTemplate = serde_json::from_value(value)?;
+        let template: ResponseTemplate = parse_json_from_value(value)?;
 
         if let Some(result) = template.result {
             let result = match template.result_type {
                 Method::PayInvoice => {
-                    let result: PayInvoiceResponse = serde_json::from_value(result)?;
+                    let result: PayInvoiceResponse = parse_json_from_value(result)?;
                     ResponseResult::PayInvoice(result)
                 }
                 Method::PayKeysend => {
-                    let result: PayKeysendResponse = serde_json::from_value(result)?;
+                    let result: PayKeysendResponse = parse_json_from_value(result)?;
                     ResponseResult::PayKeysend(result)
                 }
                 Method::MakeInvoice => {
-                    let result: MakeInvoiceResponse = serde_json::from_value(result)?;
+                    let result: MakeInvoiceResponse = parse_json_from_value(result)?;
                     ResponseResult::MakeInvoice(result)
                 }
                 Method::LookupInvoice => {
-                    let result: LookupInvoiceResponse = serde_json::from_value(result)?;
+                    let result: LookupInvoiceResponse = parse_json_from_value(result)?;
                     ResponseResult::LookupInvoice(result)
                 }
                 Method::ListTransactions => {
                     let transactions: Value = result
                         .get("transactions")
                         .cloned()
-                        .ok_or(Error::UnexpectedResult)?;
-                    let result: Vec<LookupInvoiceResponse> = serde_json::from_value(transactions)?;
+                        .ok_or(unexpected_result())?;
+                    let result: Vec<LookupInvoiceResponse> = parse_json_from_value(transactions)?;
                     ResponseResult::ListTransactions(result)
                 }
                 Method::GetBalance => {
-                    let result: GetBalanceResponse = serde_json::from_value(result)?;
+                    let result: GetBalanceResponse = parse_json_from_value(result)?;
                     ResponseResult::GetBalance(result)
                 }
                 Method::GetInfo => {
-                    let result: GetInfoResponse = serde_json::from_value(result)?;
+                    let result: GetInfoResponse = parse_json_from_value(result)?;
                     ResponseResult::GetInfo(result)
                 }
                 Method::MakeHoldInvoice => {
-                    let result: MakeHoldInvoiceResponse = serde_json::from_value(result)?;
+                    let result: MakeHoldInvoiceResponse = parse_json_from_value(result)?;
                     ResponseResult::MakeHoldInvoice(result)
                 }
                 Method::CancelHoldInvoice => {
-                    let result: CancelHoldInvoiceResponse = serde_json::from_value(result)?;
+                    let result: CancelHoldInvoiceResponse = parse_json_from_value(result)?;
                     ResponseResult::CancelHoldInvoice(result)
                 }
                 Method::SettleHoldInvoice => {
-                    let result: SettleHoldInvoiceResponse = serde_json::from_value(result)?;
+                    let result: SettleHoldInvoiceResponse = parse_json_from_value(result)?;
                     ResponseResult::SettleHoldInvoice(result)
                 }
                 Method::Unknown(name) => {
-                    return Err(Error::UnsupportedMethod(Method::Unknown(name)));
+                    return Err(unsupported_method(&name));
                 }
             };
 
@@ -998,96 +932,96 @@ impl Response {
     /// Covert [Response] to [PayInvoiceResponse]
     pub fn to_pay_invoice(self) -> Result<PayInvoiceResponse, Error> {
         if let Some(e) = self.error {
-            return Err(Error::ErrorCode(e));
+            return Err(error_code(e));
         }
 
         if let Some(ResponseResult::PayInvoice(result)) = self.result {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 
     /// Covert [Response] to [PayKeysendResponse]
     pub fn to_pay_keysend(self) -> Result<PayKeysendResponse, Error> {
         if let Some(e) = self.error {
-            return Err(Error::ErrorCode(e));
+            return Err(error_code(e));
         }
 
         if let Some(ResponseResult::PayKeysend(result)) = self.result {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 
     /// Covert [Response] to [MakeInvoiceResponse]
     pub fn to_make_invoice(self) -> Result<MakeInvoiceResponse, Error> {
         if let Some(e) = self.error {
-            return Err(Error::ErrorCode(e));
+            return Err(error_code(e));
         }
 
         if let Some(ResponseResult::MakeInvoice(result)) = self.result {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 
     /// Covert [Response] to [LookupInvoiceResponse]
     pub fn to_lookup_invoice(self) -> Result<LookupInvoiceResponse, Error> {
         if let Some(e) = self.error {
-            return Err(Error::ErrorCode(e));
+            return Err(error_code(e));
         }
 
         if let Some(ResponseResult::LookupInvoice(result)) = self.result {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 
     /// Covert [Response] to list of [LookupInvoiceResponse]
     pub fn to_list_transactions(self) -> Result<Vec<LookupInvoiceResponse>, Error> {
         if let Some(e) = self.error {
-            return Err(Error::ErrorCode(e));
+            return Err(error_code(e));
         }
 
         if let Some(ResponseResult::ListTransactions(result)) = self.result {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 
     /// Covert [Response] to [GetBalanceResponse]
     pub fn to_get_balance(self) -> Result<GetBalanceResponse, Error> {
         if let Some(e) = self.error {
-            return Err(Error::ErrorCode(e));
+            return Err(error_code(e));
         }
 
         if let Some(ResponseResult::GetBalance(result)) = self.result {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 
     /// Covert [Response] to [GetInfoResponse]
     pub fn to_get_info(self) -> Result<GetInfoResponse, Error> {
         if let Some(e) = self.error {
-            return Err(Error::ErrorCode(e));
+            return Err(error_code(e));
         }
 
         if let Some(ResponseResult::GetInfo(result)) = self.result {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 }
 
-impl_json_methods!(Response, Error);
+impl_json_methods!(Response);
 
 impl<'de> Deserialize<'de> for Response {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -1149,14 +1083,14 @@ impl NostrWalletConnectUri {
     where
         S: AsRef<str>,
     {
-        let url: Url = Url::parse(uri.as_ref()).map_err(|_| Error::InvalidURI)?;
+        let url: Url = Url::parse(uri.as_ref()).map_err(|_| invalid_uri())?;
 
         if url.scheme() != NOSTR_WALLET_CONNECT_URI_SCHEME {
-            return Err(Error::InvalidURI);
+            return Err(invalid_uri());
         }
 
         if let Some(pubkey) = url.domain() {
-            let public_key = PublicKey::from_hex(pubkey).map_err(|_| Error::InvalidURI)?;
+            let public_key = PublicKey::from_hex(pubkey).map_err(|_| invalid_uri())?;
 
             let mut relays: Vec<RelayUrl> = Vec::new();
             let mut secret: Option<SecretKey> = None;
@@ -1190,7 +1124,7 @@ impl NostrWalletConnectUri {
             }
         }
 
-        Err(Error::InvalidURI)
+        Err(invalid_uri())
     }
 }
 
@@ -1278,7 +1212,7 @@ impl FromStr for NotificationType {
             "payment_received" => Ok(NotificationType::PaymentReceived),
             "payment_sent" => Ok(NotificationType::PaymentSent),
             "hold_invoice_accepted" => Ok(NotificationType::HoldInvoiceAccepted),
-            _ => Err(Error::InvalidURI),
+            _ => Err(invalid_uri()),
         }
     }
 }
@@ -1311,20 +1245,20 @@ impl Notification {
 
     /// Deserialize from JSON string
     pub fn from_value(value: Value) -> Result<Self, Error> {
-        let template: NotificationTemplate = serde_json::from_value(value)?;
+        let template: NotificationTemplate = parse_json_from_value(value)?;
 
         let result = template.notification;
         let result = match template.notification_type {
             NotificationType::PaymentReceived => {
-                let result: PaymentNotification = serde_json::from_value(result)?;
+                let result: PaymentNotification = parse_json_from_value(result)?;
                 NotificationResult::PaymentReceived(result)
             }
             NotificationType::PaymentSent => {
-                let result: PaymentNotification = serde_json::from_value(result)?;
+                let result: PaymentNotification = parse_json_from_value(result)?;
                 NotificationResult::PaymentSent(result)
             }
             NotificationType::HoldInvoiceAccepted => {
-                let result: HoldInvoiceAcceptedNotification = serde_json::from_value(result)?;
+                let result: HoldInvoiceAcceptedNotification = parse_json_from_value(result)?;
                 NotificationResult::HoldInvoiceAccepted(result)
             }
         };
@@ -1344,7 +1278,7 @@ impl Notification {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 
     /// Convert [Notification] to [HoldInvoiceAcceptedNotification]
@@ -1355,11 +1289,11 @@ impl Notification {
             return Ok(result);
         }
 
-        Err(Error::UnexpectedResult)
+        Err(unexpected_result())
     }
 }
 
-impl_json_methods!(Notification, Error);
+impl_json_methods!(Notification);
 
 impl<'de> Deserialize<'de> for Notification {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

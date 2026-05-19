@@ -10,6 +10,7 @@ use alloc::vec::Vec;
 use core::str::FromStr;
 
 use super::{Error, Tag};
+use crate::error::ErrorKind;
 use crate::filter::SingleLetterTag;
 
 /// Cow Tag
@@ -25,7 +26,7 @@ impl<'a> CowTag<'a> {
     pub fn parse(tag: Vec<Cow<'a, str>>) -> Result<Self, Error> {
         // Check if it's empty
         if tag.is_empty() {
-            return Err(Error::EmptyTag);
+            return Err(Error::with_static_message(ErrorKind::Invalid, "empty tag"));
         }
 
         Ok(Self { buf: tag })

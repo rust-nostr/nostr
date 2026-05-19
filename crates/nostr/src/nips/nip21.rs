@@ -2,15 +2,15 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP21: `nostr:` URI scheme
+//! NIP-21: `nostr:` URI scheme
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/21.md>
 
 use alloc::string::String;
-use core::convert::Infallible;
-use core::fmt;
 
-use super::nip19::{self, FromBech32, Nip19, Nip19Coordinate, Nip19Event, Nip19Profile, ToBech32};
+use super::nip19::{FromBech32, Nip19, Nip19Coordinate, Nip19Event, Nip19Profile, ToBech32};
+use crate::error::{Error, ErrorKind};
+use crate::nips::util::invalid_uri;
 use crate::{EventId, PublicKey};
 
 /// URI scheme
@@ -18,65 +18,22 @@ pub const SCHEME: &str = "nostr";
 /// URI scheme with colon
 pub(crate) const SCHEME_WITH_COLON: &str = "nostr:";
 
-/// Unsupported Bech32 Type
-#[derive(Debug, PartialEq, Eq)]
-pub enum UnsupportedVariant {
-    /// Secret Key
-    SecretKey,
-}
-
-impl fmt::Display for UnsupportedVariant {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::SecretKey => f.write_str("secret key"),
-        }
-    }
-}
-
-/// NIP21 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// NIP19 error
-    NIP19(nip19::Error),
-    /// Unsupported bech32 type
-    UnsupportedVariant(UnsupportedVariant),
-    /// Invalid nostr URI
-    InvalidURI,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NIP19(e) => e.fmt(f),
-            Self::UnsupportedVariant(t) => write!(f, "Unsupported variant: {t}"),
-            Self::InvalidURI => f.write_str("Invalid nostr URI"),
-        }
-    }
-}
-
-impl From<nip19::Error> for Error {
-    fn from(e: nip19::Error) -> Self {
-        Self::NIP19(e)
-    }
-}
-
-impl From<Infallible> for Error {
-    fn from(_: Infallible) -> Self {
-        unreachable!()
-    }
+fn unsupported_variant(variant: &'static str) -> Error {
+    Error::new(
+        ErrorKind::Unsupported,
+        format!("unsupported variant: {variant}"),
+    )
 }
 
 fn split_uri(uri: &str) -> Result<&str, Error> {
     let mut splitted = uri.split(':');
-    let prefix: &str = splitted.next().ok_or(Error::InvalidURI)?;
+    let prefix: &str = splitted.next().ok_or(invalid_uri())?;
 
     if prefix != SCHEME {
-        return Err(Error::InvalidURI);
+        return Err(invalid_uri());
     }
 
-    splitted.next().ok_or(Error::InvalidURI)
+    splitted.next().ok_or(invalid_uri())
 }
 
 /// To nostr URI trait
@@ -149,11 +106,9 @@ impl TryFrom<Nip19> for Nip21 {
 
     fn try_from(value: Nip19) -> Result<Self, Self::Error> {
         match value {
-            Nip19::Secret(..) => Err(Error::UnsupportedVariant(UnsupportedVariant::SecretKey)),
+            Nip19::Secret(..) => Err(unsupported_variant("secret key")),
             #[cfg(feature = "nip49")]
-            Nip19::EncryptedSecret(..) => {
-                Err(Error::UnsupportedVariant(UnsupportedVariant::SecretKey))
-            }
+            Nip19::EncryptedSecret(..) => Err(unsupported_variant("secret key")),
             Nip19::Pubkey(val) => Ok(Self::Pubkey(val)),
             Nip19::Profile(val) => Ok(Self::Profile(val)),
             Nip19::EventId(val) => Ok(Self::EventId(val)),
@@ -266,8 +221,9 @@ mod tests {
     fn test_unsupported_from_nostr_uri() {
         assert_eq!(
             Nip21::parse("nostr:nsec1j4c6269y9w0q2er2xjw8sv2ehyrtfxq3jwgdlxj6qfn8z4gjsq5qfvfk99")
-                .unwrap_err(),
-            Error::UnsupportedVariant(UnsupportedVariant::SecretKey)
+                .unwrap_err()
+                .kind(),
+            ErrorKind::Unsupported,
         );
     }
 }

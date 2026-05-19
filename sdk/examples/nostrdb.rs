@@ -6,7 +6,7 @@ use nostr_ndb::NdbDatabase;
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let database = NdbDatabase::open("./db/ndb")?;

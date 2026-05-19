@@ -8,33 +8,10 @@
 
 use alloc::string::String;
 use alloc::vec;
-use core::fmt;
 
-use super::util::take_string;
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-
-/// NIP-32 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
+use super::util::{missing_tag_kind, take_string, unknown_tag};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 
 /// Standardized NIP-32 tags
 ///
@@ -62,7 +39,7 @@ impl TagCodec for Nip32Tag {
     {
         let mut iter = tag.into_iter();
 
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             "L" => Ok(Self::LabelNamespace(take_string(
@@ -75,7 +52,7 @@ impl TagCodec for Nip32Tag {
 
                 Ok(Self::Label { value, namespace })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

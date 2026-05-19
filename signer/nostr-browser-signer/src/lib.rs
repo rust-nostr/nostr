@@ -20,7 +20,6 @@ use std::str::FromStr;
 
 use js_sys::{Array, Function, JsString, Object, Promise, Reflect};
 use nostr::prelude::*;
-use nostr::secp256k1;
 use nostr::secp256k1::schnorr::Signature;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
@@ -77,14 +76,10 @@ impl From<JsValue> for ExtensionError {
 /// NIP-07 error
 #[derive(Debug)]
 pub enum Error {
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// Browser/Extension-related errors
     Extension(ExtensionError),
-    /// Secp256k1 error
-    Secp256k1(secp256k1::Error),
-    /// Keys error
-    Keys(key::Error),
-    /// Unsigned event error
-    Event(event::Error),
 }
 
 impl std::error::Error for Error {}
@@ -92,11 +87,15 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Protocol(e) => write!(f, "{e}"),
             Self::Extension(e) => write!(f, "{e}"),
-            Self::Secp256k1(e) => write!(f, "{e}"),
-            Self::Keys(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
         }
+    }
+}
+
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 
@@ -109,24 +108,6 @@ impl From<ExtensionError> for Error {
 impl From<JsValue> for Error {
     fn from(e: JsValue) -> Self {
         Self::Extension(ExtensionError::from(e))
-    }
-}
-
-impl From<secp256k1::Error> for Error {
-    fn from(e: secp256k1::Error) -> Self {
-        Self::Secp256k1(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
     }
 }
 
@@ -262,7 +243,12 @@ impl BrowserSigner {
             .get_value_by_key(&event_obj, "sig")?
             .as_string()
             .ok_or(ExtensionError::TypeMismatch)?;
-        let sig: Signature = Signature::from_str(&sig)?;
+        let sig: Signature = Signature::from_str(&sig).map_err(|e| {
+            Error::Protocol(nostr::error::Error::new(
+                nostr::error::ErrorKind::Malformed,
+                e,
+            ))
+        })?;
 
         // Add signature
         Ok(unsigned.add_signature(sig)?)

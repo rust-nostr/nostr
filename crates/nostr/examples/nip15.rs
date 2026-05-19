@@ -4,7 +4,7 @@
 
 use nostr::prelude::*;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Error> {
     let keys = Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")?;
 
     let shipping = ShippingMethod::new("123", 5.50).name("DHL");

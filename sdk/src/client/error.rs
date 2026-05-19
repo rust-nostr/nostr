@@ -4,7 +4,6 @@
 
 use std::fmt;
 
-use nostr::prelude::*;
 use nostr::serde_json;
 use nostr_database::prelude::*;
 use nostr_gossip::error::GossipError;
@@ -14,16 +13,14 @@ use crate::{pool, relay};
 /// Client error
 #[derive(Debug)]
 pub enum Error {
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// Relay error
     Relay(relay::Error),
     /// Relay Pool error
     RelayPool(pool::Error),
-    /// Relay URL error
-    RelayUrl(url::Error),
     /// Database error
     Database(DatabaseError),
-    /// Signer error
-    Signer(SignerError),
     /// Gossip error
     Gossip(GossipError),
     /// Json error
@@ -43,11 +40,10 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Protocol(e) => e.fmt(f),
             Self::Relay(e) => e.fmt(f),
             Self::RelayPool(e) => e.fmt(f),
-            Self::RelayUrl(e) => e.fmt(f),
             Self::Database(e) => e.fmt(f),
-            Self::Signer(e) => e.fmt(f),
             Self::Gossip(e) => e.fmt(f),
             Self::Json(e) => e.fmt(f),
             Self::SignerNotConfigured => f.write_str("signer not configured"),
@@ -57,6 +53,12 @@ impl fmt::Display for Error {
             }
             Self::PrivateMsgRelaysNotFound => f.write_str("Private message relays not found. The user is not ready to receive private messages."),
         }
+    }
+}
+
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 
@@ -72,21 +74,9 @@ impl From<pool::Error> for Error {
     }
 }
 
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::RelayUrl(e)
-    }
-}
-
 impl From<DatabaseError> for Error {
     fn from(e: DatabaseError) -> Self {
         Self::Database(e)
-    }
-}
-
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Signer(e)
     }
 }
 

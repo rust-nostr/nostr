@@ -7,7 +7,7 @@ use nostr_sdk::prelude::*;
 const EXAMPLE_SNIPPET: &str = include_str!("code_snippet.rs");
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let client = Client::default();

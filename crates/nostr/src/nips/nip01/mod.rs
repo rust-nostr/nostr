@@ -9,7 +9,6 @@
 use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use core::fmt;
-use core::num::ParseIntError;
 use core::str::FromStr;
 
 use serde::de::{Deserializer, MapAccess, Visitor};
@@ -22,71 +21,15 @@ mod tags;
 pub use self::tags::*;
 use super::nip19::{self, FromBech32, Nip19Coordinate, ToBech32};
 use super::nip21::{FromNostrUri, ToNostrUri};
-use crate::event::{EventBuilderTemplate, TagCodecError};
-use crate::types::url::{self, Url};
+use crate::error::{Error, ErrorKind};
+use crate::event::{EventBuilderTemplate, Kind, Tag};
+use crate::types::url::Url;
 use crate::util::impl_json_methods;
-use crate::{EventBuilder, Filter, Kind, PublicKey, Tag, event, key};
+use crate::{EventBuilder, Filter, PublicKey};
 
-/// NIP-01 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Keys error
-    Keys(key::Error),
-    /// Event error
-    Event(event::Error),
-    /// Url error
-    Url(url::Error),
-    /// Parse Int error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Invalid coordinate
-    InvalidCoordinate,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Keys(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidCoordinate => f.write_str("Invalid coordinate"),
-        }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
+#[inline]
+fn invalid_coordinate() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "invalid coordinate")
 }
 
 /// Coordinate for event (`a` tag)
@@ -137,7 +80,7 @@ impl Coordinate {
             return Ok(coordinate);
         }
 
-        Err(Error::InvalidCoordinate)
+        Err(invalid_coordinate())
     }
 
     /// Try to parse from `<kind>:<pubkey>:[<d-tag>]` format
@@ -149,7 +92,7 @@ impl Coordinate {
                 public_key: PublicKey::from_hex(public_key_str)?,
                 identifier: identifier.to_string(),
             }),
-            _ => Err(Error::InvalidCoordinate),
+            _ => Err(invalid_coordinate()),
         }
     }
 
@@ -174,7 +117,7 @@ impl Coordinate {
     ///
     /// # Errors
     ///
-    /// Returns [`Error::InvalidCoordinate`] if:
+    /// Returns an error if:
     /// - the [`Kind`] is `replaceable` and the identifier is not empty
     /// - the [`Kind`] is `addressable` and the identifier is empty
     #[inline]
@@ -197,15 +140,15 @@ fn verify_coordinate(kind: &Kind, identifier: &str) -> Result<(), Error> {
     let is_addressable: bool = kind.is_addressable();
 
     if !is_replaceable && !is_addressable {
-        return Err(Error::InvalidCoordinate);
+        return Err(invalid_coordinate());
     }
 
     if is_replaceable && !identifier.is_empty() {
-        return Err(Error::InvalidCoordinate);
+        return Err(invalid_coordinate());
     }
 
     if is_addressable && identifier.is_empty() {
-        return Err(Error::InvalidCoordinate);
+        return Err(invalid_coordinate());
     }
 
     Ok(())
@@ -254,7 +197,7 @@ impl FromStr for Coordinate {
 }
 
 impl ToBech32 for Coordinate {
-    type Err = nip19::Error;
+    type Err = Error;
 
     #[inline]
     fn to_bech32(&self) -> Result<String, Self::Err> {
@@ -263,7 +206,7 @@ impl ToBech32 for Coordinate {
 }
 
 impl FromBech32 for Coordinate {
-    type Err = nip19::Error;
+    type Err = Error;
 
     fn from_bech32(addr: &str) -> Result<Self, Self::Err> {
         let coordinate: Nip19Coordinate = Nip19Coordinate::from_bech32(addr)?;
@@ -311,7 +254,7 @@ impl fmt::Display for CoordinateBorrow<'_> {
 }
 
 impl ToBech32 for CoordinateBorrow<'_> {
-    type Err = nip19::Error;
+    type Err = Error;
 
     #[inline]
     fn to_bech32(&self) -> Result<String, Self::Err> {
@@ -502,7 +445,7 @@ impl Metadata {
     }
 }
 
-impl_json_methods!(Metadata, serde_json::Error);
+impl_json_methods!(Metadata);
 
 fn serialize_custom_fields<S>(
     custom_fields: &BTreeMap<String, Value>,

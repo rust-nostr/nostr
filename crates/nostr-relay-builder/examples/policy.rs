@@ -54,7 +54,7 @@ impl QueryPolicy for RejectAuthorLimit {
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let accept_profile_data = AcceptKinds {

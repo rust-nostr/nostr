@@ -12,8 +12,11 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use super::util::{take_and_parse_from_str, take_and_parse_optional_from_str};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use super::util::{
+    missing_tag_kind, take_and_parse_from_str, take_and_parse_optional_from_str, unknown_tag,
+};
+use crate::error::{Error, ErrorKind};
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 use crate::types::Url;
 
 const HASHTAG: &str = "#";
@@ -26,44 +29,6 @@ const MOVIE: &str = "isan:";
 const PAPER: &str = "doi:";
 const BLOCKCHAIN_TX: &str = ":tx:";
 const BLOCKCHAIN_ADDR: &str = ":address:";
-
-/// NIP73 error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// URL error
-    Url(url::ParseError),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Invalid external content
-    InvalidExternalContent,
-    /// Invalid NIP-73 kind
-    InvalidNip73Kind,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidExternalContent => f.write_str("invalid external content ID"),
-            Self::InvalidNip73Kind => f.write_str("Invalid NIP-73 kind"),
-        }
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// External Content ID
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -225,7 +190,10 @@ impl FromStr for Nip73Kind {
                     blockchain_addr.trim().replace(":address", ""),
                 ))
             }
-            _ => Err(Error::InvalidNip73Kind),
+            _ => Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid NIP-73 kind",
+            )),
         }
     }
 }
@@ -288,7 +256,10 @@ impl FromStr for ExternalContentId {
             return Ok(Self::Url(url));
         }
 
-        Err(Error::InvalidExternalContent)
+        Err(Error::with_static_message(
+            ErrorKind::Invalid,
+            "invalid external content",
+        ))
     }
 }
 
@@ -347,7 +318,7 @@ impl TagCodec for Nip73Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             "i" => {
@@ -355,10 +326,10 @@ impl TagCodec for Nip73Tag {
                 Ok(Self::ExternalContent { content, hint })
             }
             "k" => {
-                let kind: Nip73Kind = take_and_parse_from_str::<_, _, _, Error>(&mut iter, "kind")?;
+                let kind: Nip73Kind = take_and_parse_from_str(&mut iter, "kind")?;
                 Ok(Self::Kind(kind))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -377,9 +348,9 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let content: ExternalContentId =
-        take_and_parse_from_str::<_, _, _, Error>(&mut iter, "content")?;
-    let hint: Option<Url> = take_and_parse_optional_from_str(&mut iter)?;
+    let content: ExternalContentId = take_and_parse_from_str(&mut iter, "content")?;
+    let hint: Option<Url> =
+        take_and_parse_optional_from_str(&mut iter).map_err(Error::malformed)?;
 
     Ok((content, hint))
 }
@@ -560,8 +531,8 @@ mod tests {
     #[test]
     fn test_invalid_content() {
         assert_eq!(
-            ExternalContentId::from_str("hello"),
-            Err(Error::InvalidExternalContent)
+            ExternalContentId::from_str("hello").unwrap_err().kind(),
+            ErrorKind::Invalid
         );
     }
 

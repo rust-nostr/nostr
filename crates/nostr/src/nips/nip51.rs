@@ -7,70 +7,22 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::fmt;
 
 use super::nip01::Coordinate;
 use super::nip30::Nip30Tag;
-use super::util::{take_event_id, take_public_key, take_relay_url, take_string};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::types::url::{self, RelayUrl, Url};
-use crate::{EventId, PublicKey, event, key};
+use super::util::{
+    missing_tag_kind, take_event_id, take_public_key, take_relay_url, take_string, unknown_tag,
+};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::types::url::{RelayUrl, Url};
+use crate::{EventId, PublicKey};
 
 const WORD: &str = "word";
 const PUBLIC_KEY: &str = "p";
 const HASHTAG: &str = "t";
 const EVENT: &str = "e";
 const RELAY: &str = "relay";
-
-/// NIP-51 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Event error
-    Event(event::Error),
-    /// Key error
-    Key(key::Error),
-    /// Url error
-    Url(url::Error),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Event(e) => e.fmt(f),
-            Self::Key(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Key(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Standardized NIP-51 tags
 ///
@@ -98,11 +50,11 @@ impl TagCodec for Nip51Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             PUBLIC_KEY => {
-                let public_key: PublicKey = take_public_key::<_, _, Error>(&mut iter)?;
+                let public_key: PublicKey = take_public_key(&mut iter)?;
                 Ok(Self::PublicKey(public_key))
             }
             HASHTAG => {
@@ -110,15 +62,15 @@ impl TagCodec for Nip51Tag {
                 Ok(Self::Hashtag(hashtag.to_lowercase()))
             }
             EVENT => {
-                let event_id: EventId = take_event_id::<_, _, Error>(&mut iter)?;
+                let event_id: EventId = take_event_id(&mut iter)?;
                 Ok(Self::Event(event_id))
             }
             RELAY => {
-                let relay_url: RelayUrl = take_relay_url::<_, _, Error>(&mut iter)?;
+                let relay_url: RelayUrl = take_relay_url(&mut iter)?;
                 Ok(Self::Relay(relay_url))
             }
             WORD => Ok(Self::Word(take_string(&mut iter, "word")?)),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

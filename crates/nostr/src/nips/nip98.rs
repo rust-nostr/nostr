@@ -9,6 +9,7 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/98.md>
 
+use alloc::format;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
@@ -18,25 +19,18 @@ use core::str::FromStr;
 use base64::engine::{Engine, general_purpose};
 #[cfg(feature = "std")]
 use hashes::Hash;
-use hashes::hex::HexToArrayError;
 use hashes::sha256::Hash as Sha256Hash;
 
-use super::util::take_and_parse_from_str;
+use super::util::{missing_tag_kind, take_and_parse_from_str, unknown_tag};
 use crate::Url;
-#[cfg(all(feature = "std", feature = "rand"))]
-use crate::event::AsyncSignEvent;
-#[cfg(all(feature = "std", feature = "rand"))]
-use crate::event::EventBuilder;
-#[cfg(all(feature = "std", feature = "rand"))]
-use crate::event::FinalizeEventAsync;
+use crate::error::{Error, ErrorKind};
 #[cfg(feature = "std")]
-use crate::event::{self, Event};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::Event;
+#[cfg(all(feature = "std", feature = "rand"))]
+use crate::event::{AsyncSignEvent, EventBuilder, FinalizeEventAsync};
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
 #[cfg(all(feature = "std", feature = "rand"))]
 use crate::key::AsyncGetPublicKey;
-#[cfg(feature = "std")]
-use crate::signer::SignerError;
-use crate::types::url;
 #[cfg(feature = "std")]
 use crate::{Kind, PublicKey, Timestamp};
 
@@ -45,6 +39,40 @@ const AUTH_HEADER_PREFIX: &str = "Nostr";
 const ABSOLUTE_URL: &str = "u";
 const METHOD: &str = "method";
 const PAYLOAD: &str = "payload";
+
+#[inline]
+fn unknown_method() -> Error {
+    Error::with_static_message(ErrorKind::Unsupported, "unknown method")
+}
+
+#[inline]
+fn missing_tag(tag: RequiredTags) -> Error {
+    Error::new(ErrorKind::Missing, format!("missing tag: {tag}"))
+}
+
+#[inline]
+#[cfg(feature = "std")]
+fn authorization_header_missing() -> Error {
+    Error::with_static_message(ErrorKind::Missing, "authorization header missing")
+}
+
+#[inline]
+#[cfg(feature = "std")]
+fn malformed_authorization_header() -> Error {
+    Error::with_static_message(ErrorKind::Malformed, "malformed authorization header")
+}
+
+#[inline]
+#[cfg(feature = "std")]
+fn wrong_auth_header_kind() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "wrong auth header kind")
+}
+
+#[inline]
+#[cfg(feature = "std")]
+fn payload_hash_mismatch() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "payload hash mismatch")
+}
 
 /// [`HttpData`] required tags
 #[derive(Debug, PartialEq, Eq)]
@@ -64,149 +92,6 @@ impl fmt::Display for RequiredTags {
             Self::Method => f.write_str("method"),
             Self::Payload => f.write_str("payload"),
         }
-    }
-}
-
-/// NIP98 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Base64 error
-    #[cfg(feature = "std")]
-    Base64(base64::DecodeError),
-    /// Event error
-    #[cfg(feature = "std")]
-    Event(event::Error),
-    /// Event builder error
-    #[cfg(feature = "std")]
-    Signer(SignerError),
-    /// URL parse error
-    Url(url::ParseError),
-    /// Hex decoding error
-    Hex(HexToArrayError),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Tag missing when parsing
-    MissingTag(RequiredTags),
-    /// Invalid HTTP Method
-    UnknownMethod,
-    /// Nostr authorization header missing
-    #[cfg(feature = "std")]
-    AuthorizationHeaderMissing,
-    /// Malformed authorization header
-    #[cfg(feature = "std")]
-    MalformedAuthorizationHeader,
-    /// Unexpected authorization header kind
-    #[cfg(feature = "std")]
-    WrongAuthHeaderKind,
-    /// Authorization doesn't match request
-    #[cfg(feature = "std")]
-    AuthorizationNotMatchRequest {
-        /// The authorized url
-        authorized_url: Box<Url>,
-        /// The authorized url
-        authorized_method: HttpMethod,
-        /// The request url
-        request_url: Box<Url>,
-        /// The request url
-        request_method: HttpMethod,
-    },
-    /// Authorization is too old
-    #[cfg(feature = "std")]
-    AuthorizationTooOld {
-        /// Current timestamp
-        current: Timestamp,
-        /// Auth event created at
-        created_at: Timestamp,
-    },
-    /// Payload hash doesn't match the body hash
-    #[cfg(feature = "std")]
-    PayloadHashMismatch,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            #[cfg(feature = "std")]
-            Self::Base64(e) => e.fmt(f),
-            #[cfg(feature = "std")]
-            Self::Event(e) => e.fmt(f),
-            #[cfg(feature = "std")]
-            Self::Signer(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Hex(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::MissingTag(tag) => write!(f, "missing '{tag}' tag"),
-            Self::UnknownMethod => f.write_str("Unknown HTTP method"),
-            #[cfg(feature = "std")]
-            Self::AuthorizationHeaderMissing => f.write_str("nostr authorization header missing"),
-            #[cfg(feature = "std")]
-            Self::MalformedAuthorizationHeader => {
-                f.write_str("malformed nostr authorization header")
-            }
-            #[cfg(feature = "std")]
-            Self::WrongAuthHeaderKind => f.write_str("wrong nostr authorization header kind"),
-            #[cfg(feature = "std")]
-            Self::AuthorizationNotMatchRequest {
-                authorized_url,
-                authorized_method,
-                request_url,
-                request_method,
-            } => write!(
-                f,
-                "authorization doesn't match request: authorized_url={authorized_url}, authorized_method={authorized_method}, request_url={request_url}, request_method={request_method}"
-            ),
-            #[cfg(feature = "std")]
-            Self::AuthorizationTooOld {
-                current,
-                created_at,
-            } => write!(
-                f,
-                "authorization event is too old: current_time={current}, created_at={created_at}"
-            ),
-            #[cfg(feature = "std")]
-            Self::PayloadHashMismatch => f.write_str("payload hash doesn't match the body hash"),
-        }
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<base64::DecodeError> for Error {
-    fn from(e: base64::DecodeError) -> Self {
-        Self::Base64(e)
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-#[cfg(feature = "std")]
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Signer(e)
-    }
-}
-
-impl From<HexToArrayError> for Error {
-    fn from(e: HexToArrayError) -> Self {
-        Self::Hex(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
     }
 }
 
@@ -252,7 +137,7 @@ impl FromStr for HttpMethod {
             "POST" => Ok(Self::POST),
             "PUT" => Ok(Self::PUT),
             "PATCH" => Ok(Self::PATCH),
-            _ => Err(Error::UnknownMethod),
+            _ => Err(unknown_method()),
         }
     }
 }
@@ -290,25 +175,22 @@ impl TagCodec for Nip98Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             ABSOLUTE_URL => {
-                let url: Url =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "absolute URL")?;
+                let url: Url = take_and_parse_from_str(&mut iter, "absolute URL")?;
                 Ok(Self::AbsoluteURL(url))
             }
             METHOD => {
-                let method: HttpMethod =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "method")?;
+                let method: HttpMethod = take_and_parse_from_str(&mut iter, "method")?;
                 Ok(Self::Method(method))
             }
             PAYLOAD => {
-                let payload: Sha256Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "payload")?;
+                let payload: Sha256Hash = take_and_parse_from_str(&mut iter, "payload")?;
                 Ok(Self::Payload(payload))
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -393,8 +275,8 @@ impl TryFrom<Vec<Tag>> for HttpData {
         }
 
         Ok(Self {
-            url: url.ok_or(Error::MissingTag(RequiredTags::AbsoluteURL))?,
-            method: method.ok_or(Error::MissingTag(RequiredTags::Method))?,
+            url: url.ok_or(missing_tag(RequiredTags::AbsoluteURL))?,
+            method: method.ok_or(missing_tag(RequiredTags::Method))?,
             payload,
         })
     }
@@ -424,24 +306,26 @@ pub fn verify_auth_header(
     // Original code at https://github.com/damus-io/notepush/blob/63c5f7e7236f7bfe09f665b5fb4a03b412284d13/src/nip98_auth.rs
 
     if auth_header.is_empty() {
-        return Err(Error::AuthorizationHeaderMissing);
+        return Err(authorization_header_missing());
     }
 
     let (prefix, base64_encoded_event): (&str, &str) = auth_header
         .split_once(' ')
-        .ok_or(Error::MalformedAuthorizationHeader)?;
+        .ok_or(malformed_authorization_header())?;
 
     if prefix != AUTH_HEADER_PREFIX || base64_encoded_event.is_empty() {
-        return Err(Error::MalformedAuthorizationHeader);
+        return Err(malformed_authorization_header());
     }
 
     // Decode event
-    let decoded_event_json: Vec<u8> = general_purpose::STANDARD.decode(base64_encoded_event)?;
+    let decoded_event_json: Vec<u8> = general_purpose::STANDARD
+        .decode(base64_encoded_event)
+        .map_err(Error::malformed)?;
     let event: Event = Event::from_json(decoded_event_json)?;
 
     // Check event kind
     if event.kind != Kind::HttpAuth {
-        return Err(Error::WrongAuthHeaderKind);
+        return Err(wrong_auth_header_kind());
     }
 
     let http_data = HttpData::try_from(event.tags.iter().cloned().collect::<Vec<Tag>>())?;
@@ -449,29 +333,27 @@ pub fn verify_auth_header(
     let authorized_method: HttpMethod = http_data.method;
 
     if &authorized_url != url || authorized_method != method {
-        return Err(Error::AuthorizationNotMatchRequest {
-            authorized_url: Box::new(authorized_url.clone()),
-            authorized_method,
-            request_url: Box::new(url.clone()),
-            request_method: method,
-        });
+        return Err(Error::with_static_message(
+            ErrorKind::Invalid,
+            "authorization does not match request",
+        ));
     }
 
     let time_delta = TimeDelta::subtracting(current_time, event.created_at);
     if (time_delta.negative && time_delta.delta_abs_seconds > 30)
         || (!time_delta.negative && time_delta.delta_abs_seconds > 60)
     {
-        return Err(Error::AuthorizationTooOld {
-            current: current_time,
-            created_at: event.created_at,
-        });
+        return Err(Error::with_static_message(
+            ErrorKind::Invalid,
+            "authorization is too old",
+        ));
     }
 
     if let Some(body_data) = body {
         // Get payload hash
         let payload: Sha256Hash = match http_data.payload {
             Some(p) => p,
-            None => return Err(Error::MissingTag(RequiredTags::Payload)),
+            None => return Err(missing_tag(RequiredTags::Payload)),
         };
 
         // Hash body data
@@ -479,7 +361,7 @@ pub fn verify_auth_header(
 
         // Check if payload and body hash matches
         if payload != body_hash {
-            return Err(Error::PayloadHashMismatch);
+            return Err(payload_hash_mismatch());
         }
     }
 
@@ -568,8 +450,10 @@ mod tests {
     fn empty_auth_header() {
         let url = Url::parse("https://example.com/").unwrap();
         assert_eq!(
-            verify_auth_header("", &url, HttpMethod::GET, Timestamp::now(), None).unwrap_err(),
-            Error::AuthorizationHeaderMissing
+            verify_auth_header("", &url, HttpMethod::GET, Timestamp::now(), None)
+                .unwrap_err()
+                .kind(),
+            ErrorKind::Missing
         );
     }
 
@@ -578,21 +462,25 @@ mod tests {
         let url = Url::parse("https://example.com/").unwrap();
         let now = Timestamp::now();
         assert_eq!(
-            verify_auth_header("Test Nostr", &url, HttpMethod::GET, now, None).unwrap_err(),
-            Error::MalformedAuthorizationHeader
+            verify_auth_header("Test Nostr", &url, HttpMethod::GET, now, None)
+                .unwrap_err()
+                .kind(),
+            ErrorKind::Malformed
         );
         assert_eq!(
-            verify_auth_header("Nostr", &url, HttpMethod::GET, now, None).unwrap_err(),
-            Error::MalformedAuthorizationHeader
+            verify_auth_header("Nostr", &url, HttpMethod::GET, now, None)
+                .unwrap_err()
+                .kind(),
+            ErrorKind::Malformed
         );
-        assert_eq!(verify_auth_header("nostr eyJpZCI6ImZlOTY0ZTc1ODkwMzM2MGYyOGQ4NDI0ZDA5MmRhODQ5NGVkMjA3Y2JhODIzMTEwYmUzYTU3ZGZlNGI1Nzg3MzQiLCJwdWJrZXkiOiI2M2ZlNjMxOGRjNTg1ODNjZmUxNjgxMGY4NmRkMDllMThiZmQ3NmFhYmMyNGEwMDgxY2UyODU2ZjMzMDUwNGVkIiwiY29udGVudCI6IiIsImtpbmQiOjI3MjM1LCJjcmVhdGVkX2F0IjoxNjgyMzI3ODUyLCJ0YWdzIjpbWyJ1IiwiaHR0cHM6Ly9hcGkuc25vcnQuc29jaWFsL2FwaS92MS9uNXNwL2xpc3QiXSxbIm1ldGhvZCIsIkdFVCJdXSwic2lnIjoiNWVkOWQ4ZWM5NThiYzg1NGY5OTdiZGMyNGFjMzM3ZDAwNWFmMzcyMzI0NzQ3ZWZlNGEwMGUyNGY0YzMwNDM3ZmY0ZGQ4MzA4Njg0YmVkNDY3ZDlkNmJlM2U1YTUxN2JiNDNiMTczMmNjN2QzMzk0OWEzYWFmODY3MDVjMjIxODQifQ==", &url, HttpMethod::GET, now, None).unwrap_err(), Error::MalformedAuthorizationHeader);
+        assert_eq!(verify_auth_header("nostr eyJpZCI6ImZlOTY0ZTc1ODkwMzM2MGYyOGQ4NDI0ZDA5MmRhODQ5NGVkMjA3Y2JhODIzMTEwYmUzYTU3ZGZlNGI1Nzg3MzQiLCJwdWJrZXkiOiI2M2ZlNjMxOGRjNTg1ODNjZmUxNjgxMGY4NmRkMDllMThiZmQ3NmFhYmMyNGEwMDgxY2UyODU2ZjMzMDUwNGVkIiwiY29udGVudCI6IiIsImtpbmQiOjI3MjM1LCJjcmVhdGVkX2F0IjoxNjgyMzI3ODUyLCJ0YWdzIjpbWyJ1IiwiaHR0cHM6Ly9hcGkuc25vcnQuc29jaWFsL2FwaS92MS9uNXNwL2xpc3QiXSxbIm1ldGhvZCIsIkdFVCJdXSwic2lnIjoiNWVkOWQ4ZWM5NThiYzg1NGY5OTdiZGMyNGFjMzM3ZDAwNWFmMzcyMzI0NzQ3ZWZlNGEwMGUyNGY0YzMwNDM3ZmY0ZGQ4MzA4Njg0YmVkNDY3ZDlkNmJlM2U1YTUxN2JiNDNiMTczMmNjN2QzMzk0OWEzYWFmODY3MDVjMjIxODQifQ==", &url, HttpMethod::GET, now, None).unwrap_err().kind(), ErrorKind::Malformed);
     }
 
     #[test]
     fn auth_header_wrong_kind() {
         let url = Url::parse("https://example.com/").unwrap();
         let now = Timestamp::now();
-        assert_eq!(verify_auth_header("Nostr eyJpZCI6ImZlOTY0ZTc1ODkwMzM2MGYyOGQ4NDI0ZDA5MmRhODQ5NGVkMjA3Y2JhODIzMTEwYmUzYTU3ZGZlNGI1Nzg3MzQiLCJwdWJrZXkiOiI2M2ZlNjMxOGRjNTg1ODNjZmUxNjgxMGY4NmRkMDllMThiZmQ3NmFhYmMyNGEwMDgxY2UyODU2ZjMzMDUwNGVkIiwiY29udGVudCI6IiIsImtpbmQiOjEsImNyZWF0ZWRfYXQiOjE2ODIzMjc4NTIsInRhZ3MiOltbInUiLCJodHRwczovL2FwaS5zbm9ydC5zb2NpYWwvYXBpL3YxL241c3AvbGlzdCJdLFsibWV0aG9kIiwiR0VUIl1dLCJzaWciOiI1ZWQ5ZDhlYzk1OGJjODU0Zjk5N2JkYzI0YWMzMzdkMDA1YWYzNzIzMjQ3NDdlZmU0YTAwZTI0ZjRjMzA0MzdmZjRkZDgzMDg2ODRiZWQ0NjdkOWQ2YmUzZTVhNTE3YmI0M2IxNzMyY2M3ZDMzOTQ5YTNhYWY4NjcwNWMyMjE4NCJ9", &url, HttpMethod::GET, now, None).unwrap_err(), Error::WrongAuthHeaderKind);
+        assert_eq!(verify_auth_header("Nostr eyJpZCI6ImZlOTY0ZTc1ODkwMzM2MGYyOGQ4NDI0ZDA5MmRhODQ5NGVkMjA3Y2JhODIzMTEwYmUzYTU3ZGZlNGI1Nzg3MzQiLCJwdWJrZXkiOiI2M2ZlNjMxOGRjNTg1ODNjZmUxNjgxMGY4NmRkMDllMThiZmQ3NmFhYmMyNGEwMDgxY2UyODU2ZjMzMDUwNGVkIiwiY29udGVudCI6IiIsImtpbmQiOjEsImNyZWF0ZWRfYXQiOjE2ODIzMjc4NTIsInRhZ3MiOltbInUiLCJodHRwczovL2FwaS5zbm9ydC5zb2NpYWwvYXBpL3YxL241c3AvbGlzdCJdLFsibWV0aG9kIiwiR0VUIl1dLCJzaWciOiI1ZWQ5ZDhlYzk1OGJjODU0Zjk5N2JkYzI0YWMzMzdkMDA1YWYzNzIzMjQ3NDdlZmU0YTAwZTI0ZjRjMzA0MzdmZjRkZDgzMDg2ODRiZWQ0NjdkOWQ2YmUzZTVhNTE3YmI0M2IxNzMyY2M3ZDMzOTQ5YTNhYWY4NjcwNWMyMjE4NCJ9", &url, HttpMethod::GET, now, None).unwrap_err().kind(), ErrorKind::Invalid);
     }
 
     #[test]
@@ -600,12 +488,10 @@ mod tests {
         let url = Url::parse("https://example.com/").unwrap(); // Expected url: https://api.snort.social/api/v1/n5sp/list
         let now = Timestamp::now();
         let method = HttpMethod::POST;
-        assert_eq!(verify_auth_header("Nostr eyJpZCI6ImZlOTY0ZTc1ODkwMzM2MGYyOGQ4NDI0ZDA5MmRhODQ5NGVkMjA3Y2JhODIzMTEwYmUzYTU3ZGZlNGI1Nzg3MzQiLCJwdWJrZXkiOiI2M2ZlNjMxOGRjNTg1ODNjZmUxNjgxMGY4NmRkMDllMThiZmQ3NmFhYmMyNGEwMDgxY2UyODU2ZjMzMDUwNGVkIiwiY29udGVudCI6IiIsImtpbmQiOjI3MjM1LCJjcmVhdGVkX2F0IjoxNjgyMzI3ODUyLCJ0YWdzIjpbWyJ1IiwiaHR0cHM6Ly9hcGkuc25vcnQuc29jaWFsL2FwaS92MS9uNXNwL2xpc3QiXSxbIm1ldGhvZCIsIkdFVCJdXSwic2lnIjoiNWVkOWQ4ZWM5NThiYzg1NGY5OTdiZGMyNGFjMzM3ZDAwNWFmMzcyMzI0NzQ3ZWZlNGEwMGUyNGY0YzMwNDM3ZmY0ZGQ4MzA4Njg0YmVkNDY3ZDlkNmJlM2U1YTUxN2JiNDNiMTczMmNjN2QzMzk0OWEzYWFmODY3MDVjMjIxODQifQ==", &url, method, now, None).unwrap_err(), Error::AuthorizationNotMatchRequest {
-            authorized_url: Box::new(Url::parse("https://api.snort.social/api/v1/n5sp/list").unwrap()),
-            authorized_method: HttpMethod::GET,
-            request_url: Box::new(url),
-            request_method: HttpMethod::POST,
-        });
+        assert_eq!(
+            verify_auth_header("Nostr eyJpZCI6ImZlOTY0ZTc1ODkwMzM2MGYyOGQ4NDI0ZDA5MmRhODQ5NGVkMjA3Y2JhODIzMTEwYmUzYTU3ZGZlNGI1Nzg3MzQiLCJwdWJrZXkiOiI2M2ZlNjMxOGRjNTg1ODNjZmUxNjgxMGY4NmRkMDllMThiZmQ3NmFhYmMyNGEwMDgxY2UyODU2ZjMzMDUwNGVkIiwiY29udGVudCI6IiIsImtpbmQiOjI3MjM1LCJjcmVhdGVkX2F0IjoxNjgyMzI3ODUyLCJ0YWdzIjpbWyJ1IiwiaHR0cHM6Ly9hcGkuc25vcnQuc29jaWFsL2FwaS92MS9uNXNwL2xpc3QiXSxbIm1ldGhvZCIsIkdFVCJdXSwic2lnIjoiNWVkOWQ4ZWM5NThiYzg1NGY5OTdiZGMyNGFjMzM3ZDAwNWFmMzcyMzI0NzQ3ZWZlNGEwMGUyNGY0YzMwNDM3ZmY0ZGQ4MzA4Njg0YmVkNDY3ZDlkNmJlM2U1YTUxN2JiNDNiMTczMmNjN2QzMzk0OWEzYWFmODY3MDVjMjIxODQifQ==", &url, method, now, None).unwrap_err().kind(),
+           ErrorKind::Invalid
+        );
     }
 
     #[test]
@@ -613,10 +499,10 @@ mod tests {
         let url = Url::parse("https://api.snort.social/api/v1/n5sp/list").unwrap();
         let method = HttpMethod::GET;
         let now = Timestamp::from_secs(1777777777);
-        assert_eq!(verify_auth_header("Nostr eyJpZCI6ImZlOTY0ZTc1ODkwMzM2MGYyOGQ4NDI0ZDA5MmRhODQ5NGVkMjA3Y2JhODIzMTEwYmUzYTU3ZGZlNGI1Nzg3MzQiLCJwdWJrZXkiOiI2M2ZlNjMxOGRjNTg1ODNjZmUxNjgxMGY4NmRkMDllMThiZmQ3NmFhYmMyNGEwMDgxY2UyODU2ZjMzMDUwNGVkIiwiY29udGVudCI6IiIsImtpbmQiOjI3MjM1LCJjcmVhdGVkX2F0IjoxNjgyMzI3ODUyLCJ0YWdzIjpbWyJ1IiwiaHR0cHM6Ly9hcGkuc25vcnQuc29jaWFsL2FwaS92MS9uNXNwL2xpc3QiXSxbIm1ldGhvZCIsIkdFVCJdXSwic2lnIjoiNWVkOWQ4ZWM5NThiYzg1NGY5OTdiZGMyNGFjMzM3ZDAwNWFmMzcyMzI0NzQ3ZWZlNGEwMGUyNGY0YzMwNDM3ZmY0ZGQ4MzA4Njg0YmVkNDY3ZDlkNmJlM2U1YTUxN2JiNDNiMTczMmNjN2QzMzk0OWEzYWFmODY3MDVjMjIxODQifQ==", &url, method, now, None).unwrap_err(), Error::AuthorizationTooOld {
-            current: now,
-            created_at: Timestamp::from_secs(1682327852),
-        });
+        assert_eq!(
+            verify_auth_header("Nostr eyJpZCI6ImZlOTY0ZTc1ODkwMzM2MGYyOGQ4NDI0ZDA5MmRhODQ5NGVkMjA3Y2JhODIzMTEwYmUzYTU3ZGZlNGI1Nzg3MzQiLCJwdWJrZXkiOiI2M2ZlNjMxOGRjNTg1ODNjZmUxNjgxMGY4NmRkMDllMThiZmQ3NmFhYmMyNGEwMDgxY2UyODU2ZjMzMDUwNGVkIiwiY29udGVudCI6IiIsImtpbmQiOjI3MjM1LCJjcmVhdGVkX2F0IjoxNjgyMzI3ODUyLCJ0YWdzIjpbWyJ1IiwiaHR0cHM6Ly9hcGkuc25vcnQuc29jaWFsL2FwaS92MS9uNXNwL2xpc3QiXSxbIm1ldGhvZCIsIkdFVCJdXSwic2lnIjoiNWVkOWQ4ZWM5NThiYzg1NGY5OTdiZGMyNGFjMzM3ZDAwNWFmMzcyMzI0NzQ3ZWZlNGEwMGUyNGY0YzMwNDM3ZmY0ZGQ4MzA4Njg0YmVkNDY3ZDlkNmJlM2U1YTUxN2JiNDNiMTczMmNjN2QzMzk0OWEzYWFmODY3MDVjMjIxODQifQ==", &url, method, now, None).unwrap_err().kind(),
+            ErrorKind::Invalid
+        );
     }
 
     #[test]

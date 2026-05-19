@@ -6,8 +6,10 @@
 
 use std::{fmt, io};
 
+use nostr::Event;
 use nostr_database::DatabaseError;
 use nostr_sdk::client;
+use tokio::sync::broadcast;
 
 /// Relay builder error
 #[derive(Debug)]
@@ -18,6 +20,10 @@ pub enum Error {
     Database(DatabaseError),
     /// Client error
     Client(client::Error),
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
+    /// Other error
+    Other(String),
     /// Relay already running
     AlreadyRunning,
     /// Premature exit
@@ -32,6 +38,8 @@ impl fmt::Display for Error {
             Self::IO(e) => write!(f, "{e}"),
             Self::Database(e) => write!(f, "{e}"),
             Self::Client(e) => e.fmt(f),
+            Self::Protocol(e) => e.fmt(f),
+            Self::Other(e) => f.write_str(e),
             Self::AlreadyRunning => write!(f, "the relay is already running"),
             Self::PrematureExit => write!(f, "premature exit"),
         }
@@ -53,5 +61,41 @@ impl From<DatabaseError> for Error {
 impl From<client::Error> for Error {
     fn from(e: client::Error) -> Self {
         Self::Client(e)
+    }
+}
+
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
+    }
+}
+
+impl From<async_wsocket::Error> for Error {
+    fn from(e: async_wsocket::Error) -> Self {
+        Self::Other(e.to_string())
+    }
+}
+
+impl From<tokio::sync::TryAcquireError> for Error {
+    fn from(e: tokio::sync::TryAcquireError) -> Self {
+        Self::Other(e.to_string())
+    }
+}
+
+impl From<broadcast::error::SendError<Event>> for Error {
+    fn from(e: broadcast::error::SendError<Event>) -> Self {
+        Self::Other(e.to_string())
+    }
+}
+
+impl From<negentropy::Error> for Error {
+    fn from(e: negentropy::Error) -> Self {
+        Self::Other(e.to_string())
+    }
+}
+
+impl From<faster_hex::Error> for Error {
+    fn from(e: faster_hex::Error) -> Self {
+        Self::Other(e.to_string())
     }
 }

@@ -17,12 +17,11 @@ pub use rand;
 pub use secp256k1::schnorr::Signature;
 pub use serde_json::Value;
 
-// Internal modules
+pub use crate::error::{self, Error, ErrorKind};
 pub use crate::event::{self, *};
 pub use crate::filter::{self, *};
 pub use crate::key::{self, *};
 pub use crate::message::{self, *};
-// NIPs
 pub use crate::nips::nip01::{self, *};
 pub use crate::nips::nip02::{self, *};
 pub use crate::nips::nip04::{self, *};
@@ -83,8 +82,5 @@ pub use crate::nips::nipb0::{self, *};
 pub use crate::nips::nipb7::{self, *};
 pub use crate::nips::nipc0::{self, *};
 pub use crate::parser::{self, *};
-pub use crate::signer::{self, *};
 pub use crate::types::*;
 pub use crate::util::{self, *};
-#[cfg(feature = "std")]
-pub use crate::{Result, SECP256K1};

@@ -13,46 +13,10 @@ use core::str::Split;
 
 use serde_json::Value;
 
-use crate::types::url::{ParseError, Url};
+use crate::error::{Error, ErrorKind};
+use crate::types::url::Url;
+use crate::util::parse_json;
 use crate::{PublicKey, RelayUrl};
-
-/// `NIP05` error
-#[derive(Debug)]
-pub enum Error {
-    /// Error deserializing JSON data
-    Json(serde_json::Error),
-    /// Url error
-    Url(ParseError),
-    /// Invalid format
-    InvalidFormat,
-    /// Impossible to verify
-    ImpossibleToVerify,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Json(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::InvalidFormat => f.write_str("invalid format"),
-            Self::ImpossibleToVerify => f.write_str("impossible to verify"),
-        }
-    }
-}
-
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
-        Self::Url(e)
-    }
-}
 
 /// NIP-05 address
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -81,12 +45,17 @@ impl Nip05Address {
             // Found only a part, meaning that `@` is missing
             (Some(address), None) => ("_", address),
             // Invalid format
-            _ => return Err(Error::InvalidFormat),
+            _ => {
+                return Err(Error::with_static_message(
+                    ErrorKind::Malformed,
+                    "invalid format",
+                ));
+            }
         };
 
         // Compose and parse the URLS
         let url: String = format!("https://{domain}/.well-known/nostr.json?name={name}");
-        let url: Url = Url::parse(&url)?;
+        let url: Url = Url::parse(&url).map_err(Error::malformed)?;
 
         Ok(Self {
             name: name.to_string(),
@@ -138,8 +107,9 @@ impl Nip05Profile {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
     pub fn from_json(address: &Nip05Address, json: &Value) -> Result<Self, Error> {
-        let public_key: PublicKey =
-            get_key_from_json(json, address).ok_or(Error::ImpossibleToVerify)?;
+        let public_key: PublicKey = get_key_from_json(json, address).ok_or_else(|| {
+            Error::with_static_message(ErrorKind::Invalid, "impossible to verify")
+        })?;
         let relays: Vec<RelayUrl> = get_relays_from_json(json, &public_key);
         let nip46: Vec<RelayUrl> = get_nip46_relays_from_json(json, &public_key);
 
@@ -155,7 +125,7 @@ impl Nip05Profile {
     /// <https://github.com/nostr-protocol/nips/blob/master/05.md>
     #[inline]
     pub fn from_raw_json(address: &Nip05Address, raw_json: &str) -> Result<Self, Error> {
-        let json: Value = serde_json::from_str(raw_json)?;
+        let json: Value = parse_json(&raw_json)?;
         Self::from_json(address, &json)
     }
 }
@@ -204,7 +174,7 @@ pub fn verify_from_raw_json(
     address: &Nip05Address,
     raw_json: &str,
 ) -> Result<bool, Error> {
-    let json: Value = serde_json::from_str(raw_json)?;
+    let json: Value = parse_json(&raw_json)?;
     Ok(verify_from_json(public_key, address, &json))
 }
 

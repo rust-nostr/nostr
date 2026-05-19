@@ -14,8 +14,9 @@ use serde::de::DeserializeOwned;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Value, json};
 
-use super::MessageHandleError;
-use crate::util::impl_json_methods;
+use super::invalid_message_format;
+use crate::error::Error;
+use crate::util::{impl_json_methods, parse_json_from_value};
 use crate::{Event, EventId, SubscriptionId};
 
 /// A string that must be exactly one word.
@@ -307,13 +308,13 @@ impl RelayMessage<'_> {
     }
 
     /// Deserialize from [`Value`]
-    pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
+    pub fn from_value(msg: Value) -> Result<Self, Error> {
         let Value::Array(v) = msg else {
-            return Err(MessageHandleError::InvalidMessageFormat);
+            return Err(invalid_message_format());
         };
 
         if v.is_empty() {
-            return Err(MessageHandleError::InvalidMessageFormat);
+            return Err(invalid_message_format());
         }
 
         let mut v_iter = v.into_iter();
@@ -384,7 +385,7 @@ impl RelayMessage<'_> {
                     message: next_and_deser(&mut v_iter)?,         // Index 2
                 })
             }
-            _ => Err(MessageHandleError::InvalidMessageFormat),
+            _ => Err(invalid_message_format()),
         }
     }
 
@@ -446,28 +447,25 @@ impl<'de> Deserialize<'de> for RelayMessage<'_> {
 
 impl_json_methods! {
     RelayMessage<'_>,
-    MessageHandleError,
     from_json(json) {
         let msg: &[u8] = json.as_ref();
 
         if msg.is_empty() {
-            return Err(MessageHandleError::InvalidMessageFormat);
+            return Err(invalid_message_format());
         }
 
-        let value: Value = serde_json::from_slice(msg)?;
+        let value: Value = serde_json::from_slice(msg).map_err(Error::malformed)?;
         Self::from_value(value)
     }
 }
 
 #[inline]
-fn next_and_deser<T>(iter: &mut IntoIter<Value>) -> Result<T, MessageHandleError>
+fn next_and_deser<T>(iter: &mut IntoIter<Value>) -> Result<T, Error>
 where
     T: DeserializeOwned,
 {
-    let val: Value = iter
-        .next()
-        .ok_or(MessageHandleError::InvalidMessageFormat)?;
-    Ok(serde_json::from_value(val)?)
+    let val: Value = iter.next().ok_or(invalid_message_format())?;
+    parse_json_from_value(val)
 }
 
 /// Returns true if the slice is not empty and has no ASCII whitespace

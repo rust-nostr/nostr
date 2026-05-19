@@ -112,7 +112,7 @@ impl LocalRelay {
     }
 
     /// Pass an already upgraded stream
-    pub async fn take_connection<S>(&self, stream: S, addr: SocketAddr) -> Result<()>
+    pub async fn take_connection<S>(&self, stream: S, addr: SocketAddr) -> Result<(), Error>
     where
         S: AsyncRead + AsyncWrite + Unpin,
     {

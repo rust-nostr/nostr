@@ -41,6 +41,7 @@ pub use bip39;
 #[doc(hidden)]
 pub use serde_json;
 
+pub mod error;
 pub mod event;
 pub mod filter;
 pub mod key;
@@ -48,7 +49,6 @@ pub mod message;
 pub mod nips;
 pub mod parser;
 pub mod prelude;
-pub mod signer;
 pub mod types;
 pub mod util;
 
@@ -71,7 +71,3 @@ pub use self::types::{ImageDimensions, RelayUrl, RelayUrlArg, Timestamp, Url};
 #[doc(hidden)]
 #[cfg(feature = "std")]
 pub use self::util::SECP256K1;
-
-/// Result
-#[doc(hidden)]
-pub type Result<T, E = alloc::boxed::Box<dyn core::error::Error>> = core::result::Result<T, E>;

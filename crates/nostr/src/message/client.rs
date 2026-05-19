@@ -12,8 +12,9 @@ use alloc::vec::Vec;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Value, json};
 
-use super::MessageHandleError;
-use crate::util::impl_json_methods;
+use super::invalid_message_format;
+use crate::error::Error;
+use crate::util::{impl_json_methods, parse_json, parse_json_from_value};
 use crate::{Event, Filter, SubscriptionId};
 
 /// Messages sent by clients, received by relays
@@ -197,13 +198,11 @@ impl ClientMessage<'_> {
     /// Deserialize from [`Value`]
     ///
     /// **This method NOT verify the event signature!**
-    pub fn from_value(msg: Value) -> Result<Self, MessageHandleError> {
-        let v = msg
-            .as_array()
-            .ok_or(MessageHandleError::InvalidMessageFormat)?;
+    pub fn from_value(msg: Value) -> Result<Self, Error> {
+        let v = msg.as_array().ok_or(invalid_message_format())?;
 
         if v.is_empty() {
-            return Err(MessageHandleError::InvalidMessageFormat);
+            return Err(invalid_message_format());
         }
 
         let v_len: usize = v.len();
@@ -211,10 +210,10 @@ impl ClientMessage<'_> {
         // ["EVENT", <event JSON>]
         if v[0] == "EVENT" {
             if v_len >= 2 {
-                let event: Event = serde_json::from_value(v[1].clone())?;
+                let event: Event = parse_json_from_value(v[1].clone())?;
                 return Ok(Self::event(event));
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
+                return Err(invalid_message_format());
             }
         }
 
@@ -223,26 +222,26 @@ impl ClientMessage<'_> {
             if v_len >= 3 {
                 // Deprecated REQ
                 // ["REQ", <subscription_id>, <filter JSON>, <filter JSON>, ...]
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let subscription_id: SubscriptionId = parse_json_from_value(v[1].clone())?;
                 let filters: Vec<Cow<Filter>> =
-                    serde_json::from_value(Value::Array(v[2..].to_vec()))?;
+                    parse_json_from_value(Value::Array(v[2..].to_vec()))?;
                 return Ok(Self::Req {
                     subscription_id: Cow::Owned(subscription_id),
                     filters,
                 });
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
+                return Err(invalid_message_format());
             }
         }
 
         // ["COUNT", <subscription_id>, <filter JSON>]
         if v[0] == "COUNT" {
             if v_len >= 3 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-                let filter: Filter = serde_json::from_value(v[2].clone())?;
+                let subscription_id: SubscriptionId = parse_json_from_value(v[1].clone())?;
+                let filter: Filter = parse_json_from_value(v[2].clone())?;
                 return Ok(Self::count(subscription_id, filter));
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
+                return Err(invalid_message_format());
             }
         }
 
@@ -250,10 +249,10 @@ impl ClientMessage<'_> {
         // ["CLOSE", <subscription_id>]
         if v[0] == "CLOSE" {
             if v_len >= 2 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let subscription_id: SubscriptionId = parse_json_from_value(v[1].clone())?;
                 return Ok(Self::close(subscription_id));
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
+                return Err(invalid_message_format());
             }
         }
 
@@ -261,10 +260,10 @@ impl ClientMessage<'_> {
         // ["AUTH", <event JSON>]
         if v[0] == "AUTH" {
             if v_len >= 2 {
-                let event: Event = serde_json::from_value(v[1].clone())?;
+                let event: Event = parse_json_from_value(v[1].clone())?;
                 return Ok(Self::auth(event));
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
+                return Err(invalid_message_format());
             }
         }
 
@@ -274,20 +273,18 @@ impl ClientMessage<'_> {
         if v[0] == "NEG-OPEN" {
             // New negentropy protocol message
             if v_len == 4 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let subscription_id: SubscriptionId = parse_json_from_value(v[1].clone())?;
                 let filter: Filter = Filter::from_json(v[2].to_string())?;
-                let initial_message: String = serde_json::from_value(v[3].clone())?;
+                let initial_message: String = parse_json_from_value(v[3].clone())?;
                 return Ok(Self::neg_open(subscription_id, filter, initial_message));
             }
 
             // Old negentropy protocol message
             if v_len == 5 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let subscription_id: SubscriptionId = parse_json_from_value(v[1].clone())?;
                 let filter: Filter = Filter::from_json(v[2].to_string())?;
-                let id_size: u8 =
-                    v[3].as_u64()
-                        .ok_or(MessageHandleError::InvalidMessageFormat)? as u8;
-                let initial_message: String = serde_json::from_value(v[4].clone())?;
+                let id_size: u8 = v[3].as_u64().ok_or(invalid_message_format())? as u8;
+                let initial_message: String = parse_json_from_value(v[4].clone())?;
                 return Ok(Self::NegOpen {
                     subscription_id: Cow::Owned(subscription_id),
                     filter: Cow::Owned(filter),
@@ -296,21 +293,21 @@ impl ClientMessage<'_> {
                 });
             }
 
-            return Err(MessageHandleError::InvalidMessageFormat);
+            return Err(invalid_message_format());
         }
 
         // Negentropy Message
         // ["NEG-MSG", <subscription ID string>, <message, lowercase hex-encoded>]
         if v[0] == "NEG-MSG" {
             if v_len >= 3 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
-                let message: String = serde_json::from_value(v[2].clone())?;
+                let subscription_id: SubscriptionId = parse_json_from_value(v[1].clone())?;
+                let message: String = parse_json_from_value(v[2].clone())?;
                 return Ok(Self::NegMsg {
                     subscription_id: Cow::Owned(subscription_id),
                     message: Cow::Owned(message),
                 });
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
+                return Err(invalid_message_format());
             }
         }
 
@@ -318,16 +315,16 @@ impl ClientMessage<'_> {
         // ["NEG-CLOSE", <subscription ID string>]
         if v[0] == "NEG-CLOSE" {
             if v_len >= 2 {
-                let subscription_id: SubscriptionId = serde_json::from_value(v[1].clone())?;
+                let subscription_id: SubscriptionId = parse_json_from_value(v[1].clone())?;
                 return Ok(Self::NegClose {
                     subscription_id: Cow::Owned(subscription_id),
                 });
             } else {
-                return Err(MessageHandleError::InvalidMessageFormat);
+                return Err(invalid_message_format());
             }
         }
 
-        Err(MessageHandleError::InvalidMessageFormat)
+        Err(invalid_message_format())
     }
 }
 
@@ -353,15 +350,14 @@ impl<'de> Deserialize<'de> for ClientMessage<'_> {
 
 impl_json_methods! {
     ClientMessage<'_>,
-    MessageHandleError,
     from_json(json) {
         let msg: &[u8] = json.as_ref();
 
         if msg.is_empty() {
-            return Err(MessageHandleError::InvalidMessageFormat);
+            return Err(invalid_message_format());
         }
 
-        let value: Value = serde_json::from_slice(msg)?;
+        let value: Value = parse_json(&msg)?;
         Self::from_value(value)
     }
 }

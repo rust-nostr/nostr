@@ -6,9 +6,9 @@
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/06.md>
 
+use alloc::string::ToString;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
 
 use bip39::Mnemonic;
 use secp256k1::{Secp256k1, Signing};
@@ -18,42 +18,11 @@ mod bip32;
 use self::bip32::{ChildNumber, Xpriv};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
+use crate::error::{Error, ErrorKind};
 use crate::{Keys, SecretKey};
 
 const PURPOSE: u32 = 44;
 const COIN: u32 = 1237;
-
-/// `NIP06` error
-#[derive(Debug, Eq, PartialEq)]
-pub enum Error {
-    /// BIP32 error
-    BIP32(bip32::Error),
-    /// BIP39 error
-    BIP39(bip39::Error),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::BIP32(e) => e.fmt(f),
-            Self::BIP39(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<bip32::Error> for Error {
-    fn from(e: bip32::Error) -> Self {
-        Self::BIP32(e)
-    }
-}
-
-impl From<bip39::Error> for Error {
-    fn from(e: bip39::Error) -> Self {
-        Self::BIP39(e)
-    }
-}
 
 /// NIP06 utils
 ///
@@ -142,14 +111,15 @@ impl FromMnemonic for Keys {
         S: AsRef<str>,
     {
         // Parse mnemonic
-        let mnemonic: Mnemonic = Mnemonic::parse_normalized(mnemonic.as_ref())?;
+        let mnemonic: Mnemonic = Mnemonic::parse_normalized(mnemonic.as_ref())
+            .map_err(|e| Error::new(ErrorKind::Malformed, e.to_string()))?;
 
         // Convert mnemonic to seed
         let seed: [u8; 64] = mnemonic
             .to_seed_normalized(passphrase.as_ref().map(|s| s.as_ref()).unwrap_or_default());
 
         // Derive BIP32 root key
-        let root_key: Xpriv = Xpriv::new_master(&seed)?;
+        let root_key: Xpriv = Xpriv::new_master(&seed).map_err(Error::malformed)?;
 
         // Unwrap idx
         let account: u32 = account.unwrap_or_default();
@@ -158,11 +128,11 @@ impl FromMnemonic for Keys {
 
         // Compose derivation path
         let path: Vec<ChildNumber> = vec![
-            ChildNumber::from_hardened_idx(PURPOSE)?,
-            ChildNumber::from_hardened_idx(COIN)?,
-            ChildNumber::from_hardened_idx(account)?,
-            ChildNumber::from_normal_idx(_type)?,
-            ChildNumber::from_normal_idx(index)?,
+            ChildNumber::from_hardened_idx(PURPOSE).map_err(Error::invalid)?,
+            ChildNumber::from_hardened_idx(COIN).map_err(Error::invalid)?,
+            ChildNumber::from_hardened_idx(account).map_err(Error::invalid)?,
+            ChildNumber::from_normal_idx(_type).map_err(Error::invalid)?,
+            ChildNumber::from_normal_idx(index).map_err(Error::invalid)?,
         ];
 
         // Derive secret key

@@ -9,8 +9,7 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
-use core::fmt::Write;
+use core::fmt::{self, Write};
 use core::hash::Hash;
 use core::str::FromStr;
 
@@ -18,6 +17,7 @@ use serde::de::{Deserializer, MapAccess, Visitor};
 use serde::ser::{SerializeMap, Serializer};
 use serde::{Deserialize, Serialize};
 
+use crate::error::{Error, ErrorKind};
 use crate::event::TagsIndexes;
 use crate::nips::nip01::Coordinate;
 use crate::util::impl_json_methods;
@@ -27,21 +27,8 @@ type GenericTags = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
 
-/// Alphabet Error
-#[derive(Debug)]
-pub enum SingleLetterTagError {
-    /// Invalid char
-    InvalidChar,
-}
-
-impl core::error::Error for SingleLetterTagError {}
-
-impl fmt::Display for SingleLetterTagError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::InvalidChar => f.write_str("invalid char"),
-        }
-    }
+fn invalid_char() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "invalid char")
 }
 
 /// Alphabet
@@ -105,7 +92,7 @@ impl SingleLetterTag {
     }
 
     /// Parse single-letter tag from [char]
-    pub fn from_char(c: char) -> Result<Self, SingleLetterTagError> {
+    pub fn from_char(c: char) -> Result<Self, Error> {
         let character = match c {
             'a' | 'A' => Alphabet::A,
             'b' | 'B' => Alphabet::B,
@@ -133,7 +120,7 @@ impl SingleLetterTag {
             'x' | 'X' => Alphabet::X,
             'y' | 'Y' => Alphabet::Y,
             'z' | 'Z' => Alphabet::Z,
-            _ => return Err(SingleLetterTagError::InvalidChar),
+            _ => return Err(invalid_char()),
         };
 
         Ok(Self {
@@ -288,14 +275,14 @@ impl fmt::Display for SingleLetterTag {
 }
 
 impl FromStr for SingleLetterTag {
-    type Err = SingleLetterTagError;
+    type Err = Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if s.len() == 1 {
-            let c: char = s.chars().next().ok_or(SingleLetterTagError::InvalidChar)?;
+            let c: char = s.chars().next().ok_or(invalid_char())?;
             Self::from_char(c)
         } else {
-            Err(SingleLetterTagError::InvalidChar)
+            Err(invalid_char())
         }
     }
 }
@@ -944,7 +931,7 @@ impl Filter {
     }
 }
 
-impl_json_methods!(Filter, serde_json::Error);
+impl_json_methods!(Filter);
 
 impl From<Filter> for Vec<Filter> {
     fn from(filter: Filter) -> Self {

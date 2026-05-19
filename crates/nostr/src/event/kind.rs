@@ -7,12 +7,13 @@
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-use core::num::ParseIntError;
 use core::ops::{Add, Range};
 use core::str::FromStr;
 
 use serde::de::{Deserialize, Deserializer};
 use serde::ser::{Serialize, Serializer};
+
+use crate::error::Error;
 
 /// NIP90 - Job request range
 pub const NIP90_JOB_REQUEST_RANGE: Range<u16> = 5_000..6_000;
@@ -301,10 +302,10 @@ impl fmt::Display for Kind {
 }
 
 impl FromStr for Kind {
-    type Err = ParseIntError;
+    type Err = Error;
 
     fn from_str(kind: &str) -> Result<Self, Self::Err> {
-        let kind: u16 = kind.parse()?;
+        let kind: u16 = kind.parse().map_err(Error::malformed)?;
         Ok(Self::from_u16(kind))
     }
 }

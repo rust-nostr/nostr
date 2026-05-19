@@ -55,10 +55,10 @@ impl fmt::Display for MissingField {
 /// FlatBuffers Error
 #[derive(Debug)]
 pub enum Error {
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// FlatBuffer
     FlatBuffer(InvalidFlatbuffer),
-    /// Event error
-    Event(event::Error),
     /// Secp256k1 error
     Secp256k1(secp256k1::Error),
     /// Field not found
@@ -70,23 +70,23 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Protocol(e) => e.fmt(f),
             Self::FlatBuffer(e) => write!(f, "{e}"),
-            Self::Event(e) => write!(f, "{e}"),
             Self::Secp256k1(e) => write!(f, "{e}"),
             Self::FieldNotFound(field) => write!(f, "'{field}' field not found"),
         }
     }
 }
 
-impl From<InvalidFlatbuffer> for Error {
-    fn from(e: InvalidFlatbuffer) -> Self {
-        Self::FlatBuffer(e)
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
+impl From<InvalidFlatbuffer> for Error {
+    fn from(e: InvalidFlatbuffer) -> Self {
+        Self::FlatBuffer(e)
     }
 }
 

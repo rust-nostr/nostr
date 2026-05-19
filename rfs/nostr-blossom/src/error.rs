@@ -6,7 +6,6 @@
 
 use std::fmt;
 
-use nostr::signer::SignerError;
 use nostr::types::ParseError;
 use reqwest::Response;
 use reqwest::header::{InvalidHeaderValue, ToStrError};
@@ -14,8 +13,8 @@ use reqwest::header::{InvalidHeaderValue, ToStrError};
 /// Blossom error
 #[derive(Debug)]
 pub enum Error {
-    /// Nostr signer error
-    Signer(SignerError),
+    /// Nostr protocol error
+    Protocol(nostr::error::Error),
     /// Reqwest error
     Reqwest(reqwest::Error),
     /// Invalid header value
@@ -55,7 +54,7 @@ impl std::error::Error for Error {}
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::Signer(e) => write!(f, "{e}"),
+            Self::Protocol(e) => write!(f, "{e}"),
             Self::Reqwest(e) => write!(f, "{e}"),
             Self::InvalidHeaderValue(e) => write!(f, "{e}"),
             Self::Url(e) => write!(f, "{e}"),
@@ -78,9 +77,9 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<SignerError> for Error {
-    fn from(e: SignerError) -> Self {
-        Self::Signer(e)
+impl From<nostr::error::Error> for Error {
+    fn from(e: nostr::error::Error) -> Self {
+        Self::Protocol(e)
     }
 }
 

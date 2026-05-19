@@ -5,7 +5,7 @@
 use nostr::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let url = Url::parse("https://relay.damus.io")?;
 
     let client = reqwest::Client::new();

@@ -4,7 +4,6 @@
 
 //! Nostr parser
 
-use core::fmt;
 use core::iter::Skip;
 use core::str::{Chars, FromStr};
 
@@ -12,7 +11,7 @@ use bech32::Fe32;
 
 use crate::nips::nip19::Nip19Prefix;
 use crate::nips::nip21::{self, Nip21};
-use crate::types::url::{ParseError, Url};
+use crate::types::url::Url;
 
 const BECH32_SEPARATOR: u8 = b'1';
 const URL_SCHEME_SEPARATOR: &[u8] = b"://";
@@ -20,38 +19,6 @@ const HASHTAG_BYTE: u8 = b'#';
 const LINE_BREAK_BYTE: u8 = b'\n';
 const LINE_BREAK: &str = "\n";
 const WHITESPACE: &str = " ";
-
-/// Parser error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// NIP21 error
-    NIP21(nip21::Error),
-    /// Url error
-    Url(ParseError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::NIP21(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<nip21::Error> for Error {
-    fn from(e: nip21::Error) -> Self {
-        Self::NIP21(e)
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
-        Self::Url(e)
-    }
-}
 
 /// Nostr parsed token
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]

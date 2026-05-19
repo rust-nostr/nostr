@@ -9,45 +9,14 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
 
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::types::url::{self, RelayUrl};
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::nips::util::{missing_tag_kind, missing_value, unknown_tag};
+use crate::types::url::RelayUrl;
 
 const RELAY: &str = "relay";
 const ALL_RELAYS: &str = "ALL_RELAYS";
-
-/// NIP-70 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Url error
-    Url(url::Error),
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Request to Vanish target
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -107,12 +76,12 @@ impl TagCodec for Nip62Tag {
         let mut iter = tag.into_iter();
 
         // Extract first value
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         // Match kind
         match kind.as_ref() {
             RELAY => parse_relay_tag(iter),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -131,7 +100,7 @@ where
     T: Iterator<Item = S>,
     S: AsRef<str>,
 {
-    let relay_url: S = iter.next().ok_or(TagCodecError::Missing("relay URL"))?;
+    let relay_url: S = iter.next().ok_or(missing_value("relay URL"))?;
 
     match relay_url.as_ref() {
         ALL_RELAYS => Ok(Nip62Tag::AllRelays),

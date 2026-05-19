@@ -11,18 +11,19 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
-use core::num::ParseIntError;
 use core::str::FromStr;
 
-use hashes::hex::HexToArrayError;
 use hashes::sha1::Hash as Sha1Hash;
 
-use super::nip01::{self, Coordinate};
+use super::nip01::Coordinate;
 use super::nip22::Nip22Tag;
-use super::util::{take_and_parse_from_str, take_string};
-use crate::event::{EventBuilder, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::types::url::{self, Url};
-use crate::{EventId, Kind, PublicKey, RelayUrl, Timestamp, key};
+use super::util::{
+    missing_tag_kind, missing_value, take_and_parse_from_str, take_string, unknown_tag,
+};
+use crate::error::{Error, ErrorKind};
+use crate::event::{EventBuilder, Tag, TagCodec, impl_tag_codec_conversions};
+use crate::types::url::Url;
+use crate::{EventId, Kind, PublicKey, RelayUrl, Timestamp};
 
 const EUC: &str = "euc";
 const APPLIED_AS_COMMITS: &str = "applied-as-commits";
@@ -47,87 +48,9 @@ const SUBJECT: &str = "subject";
 const WEB: &str = "web";
 const RELAYS: &str = "relays";
 
-/// NIP-34 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Keys error
-    Keys(key::Error),
-    /// NIP-01 error
-    Nip01(nip01::Error),
-    /// Relay URL error
-    RelayUrl(url::Error),
-    /// URL error
-    Url(url::ParseError),
-    /// Hex to array error
-    Hex(HexToArrayError),
-    /// Parse integer error
-    ParseInt(ParseIntError),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Invalid `HEAD` tag
-    InvalidHeadTag,
-    /// Unexpected event kind
-    UnexpectedKind,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Keys(e) => e.fmt(f),
-            Self::Nip01(e) => e.fmt(f),
-            Self::RelayUrl(e) => e.fmt(f),
-            Self::Url(e) => e.fmt(f),
-            Self::Hex(e) => e.fmt(f),
-            Self::ParseInt(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidHeadTag => f.write_str("Invalid HEAD tag"),
-            Self::UnexpectedKind => f.write_str("Unexpected event kind"),
-        }
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<nip01::Error> for Error {
-    fn from(e: nip01::Error) -> Self {
-        Self::Nip01(e)
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::RelayUrl(e)
-    }
-}
-
-impl From<url::ParseError> for Error {
-    fn from(e: url::ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<HexToArrayError> for Error {
-    fn from(e: HexToArrayError) -> Self {
-        Self::Hex(e)
-    }
-}
-
-impl From<ParseIntError> for Error {
-    fn from(e: ParseIntError) -> Self {
-        Self::ParseInt(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
+#[inline]
+fn unexpected_kind() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "unexpected kind")
 }
 
 /// Standardized NIP-34 tags
@@ -209,7 +132,7 @@ impl TagCodec for Nip34Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
         let kind: &str = kind.as_ref();
 
         match kind {
@@ -217,8 +140,7 @@ impl TagCodec for Nip34Tag {
             BRANCH_NAME => Ok(Self::BranchName(take_string(&mut iter, "branch name")?)),
             CLONE => Ok(Self::Clone(parse_url_list(iter)?)),
             COMMIT => {
-                let commit: Sha1Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "commit ID")?;
+                let commit: Sha1Hash = take_and_parse_from_str(&mut iter, "commit ID")?;
                 Ok(Self::Commit(commit))
             }
             COMMIT_PGP_SIG => Ok(Self::CommitPgpSig(take_string(
@@ -235,9 +157,8 @@ impl TagCodec for Nip34Tag {
                     .map(|value| value.as_ref().to_string())
                     .unwrap_or_default();
                 let timestamp: Timestamp =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "committer timestamp")?;
-                let offset_minutes: i32 =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "committer offset")?;
+                    take_and_parse_from_str(&mut iter, "committer timestamp")?;
+                let offset_minutes: i32 = take_and_parse_from_str(&mut iter, "committer offset")?;
 
                 Ok(Self::Committer {
                     name,
@@ -247,49 +168,45 @@ impl TagCodec for Nip34Tag {
                 })
             }
             CURRENT_COMMIT => {
-                let commit: Sha1Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "current commit ID")?;
+                let commit: Sha1Hash = take_and_parse_from_str(&mut iter, "current commit ID")?;
                 Ok(Self::CurrentCommit(commit))
             }
             DESCRIPTION => Ok(Self::Description(take_string(&mut iter, "description")?)),
             GRASP => {
-                let relay: RelayUrl =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "grasp relay URL")?;
+                let relay: RelayUrl = take_and_parse_from_str(&mut iter, "grasp relay URL")?;
                 Ok(Self::Grasp(relay))
             }
             HEAD => {
-                let head: S = iter.next().ok_or(TagCodecError::Missing("head"))?;
-                let branch: &str = head
-                    .as_ref()
-                    .strip_prefix("ref: refs/heads/")
-                    .ok_or(Error::InvalidHeadTag)?;
+                let head: S = iter.next().ok_or(missing_value("head"))?;
+                let branch: &str =
+                    head.as_ref()
+                        .strip_prefix("ref: refs/heads/")
+                        .ok_or_else(|| {
+                            Error::with_static_message(ErrorKind::Invalid, "invalid head tag")
+                        })?;
                 Ok(Self::Head(branch.to_string()))
             }
             MAINTAINERS => Ok(Self::Maintainers(parse_public_keys(iter)?)),
             MERGE_BASE => {
-                let commit: Sha1Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "merge base")?;
+                let commit: Sha1Hash = take_and_parse_from_str(&mut iter, "merge base")?;
                 Ok(Self::MergeBase(commit))
             }
             MERGE_COMMIT => {
-                let commit: Sha1Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "merge commit ID")?;
+                let commit: Sha1Hash = take_and_parse_from_str(&mut iter, "merge commit ID")?;
                 Ok(Self::MergeCommit(commit))
             }
             NAME => Ok(Self::Name(take_string(&mut iter, "name")?)),
             PARENT_COMMIT => {
-                let commit: Sha1Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "parent commit ID")?;
+                let commit: Sha1Hash = take_and_parse_from_str(&mut iter, "parent commit ID")?;
                 Ok(Self::ParentCommit(commit))
             }
             REFERENCE => {
-                let commit: Sha1Hash =
-                    take_and_parse_from_str::<_, _, _, Error>(&mut iter, "reference commit ID")?;
+                let commit: Sha1Hash = take_and_parse_from_str(&mut iter, "reference commit ID")?;
                 match iter.next() {
                     Some(marker) if marker.as_ref() == EUC => {
                         Ok(Self::EarliestUniqueCommitId(commit))
                     }
-                    Some(_) => Err(TagCodecError::Unknown.into()),
+                    Some(_) => Err(unknown_tag()),
                     None => Ok(Self::Reference(commit)),
                 }
             }
@@ -297,20 +214,22 @@ impl TagCodec for Nip34Tag {
             WEB => Ok(Self::Web(parse_url_list(iter)?)),
             RELAYS => Ok(Self::Relays(parse_relay_urls(iter)?)),
             _ if kind.starts_with(REFS_HEADS) => {
-                let commit: S = iter.next().ok_or(TagCodecError::Missing("commit id"))?;
+                let commit: S = iter.next().ok_or(missing_value("commit id"))?;
                 Ok(Self::RefHead {
                     branch: kind.trim_start_matches(REFS_HEADS).to_string(),
-                    commit: Sha1Hash::from_str(commit.as_ref())?,
+                    commit: Sha1Hash::from_str(commit.as_ref())
+                        .map_err(Error::malformed_display)?,
                 })
             }
             _ if kind.starts_with(REFS_TAGS) => {
-                let commit: S = iter.next().ok_or(TagCodecError::Missing("commit id"))?;
+                let commit: S = iter.next().ok_or(missing_value("commit id"))?;
                 Ok(Self::RefTag {
                     name: kind.trim_start_matches(REFS_TAGS).to_string(),
-                    commit: Sha1Hash::from_str(commit.as_ref())?,
+                    commit: Sha1Hash::from_str(commit.as_ref())
+                        .map_err(Error::malformed_display)?,
                 })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 
@@ -409,10 +328,11 @@ where
     let values: Vec<Sha1Hash> = iter
         .into_iter()
         .map(|value| Sha1Hash::from_str(value.as_ref()))
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<_, _>>()
+        .map_err(Error::malformed_display)?;
 
     if values.is_empty() {
-        return Err(TagCodecError::Missing("commits").into());
+        return Err(missing_value("commits"));
     }
 
     Ok(values)
@@ -429,7 +349,7 @@ where
         .collect::<Result<_, _>>()?;
 
     if values.is_empty() {
-        return Err(TagCodecError::Missing("public keys").into());
+        return Err(missing_value("public keys"));
     }
 
     Ok(values)
@@ -446,7 +366,7 @@ where
         .collect::<Result<_, _>>()?;
 
     if values.is_empty() {
-        return Err(TagCodecError::Missing("relay URLs").into());
+        return Err(missing_value("relay URLs"));
     }
 
     Ok(values)
@@ -460,10 +380,11 @@ where
     let values: Vec<Url> = iter
         .into_iter()
         .map(|value| Url::parse(value.as_ref()))
-        .collect::<Result<_, _>>()?;
+        .collect::<Result<_, _>>()
+        .map_err(Error::malformed)?;
 
     if values.is_empty() {
-        return Err(TagCodecError::Missing("URLs").into());
+        return Err(missing_value("URLs"));
     }
 
     Ok(values)
@@ -563,7 +484,7 @@ impl GitIssue {
     pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(Error::UnexpectedKind);
+            return Err(unexpected_kind());
         }
 
         // Verify coordinate
@@ -670,7 +591,7 @@ impl GitPatch {
     pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(Error::UnexpectedKind);
+            return Err(unexpected_kind());
         }
 
         // Verify coordinate
@@ -757,7 +678,7 @@ impl GitPullRequest {
     pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(Error::UnexpectedKind);
+            return Err(unexpected_kind());
         }
 
         // Verify coordinate
@@ -832,7 +753,7 @@ impl GitPullRequestUpdate {
     pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
-            return Err(Error::UnexpectedKind);
+            return Err(unexpected_kind());
         }
 
         // Verify coordinate

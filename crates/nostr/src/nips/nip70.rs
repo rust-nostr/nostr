@@ -8,32 +8,10 @@
 
 use alloc::string::String;
 use alloc::vec;
-use core::fmt;
 
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-
-/// NIP-70 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Codec(e) => e.fmt(f),
-        }
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
+use crate::error::Error;
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::nips::util::{missing_tag_kind, unknown_tag};
 
 /// Standardized NIP-70 tags
 ///
@@ -58,12 +36,12 @@ impl TagCodec for Nip70Tag {
         let mut iter = tag.into_iter();
 
         // Extract first value
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         // Match kind
         match kind.as_ref() {
             "-" => Ok(Self::Protected),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

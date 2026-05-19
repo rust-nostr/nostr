@@ -111,7 +111,7 @@ impl Service<Request<Incoming>> for HttpServer {
 }
 
 #[tokio::main]
-async fn main() -> nostr_relay_builder::prelude::Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let relay = LocalRelay::new();

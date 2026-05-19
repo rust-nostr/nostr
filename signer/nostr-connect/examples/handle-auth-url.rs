@@ -10,17 +10,20 @@ use nostr_connect::prelude::*;
 struct MyAuthUrlHandler;
 
 impl AuthUrlHandler for MyAuthUrlHandler {
-    fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<'_, Result<()>> {
+    fn on_auth_url(
+        &self,
+        auth_url: Url,
+    ) -> BoxedFuture<'_, Result<(), nostr_connect::error::Error>> {
         Box::pin(async move {
             println!("Opening auth url: {auth_url}");
-            webbrowser::open(auth_url.as_str())?;
+            webbrowser::open(auth_url.as_str()).unwrap();
             Ok(())
         })
     }
 }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let uri = NostrConnectUri::parse(

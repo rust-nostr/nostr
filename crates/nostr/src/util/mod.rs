@@ -27,8 +27,9 @@ use secp256k1::{Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey, ecdh};
 pub mod hkdf;
 mod json;
 
-pub(crate) use self::json::impl_json_methods;
-use crate::{PublicKey, SecretKey, key};
+pub(crate) use self::json::{impl_json_methods, parse_json, parse_json_from_value};
+use crate::error::Error;
+use crate::key::{PublicKey, SecretKey};
 
 /// A boxed future
 #[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
@@ -73,7 +74,7 @@ where
 pub fn generate_shared_key(
     secret_key: &SecretKey,
     public_key: &PublicKey,
-) -> Result<[u8; 32], key::Error> {
+) -> Result<[u8; 32], Error> {
     let pk: XOnlyPublicKey = public_key.xonly()?;
     let public_key_normalized: NormalizedPublicKey =
         NormalizedPublicKey::from_x_only_public_key(pk, Parity::Even);

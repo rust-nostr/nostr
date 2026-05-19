@@ -5,6 +5,7 @@
 //! Prelude
 
 #![allow(unknown_lints)]
+#![allow(unused_imports)]
 #![allow(ambiguous_glob_reexports)]
 #![doc(hidden)]
 

@@ -1,20 +1,40 @@
+use serde::de;
+use serde_json::Value;
+
+use crate::error::Error;
+
+#[inline]
+pub(crate) fn parse_json<'a, T, V>(bytes: &'a V) -> Result<T, Error>
+where
+    T: de::Deserialize<'a>,
+    V: AsRef<[u8]> + 'a,
+{
+    Ok(serde_json::from_slice(bytes.as_ref())?)
+}
+
+#[inline]
+pub(crate) fn parse_json_from_value<T>(value: Value) -> Result<T, Error>
+where
+    T: de::DeserializeOwned,
+{
+    Ok(serde_json::from_value(value)?)
+}
+
 macro_rules! impl_json_methods {
-    ($ty:ty, $err:ty) => {
+    ($ty:ty) => {
         impl_json_methods! {
             $ty,
-            $err,
             from_json(json) {
-                Ok(crate::serde_json::from_slice(json.as_ref())?)
+                Ok(serde_json::from_slice(json.as_ref())?)
             }
         }
     };
 
-    ($ty:ty, $err:ty, from_json($json:ident) $from_json:block) => {
+    ($ty:ty, from_json($json:ident) $from_json:block) => {
         impl $ty {
             /// Deserialize from JSON.
             #[inline]
-            #[allow(clippy::needless_question_mark)]
-            pub fn from_json<T>($json: T) -> Result<Self, $err>
+            pub fn from_json<T>($json: T) -> Result<Self, crate::error::Error>
             where
                 T: AsRef<[u8]>,
             {
@@ -31,8 +51,7 @@ macro_rules! impl_json_methods {
 
             /// Serialize as JSON string.
             #[inline]
-            #[allow(clippy::needless_question_mark)]
-            pub fn try_as_json(&self) -> Result<alloc::string::String, $err> {
+            pub fn try_as_json(&self) -> Result<alloc::string::String, crate::error::Error> {
                 Ok(serde_json::to_string(self)?)
             }
 
@@ -46,8 +65,7 @@ macro_rules! impl_json_methods {
 
             /// Serialize as pretty JSON string.
             #[inline]
-            #[allow(clippy::needless_question_mark)]
-            pub fn try_as_pretty_json(&self) -> Result<alloc::string::String, $err> {
+            pub fn try_as_pretty_json(&self) -> Result<alloc::string::String, crate::error::Error> {
                 Ok(serde_json::to_string_pretty(self)?)
             }
         }

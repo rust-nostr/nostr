@@ -7,7 +7,7 @@ use std::time::Duration;
 use nostr_relay_builder::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
     let relay = MockRelay::run().await?;

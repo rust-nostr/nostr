@@ -4,7 +4,7 @@
 
 use nostr::prelude::*;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Error> {
     let keys = Keys::parse("nsec1ufnus6pju578ste3v90xd5m2decpuzpql2295m3sknqcjzyys9ls0qlc85")?;
 
     let event_id =

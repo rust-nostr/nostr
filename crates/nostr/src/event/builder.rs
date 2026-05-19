@@ -7,33 +7,14 @@
 use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
-use core::fmt;
-use core::ops::Range;
 
 use serde_json::{Value, json};
 
+use crate::error::{Error, ErrorKind};
 use crate::nips::nip58::Nip58Tag;
 use crate::nips::nip62::VanishTarget;
 use crate::prelude::*;
 use crate::util::BoxedFuture;
-
-/// Wrong kind error
-#[derive(Debug, PartialEq, Eq)]
-pub enum WrongKindError {
-    /// Single kind
-    Single(Kind),
-    /// Range
-    Range(Range<u16>),
-}
-
-impl fmt::Display for WrongKindError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Single(k) => k.fmt(f),
-            Self::Range(range) => write!(f, "'{} <= k <= {}'", range.start, range.end),
-        }
-    }
-}
 
 /// Template that can be converted into a generic [`EventBuilder`].
 pub trait EventBuilderTemplate: Sized {
@@ -57,7 +38,8 @@ where
     B: EventBuilderTemplate,
     S: GetPublicKey + SignEvent + ?Sized,
 {
-    type Error = SignerError;
+    /// Error type
+    type Error = Error;
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
         let builder: EventBuilder = self.build();
@@ -107,9 +89,9 @@ where
     B: EventBuilderTemplateAsync + Send,
     S: AsyncGetPublicKey + AsyncSignEvent + ?Sized,
 {
-    type Error = SignerError;
+    type Error = Error;
 
-    fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
+    fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Error>>
     where
         Self: 'a,
         S: 'a,
@@ -746,10 +728,7 @@ impl EventBuilder {
     /// Badge award
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/58.md>
-    pub fn award_badge<I>(
-        badge_definition: &Event,
-        awarded_public_keys: I,
-    ) -> Result<Self, nip58::Error>
+    pub fn award_badge<I>(badge_definition: &Event, awarded_public_keys: I) -> Result<Self, Error>
     where
         I: IntoIterator<Item = PublicKey>,
     {
@@ -760,7 +739,9 @@ impl EventBuilder {
                 Ok(Nip01Tag::Identifier(id)) => Some(id),
                 _ => None,
             })
-            .ok_or(nip58::Error::IdentifierTagNotFound)?;
+            .ok_or_else(|| {
+                Error::with_static_message(ErrorKind::Missing, "identifier tag not found")
+            })?;
 
         // At least 1 tag
         let mut tags = Vec::with_capacity(1);
@@ -789,14 +770,20 @@ impl EventBuilder {
         badge_definitions: Vec<Event>,
         badge_awards: Vec<Event>,
         pubkey_awarded: &PublicKey,
-    ) -> Result<Self, nip58::Error> {
+    ) -> Result<Self, Error> {
         if badge_definitions.len() != badge_awards.len() {
-            return Err(nip58::Error::InvalidLength);
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid length",
+            ));
         }
 
         let badge_awards: Vec<Event> = nip58::filter_for_kind(badge_awards, &Kind::BadgeAward);
         if badge_awards.is_empty() {
-            return Err(nip58::Error::InvalidKind);
+            return Err(Error::with_static_message(
+                ErrorKind::Missing,
+                "badge awards are missing",
+            ));
         }
 
         for award in badge_awards.iter() {
@@ -804,14 +791,20 @@ impl EventBuilder {
                 Ok(Nip01Tag::PublicKey { public_key, .. }) => public_key == *pubkey_awarded,
                 _ => false,
             }) {
-                return Err(nip58::Error::BadgeAwardsLackAwardedPublicKey);
+                return Err(Error::with_static_message(
+                    ErrorKind::Invalid,
+                    "badge award lacks awarded public key",
+                ));
             }
         }
 
         let badge_definitions: Vec<Event> =
             nip58::filter_for_kind(badge_definitions, &Kind::BadgeDefinition);
         if badge_definitions.is_empty() {
-            return Err(nip58::Error::InvalidKind);
+            return Err(Error::with_static_message(
+                ErrorKind::Missing,
+                "badge definitions are missing",
+            ));
         }
 
         let mut tags: Vec<Tag> = Vec::new();
@@ -840,7 +833,10 @@ impl EventBuilder {
         for (badge_definition, badge_award) in users_badges {
             match (badge_definition, badge_award) {
                 ((_, identifier), (_, badge_id, ..)) if badge_id != identifier => {
-                    return Err(nip58::Error::MismatchedBadgeDefinitionOrAward);
+                    return Err(Error::with_static_message(
+                        ErrorKind::Invalid,
+                        "mismatched badge definition or award",
+                    ));
                 }
                 ((_, identifier), (badge_award_event, badge_id, a_tag, relay_url))
                     if badge_id == identifier =>
@@ -863,9 +859,12 @@ impl EventBuilder {
     /// Data Vending Machine (DVM) - Job Request
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    pub fn job_request(kind: Kind) -> Result<Self, WrongKindError> {
+    pub fn job_request(kind: Kind) -> Result<Self, Error> {
         if !kind.is_job_request() {
-            return Err(WrongKindError::Range(NIP90_JOB_REQUEST_RANGE));
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "kind is not in the NIP90 job request range",
+            ));
         }
 
         Ok(Self::new(kind, ""))
@@ -879,7 +878,7 @@ impl EventBuilder {
         payload: S,
         millisats: u64,
         bolt11: Option<String>,
-    ) -> Result<Self, WrongKindError>
+    ) -> Result<Self, Error>
     where
         S: Into<String>,
     {
@@ -887,7 +886,10 @@ impl EventBuilder {
 
         // Check if Job Result kind
         if !kind.is_job_result() {
-            return Err(WrongKindError::Range(NIP90_JOB_RESULT_RANGE));
+            return Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "kind is not in the NIP90 job result range",
+            ));
         }
 
         let mut tags: Vec<Tag> = job_request
@@ -1248,7 +1250,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_issue(issue: GitIssue) -> Result<Self, nip34::Error> {
+    pub fn git_issue(issue: GitIssue) -> Result<Self, Error> {
         issue.to_event_builder()
     }
 
@@ -1256,7 +1258,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_patch(patch: GitPatch) -> Result<Self, nip34::Error> {
+    pub fn git_patch(patch: GitPatch) -> Result<Self, Error> {
         patch.to_event_builder()
     }
 
@@ -1264,7 +1266,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_pull_request(pull_request: GitPullRequest) -> Result<Self, nip34::Error> {
+    pub fn git_pull_request(pull_request: GitPullRequest) -> Result<Self, Error> {
         pull_request.to_event_builder()
     }
 
@@ -1272,7 +1274,7 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
     #[inline]
-    pub fn git_pull_request_update(update: GitPullRequestUpdate) -> Result<Self, nip34::Error> {
+    pub fn git_pull_request_update(update: GitPullRequestUpdate) -> Result<Self, Error> {
         update.to_event_builder()
     }
 
@@ -1302,7 +1304,7 @@ impl EventBuilder {
         content: S,
         reply_to: &Event,
         relay_url: Option<RelayUrl>,
-    ) -> Result<Self, nip21::Error>
+    ) -> Result<Self, Error>
     where
         S: Into<String>,
     {
@@ -1415,12 +1417,12 @@ impl<S> FinalizeEvent<S> for EventBuilder
 where
     S: GetPublicKey + SignEvent + ?Sized,
 {
-    type Error = SignerError;
+    type Error = Error;
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
-        let public_key: PublicKey = signer.get_public_key().map_err(SignerError::backend)?;
+        let public_key: PublicKey = signer.get_public_key().map_err(Error::other)?;
         let unsigned: UnsignedEvent = self.finalize_unsigned(public_key);
-        signer.sign_event(unsigned).map_err(SignerError::backend)
+        signer.sign_event(unsigned).map_err(Error::other)
     }
 }
 
@@ -1428,7 +1430,7 @@ impl<S> FinalizeEventAsync<S> for EventBuilder
 where
     S: AsyncGetPublicKey + AsyncSignEvent + ?Sized,
 {
-    type Error = SignerError;
+    type Error = Error;
 
     fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>
     where
@@ -1436,15 +1438,13 @@ where
         S: 'a,
     {
         Box::pin(async move {
-            let public_key: PublicKey = signer
-                .get_public_key_async()
-                .await
-                .map_err(SignerError::backend)?;
+            let public_key: PublicKey =
+                signer.get_public_key_async().await.map_err(Error::other)?;
             let unsigned: UnsignedEvent = self.finalize_unsigned(public_key);
             signer
                 .sign_event_async(unsigned)
                 .await
-                .map_err(SignerError::backend)
+                .map_err(Error::other)
         })
     }
 }

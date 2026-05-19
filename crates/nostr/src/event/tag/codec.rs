@@ -2,40 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use core::fmt;
-
 use super::Tag;
-
-/// Tag codec error
-#[derive(Debug, PartialEq, Eq)]
-pub enum TagCodecError {
-    /// Missing value
-    Missing(&'static str),
-    /// Invalid value
-    Invalid(&'static str),
-    /// Unknown tag
-    Unknown,
-}
-
-impl core::error::Error for TagCodecError {}
-
-impl fmt::Display for TagCodecError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Missing(value) => write!(f, "missing {value}"),
-            Self::Invalid(value) => write!(f, "{value}"),
-            Self::Unknown => write!(f, "unknown tag"),
-        }
-    }
-}
-
-impl TagCodecError {
-    /// Missing tag kind
-    #[inline]
-    pub fn missing_tag_kind() -> Self {
-        Self::Missing("tag kind")
-    }
-}
 
 /// Conversion contract between a typed tag representation and the generic raw [`Tag`].
 ///
@@ -47,7 +14,7 @@ impl TagCodecError {
 /// tag structs that can be used independently of the enclosing enum.
 pub trait TagCodec: Sized {
     /// Error returned when parsing a raw tag into the typed representation fails.
-    type Error: core::error::Error;
+    type Error: core::error::Error + Send + Sync;
 
     /// Parse a typed tag from a raw tag representation.
     fn parse<I, S>(tag: I) -> Result<Self, Self::Error>

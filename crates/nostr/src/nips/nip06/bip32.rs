@@ -11,12 +11,9 @@ use core::fmt;
 use hashes::{Hash, HashEngine, Hmac, HmacEngine, hash160, sha512};
 use secp256k1::{self, PublicKey, Secp256k1, SecretKey, Signing};
 
-/// A BIP32 error
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Error {
-    /// A secp256k1 error occurred
+pub(super) enum Error {
     Secp256k1(secp256k1::Error),
-    /// A child number was provided that was out of range
     InvalidChildNumber(u32),
 }
 

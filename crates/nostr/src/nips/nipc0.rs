@@ -9,13 +9,12 @@
 use alloc::string::String;
 use alloc::vec;
 use alloc::vec::Vec;
-use core::fmt;
 
-use super::util::take_string;
+use super::util::{missing_tag_kind, take_string, unknown_tag};
+use crate::error::Error;
 use crate::event::{
-    EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+    EventBuilder, EventBuilderTemplate, Kind, Tag, TagCodec, impl_tag_codec_conversions,
 };
-use crate::{EventBuilder, Kind};
 
 const LANGUAGE: &str = "l";
 const NAME: &str = "name";
@@ -25,29 +24,6 @@ const RUNTIME: &str = "runtime";
 const LICENSE: &str = "license";
 const DEPENDENCY: &str = "dep";
 const REPOSITORY: &str = "repo";
-
-/// NIP-C0 error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Codec error
-    Codec(TagCodecError),
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Codec(err) => err.fmt(f),
-        }
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(err: TagCodecError) -> Self {
-        Self::Codec(err)
-    }
-}
 
 /// Standardized NIP-C0 tags
 ///
@@ -82,7 +58,7 @@ impl TagCodec for NipC0Tag {
     {
         let mut iter = tag.into_iter();
 
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             LANGUAGE => Ok(Self::Language(
@@ -95,7 +71,7 @@ impl TagCodec for NipC0Tag {
             LICENSE => Ok(Self::License(take_string(&mut iter, "license")?)),
             DEPENDENCY => Ok(Self::Dependency(take_string(&mut iter, "dependency")?)),
             REPOSITORY => Ok(Self::Repository(take_string(&mut iter, "repository")?)),
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

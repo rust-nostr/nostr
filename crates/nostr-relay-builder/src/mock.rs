@@ -6,9 +6,6 @@
 
 use std::ops::Deref;
 
-use nostr::prelude::*;
-use nostr_database::prelude::*;
-
 use crate::builder::{LocalRelayBuilder, LocalRelayTestOptions};
 use crate::error::Error;
 use crate::local::LocalRelay;

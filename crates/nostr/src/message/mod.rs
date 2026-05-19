@@ -20,33 +20,12 @@ pub mod relay;
 
 pub use self::client::ClientMessage;
 pub use self::relay::{MachineReadablePrefix, RelayMessage};
+use crate::error::{Error, ErrorKind};
 #[cfg(feature = "rand")]
 use crate::util;
 
-/// Messages error
-#[derive(Debug)]
-pub enum MessageHandleError {
-    /// Impossible to deserialize message
-    Json(serde_json::Error),
-    /// Invalid message format
-    InvalidMessageFormat,
-}
-
-impl core::error::Error for MessageHandleError {}
-
-impl fmt::Display for MessageHandleError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Json(e) => e.fmt(f),
-            Self::InvalidMessageFormat => f.write_str("Invalid format"),
-        }
-    }
-}
-
-impl From<serde_json::Error> for MessageHandleError {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
-    }
+fn invalid_message_format() -> Error {
+    Error::with_static_message(ErrorKind::Malformed, "invalid message format")
 }
 
 /// Subscription ID

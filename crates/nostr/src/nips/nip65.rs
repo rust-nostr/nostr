@@ -11,47 +11,12 @@ use alloc::vec::Vec;
 use core::fmt;
 use core::str::FromStr;
 
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
-use crate::nips::util::take_relay_url;
-use crate::types::url;
+use crate::error::{Error, ErrorKind};
+use crate::event::{Tag, TagCodec, impl_tag_codec_conversions};
+use crate::nips::util::{missing_tag_kind, take_relay_url, unknown_tag};
 use crate::{Event, RelayUrl};
 
 const RELAY_METADATA: &str = "r";
-
-/// NIP56 error
-#[derive(Debug, PartialEq, Eq)]
-pub enum Error {
-    /// Url error
-    Url(url::Error),
-    /// Codec error
-    Codec(TagCodecError),
-    /// Invalid Relay Metadata
-    InvalidRelayMetadata,
-}
-
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Url(e) => e.fmt(f),
-            Self::Codec(e) => e.fmt(f),
-            Self::InvalidRelayMetadata => f.write_str("Invalid relay metadata"),
-        }
-    }
-}
-
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<TagCodecError> for Error {
-    fn from(e: TagCodecError) -> Self {
-        Self::Codec(e)
-    }
-}
 
 /// Relay Metadata
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -97,7 +62,10 @@ impl FromStr for RelayMetadata {
         match s {
             "read" => Ok(Self::Read),
             "write" => Ok(Self::Write),
-            _ => Err(Error::InvalidRelayMetadata),
+            _ => Err(Error::with_static_message(
+                ErrorKind::Invalid,
+                "invalid relay metadata",
+            )),
         }
     }
 }
@@ -125,11 +93,11 @@ impl TagCodec for Nip65Tag {
         S: AsRef<str>,
     {
         let mut iter = tag.into_iter();
-        let kind: S = iter.next().ok_or(TagCodecError::missing_tag_kind())?;
+        let kind: S = iter.next().ok_or(missing_tag_kind())?;
 
         match kind.as_ref() {
             RELAY_METADATA => {
-                let relay_url: RelayUrl = take_relay_url::<_, _, Error>(&mut iter)?;
+                let relay_url: RelayUrl = take_relay_url(&mut iter)?;
 
                 let metadata: Option<RelayMetadata> = match iter.next() {
                     Some(metadata) => Some(RelayMetadata::from_str(metadata.as_ref())?),
@@ -141,7 +109,7 @@ impl TagCodec for Nip65Tag {
                     metadata,
                 })
             }
-            _ => Err(TagCodecError::Unknown.into()),
+            _ => Err(unknown_tag()),
         }
     }
 

@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP19: bech32-encoded entities
+//! NIP-19: bech32-encoded entities
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/19.md>
 
@@ -12,7 +12,6 @@ use alloc::borrow::Cow;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::convert::Infallible;
-use core::fmt;
 use core::ops::Deref;
 use core::str::FromStr;
 
@@ -21,10 +20,11 @@ use bech32::{self, Bech32, Hrp};
 use super::nip01::{Coordinate, CoordinateBorrow};
 use super::nip05::Nip05Profile;
 #[cfg(feature = "nip49")]
-use super::nip49::{self, EncryptedSecretKey};
+use super::nip49::EncryptedSecretKey;
+use crate::error::{Error, ErrorKind};
 use crate::event::EventId;
-use crate::types::url::{self, RelayUrl};
-use crate::{Event, Kind, PublicKey, SecretKey, event, key};
+use crate::types::url::RelayUrl;
+use crate::{Event, Kind, PublicKey, SecretKey};
 
 pub const PREFIX_BECH32_SECRET_KEY: &str = "nsec";
 pub const PREFIX_BECH32_SECRET_KEY_ENCRYPTED: &str = "ncryptsec";
@@ -54,93 +54,28 @@ const FIXED_1_1_32_BYTES_TVL: usize = 1 + 1 + 32;
 /// 1 (type) + 1 (len) + 4 (value - 32-bit unsigned number)
 const FIXED_KIND_BYTES_TVL: usize = 1 + 1 + 4;
 
-/// `NIP19` error
-#[derive(Debug, PartialEq)]
-pub enum Error {
-    /// Relay Url parse error
-    RelayUrl(url::Error),
-    /// Bech32 decode error.
-    Bech32Decode(bech32::DecodeError),
-    /// Bech32 encode error
-    Bech32Encode(bech32::EncodeError),
-    /// Keys error
-    Keys(key::Error),
-    /// Event error
-    Event(event::Error),
-    /// NIP49 error
-    #[cfg(feature = "nip49")]
-    NIP49(nip49::Error),
-    /// Wrong prefix or variant
-    WrongPrefix,
-    /// Field missing
-    FieldMissing(String),
-    /// TLV error
-    TLV,
-    /// From slice error
-    TryFromSlice,
+#[inline]
+fn wrong_prefix() -> Error {
+    Error::with_static_message(ErrorKind::Invalid, "wrong prefix")
 }
 
-impl core::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::RelayUrl(e) => e.fmt(f),
-            Self::Bech32Decode(e) => e.fmt(f),
-            Self::Bech32Encode(e) => e.fmt(f),
-            Self::Keys(e) => e.fmt(f),
-            Self::Event(e) => e.fmt(f),
-            #[cfg(feature = "nip49")]
-            Self::NIP49(e) => e.fmt(f),
-            Self::WrongPrefix => f.write_str("Wrong prefix"),
-            Self::FieldMissing(name) => write!(f, "Field missing: {name}"),
-            Self::TLV => f.write_str("TLV error"),
-            Self::TryFromSlice => f.write_str("From slice error"),
-        }
-    }
+#[inline]
+fn invalid_tlv() -> Error {
+    Error::with_static_message(ErrorKind::Malformed, "invalid TLV")
 }
 
-impl From<url::Error> for Error {
-    fn from(e: url::Error) -> Self {
-        Self::RelayUrl(e)
-    }
+fn field_missing(field: &'static str) -> Error {
+    Error::with_static_message(ErrorKind::Missing, field)
 }
 
-impl From<bech32::DecodeError> for Error {
-    fn from(e: bech32::DecodeError) -> Self {
-        Self::Bech32Decode(e)
-    }
+#[inline]
+fn bech32_decode(s: &str) -> Result<(Hrp, Vec<u8>), Error> {
+    bech32::decode(s).map_err(|e| Error::new(ErrorKind::Malformed, e.to_string()))
 }
 
-impl From<bech32::EncodeError> for Error {
-    fn from(e: bech32::EncodeError) -> Self {
-        Self::Bech32Encode(e)
-    }
-}
-
-impl From<key::Error> for Error {
-    fn from(e: key::Error) -> Self {
-        Self::Keys(e)
-    }
-}
-
-impl From<event::Error> for Error {
-    fn from(e: event::Error) -> Self {
-        Self::Event(e)
-    }
-}
-
-impl From<Infallible> for Error {
-    fn from(_: Infallible) -> Self {
-        unreachable!()
-    }
-}
-
-#[cfg(feature = "nip49")]
-impl From<nip49::Error> for Error {
-    fn from(e: nip49::Error) -> Self {
-        Self::NIP49(e)
-    }
+#[inline]
+fn bech32_encode(hrp: Hrp, data: &[u8]) -> Result<String, Error> {
+    bech32::encode::<Bech32>(hrp, data).map_err(|e| Error::new(ErrorKind::Invalid, e.to_string()))
 }
 
 /// To ensure total matching on prefixes when decoding a [`Nip19`] object
@@ -173,7 +108,7 @@ impl Nip19Prefix {
             PREFIX_BECH32_PROFILE => Ok(Nip19Prefix::NProfile),
             PREFIX_BECH32_EVENT => Ok(Nip19Prefix::NEvent),
             PREFIX_BECH32_COORDINATE => Ok(Nip19Prefix::NAddr),
-            _ => Err(Error::WrongPrefix),
+            _ => Err(wrong_prefix()),
         }
     }
 
@@ -205,7 +140,7 @@ impl FromStr for Nip19Prefix {
             m if m.starts_with(PREFIX_BECH32_PROFILE) => Ok(Nip19Prefix::NProfile),
             m if m.starts_with(PREFIX_BECH32_EVENT) => Ok(Nip19Prefix::NEvent),
             m if m.starts_with(PREFIX_BECH32_COORDINATE) => Ok(Nip19Prefix::NAddr),
-            _ => Err(Error::WrongPrefix),
+            _ => Err(wrong_prefix()),
         }
     }
 }
@@ -246,7 +181,7 @@ impl FromBech32 for Nip19 {
     type Err = Error;
 
     fn from_bech32(hash: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(hash)?;
+        let (hrp, data) = bech32_decode(hash)?;
         let prefix: Nip19Prefix = Nip19Prefix::from_hrp(hrp.as_str())?;
 
         match prefix {
@@ -285,13 +220,13 @@ impl FromBech32 for SecretKey {
     type Err = Error;
 
     fn from_bech32(secret_key: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(secret_key)?;
+        let (hrp, data) = bech32_decode(secret_key)?;
 
         if hrp != HRP_SECRET_KEY {
-            return Err(Error::WrongPrefix);
+            return Err(wrong_prefix());
         }
 
-        Ok(Self::from_slice(data.as_slice())?)
+        Self::from_slice(data.as_slice())
     }
 }
 
@@ -311,13 +246,13 @@ impl FromBech32 for EncryptedSecretKey {
     type Err = Error;
 
     fn from_bech32(secret_key: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(secret_key)?;
+        let (hrp, data) = bech32_decode(secret_key)?;
 
         if hrp != HRP_SECRET_KEY_ENCRYPTED {
-            return Err(Error::WrongPrefix);
+            return Err(wrong_prefix());
         }
 
-        Ok(Self::from_slice(data.as_slice())?)
+        Self::from_slice(data.as_slice())
     }
 }
 
@@ -326,10 +261,7 @@ impl ToBech32 for EncryptedSecretKey {
     type Err = Error;
 
     fn to_bech32(&self) -> Result<String, Self::Err> {
-        Ok(bech32::encode::<Bech32>(
-            HRP_SECRET_KEY_ENCRYPTED,
-            &self.as_vec(),
-        )?)
+        bech32_encode(HRP_SECRET_KEY_ENCRYPTED, &self.as_vec())
     }
 }
 
@@ -337,11 +269,11 @@ impl FromBech32 for PublicKey {
     type Err = Error;
 
     fn from_bech32(public_key: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(public_key)?;
+        let (hrp, data) = bech32_decode(public_key)?;
 
         // Parse npub
         if hrp == HRP_PUBLIC_KEY {
-            return Ok(Self::from_slice(data.as_slice())?);
+            return Self::from_slice(data.as_slice());
         }
 
         // Parse nprofile
@@ -350,7 +282,7 @@ impl FromBech32 for PublicKey {
             return Ok(profile.public_key);
         }
 
-        Err(Error::WrongPrefix)
+        Err(wrong_prefix())
     }
 }
 
@@ -366,11 +298,11 @@ impl FromBech32 for EventId {
     type Err = Error;
 
     fn from_bech32(id: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(id)?;
+        let (hrp, data) = bech32_decode(id)?;
 
         // Parse note
         if hrp == HRP_NOTE_ID {
-            return Ok(Self::from_slice(data.as_slice())?);
+            return Self::from_slice(data.as_slice());
         }
 
         // Parse nevent
@@ -379,7 +311,7 @@ impl FromBech32 for EventId {
             return Ok(event.event_id);
         }
 
-        Err(Error::WrongPrefix)
+        Err(wrong_prefix())
     }
 }
 
@@ -440,11 +372,11 @@ impl Nip19Event {
         let mut relays: Vec<RelayUrl> = Vec::new();
 
         while !data.is_empty() {
-            let t = data.first().ok_or(Error::TLV)?;
-            let l = data.get(1).ok_or(Error::TLV)?;
+            let t = data.first().ok_or(invalid_tlv())?;
+            let l = data.get(1).ok_or(invalid_tlv())?;
             let l = *l as usize;
 
-            let bytes = data.get(2..l + 2).ok_or(Error::TLV)?;
+            let bytes = data.get(2..l + 2).ok_or(invalid_tlv())?;
 
             match *t {
                 SPECIAL if event_id.is_none() => {
@@ -464,8 +396,7 @@ impl Nip19Event {
                     // The kind value must be a 32-bit unsigned number according to
                     // https://github.com/nostr-protocol/nips/blob/37f6cbb775126b386414220f783ca0f5f85e7614/19.md#shareable-identifiers-with-extra-metadata
                     let k: u16 =
-                        u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
-                            as u16;
+                        u32::from_be_bytes(bytes.try_into().map_err(Error::malformed)?) as u16;
                     kind = Some(Kind::from(k));
                 }
                 _ => (),
@@ -475,7 +406,7 @@ impl Nip19Event {
         }
 
         Ok(Self {
-            event_id: event_id.ok_or_else(|| Error::FieldMissing("event id".to_string()))?,
+            event_id: event_id.ok_or_else(|| field_missing("event id"))?,
             author,
             kind,
             relays,
@@ -493,10 +424,10 @@ impl FromBech32 for Nip19Event {
     type Err = Error;
 
     fn from_bech32(event: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(event)?;
+        let (hrp, data) = bech32_decode(event)?;
 
         if hrp != HRP_EVENT {
-            return Err(Error::WrongPrefix);
+            return Err(wrong_prefix());
         }
 
         Self::from_bech32_data(data)
@@ -540,7 +471,7 @@ impl ToBech32 for Nip19Event {
             bytes.extend(relay.as_bytes()); // Value
         }
 
-        Ok(bech32::encode::<Bech32>(HRP_EVENT, &bytes)?)
+        bech32_encode(HRP_EVENT, &bytes)
     }
 }
 
@@ -580,11 +511,11 @@ impl Nip19Profile {
         let mut relays: Vec<RelayUrl> = Vec::new();
 
         while !data.is_empty() {
-            let t = data.first().ok_or(Error::TLV)?;
-            let l = data.get(1).ok_or(Error::TLV)?;
+            let t = data.first().ok_or(invalid_tlv())?;
+            let l = data.get(1).ok_or(invalid_tlv())?;
             let l = *l as usize;
 
-            let bytes = data.get(2..l + 2).ok_or(Error::TLV)?;
+            let bytes = data.get(2..l + 2).ok_or(invalid_tlv())?;
 
             match *t {
                 SPECIAL if public_key.is_none() => {
@@ -603,7 +534,7 @@ impl Nip19Profile {
         }
 
         Ok(Self {
-            public_key: public_key.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
+            public_key: public_key.ok_or_else(|| field_missing("public key"))?,
             relays,
         })
     }
@@ -628,7 +559,7 @@ impl ToBech32 for Nip19Profile {
             bytes.extend(url); // Value
         }
 
-        Ok(bech32::encode::<Bech32>(HRP_PROFILE, &bytes)?)
+        bech32_encode(HRP_PROFILE, &bytes)
     }
 }
 
@@ -636,10 +567,10 @@ impl FromBech32 for Nip19Profile {
     type Err = Error;
 
     fn from_bech32(profile: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(profile)?;
+        let (hrp, data) = bech32_decode(profile)?;
 
         if hrp != HRP_PROFILE {
-            return Err(Error::WrongPrefix);
+            return Err(wrong_prefix());
         }
 
         Self::from_bech32_data(data)
@@ -678,11 +609,11 @@ impl Nip19Coordinate {
         let mut relays: Vec<RelayUrl> = Vec::new();
 
         while !data.is_empty() {
-            let t = data.first().ok_or(Error::TLV)?;
-            let l = data.get(1).ok_or(Error::TLV)?;
+            let t = data.first().ok_or(invalid_tlv())?;
+            let l = data.get(1).ok_or(invalid_tlv())?;
             let l = *l as usize;
 
-            let bytes: &[u8] = data.get(2..l + 2).ok_or(Error::TLV)?;
+            let bytes: &[u8] = data.get(2..l + 2).ok_or(invalid_tlv())?;
 
             match *t {
                 SPECIAL if identifier.is_none() => {
@@ -701,8 +632,7 @@ impl Nip19Coordinate {
                     // The kind value must be a 32-bit unsigned number according to
                     // https://github.com/nostr-protocol/nips/blob/37f6cbb775126b386414220f783ca0f5f85e7614/19.md#shareable-identifiers-with-extra-metadata
                     let k: u16 =
-                        u32::from_be_bytes(bytes.try_into().map_err(|_| Error::TryFromSlice)?)
-                            as u16;
+                        u32::from_be_bytes(bytes.try_into().map_err(Error::malformed)?) as u16;
                     kind = Some(Kind::from(k));
                 }
                 _ => (),
@@ -712,9 +642,9 @@ impl Nip19Coordinate {
         }
 
         let coordinate = Coordinate {
-            kind: kind.ok_or_else(|| Error::FieldMissing("kind".to_string()))?,
-            public_key: pubkey.ok_or_else(|| Error::FieldMissing("pubkey".to_string()))?,
-            identifier: identifier.ok_or_else(|| Error::FieldMissing("identifier".to_string()))?,
+            kind: kind.ok_or_else(|| field_missing("kind"))?,
+            public_key: pubkey.ok_or_else(|| field_missing("public key"))?,
+            identifier: identifier.ok_or_else(|| field_missing("identifier"))?,
         };
 
         Ok(Self { coordinate, relays })
@@ -725,10 +655,10 @@ impl FromBech32 for Nip19Coordinate {
     type Err = Error;
 
     fn from_bech32(addr: &str) -> Result<Self, Self::Err> {
-        let (hrp, data) = bech32::decode(addr)?;
+        let (hrp, data) = bech32_decode(addr)?;
 
         if hrp != HRP_COORDINATE {
-            return Err(Error::WrongPrefix);
+            return Err(wrong_prefix());
         }
 
         Self::from_bech32_data(data)
@@ -778,7 +708,7 @@ pub(super) fn coordinate_to_bech32<'a>(
         bytes.extend(relay.as_str().as_bytes()); // Value
     }
 
-    Ok(bech32::encode::<Bech32>(HRP_COORDINATE, &bytes)?)
+    bech32_encode(HRP_COORDINATE, &bytes)
 }
 
 #[cfg(test)]
