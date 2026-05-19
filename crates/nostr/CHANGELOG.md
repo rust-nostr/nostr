@@ -103,14 +103,19 @@
 ### Fixed
 
 - Remove unused generic in `EventBuilder::request_vanish` function (https://github.com/rust-nostr/nostr/pull/1181)
-- Add `a` tag of replaceable and addressable events in `EventBuilder::repost` (https://github.com/rust-nostr/nostr/pull/1184)
-- Handle legacy events with `mention` marker (https://github.com/rust-nostr/nostr/pull/1193)
-- Parse "HEAD" as `TagKing::Head` (https://github.com/rust-nostr/nostr/pull/1215)
 
 ### Performance
 
 - Optimize NIP-21 URI parsing in `PublicKey::parse` (https://github.com/rust-nostr/nostr/pull/1308)
 - Optimize event serialization by ~73% (https://github.com/rust-nostr/nostr/pull/1319)
+
+## v0.44.3 - 2026/05/19
+
+### Fixed
+
+- Add `a` tag of replaceable and addressable events in `EventBuilder::repost` (https://github.com/rust-nostr/nostr/pull/1184)
+- Handle legacy events with `mention` marker (https://github.com/rust-nostr/nostr/pull/1193)
+- Parse "HEAD" as `TagKing::Head` (https://github.com/rust-nostr/nostr/pull/1215)
 
 ## v0.44.2 - 2025/12/04
 
