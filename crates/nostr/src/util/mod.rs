@@ -5,9 +5,9 @@
 //! Util
 
 use alloc::boxed::Box;
+#[cfg(feature = "rand")]
 use alloc::string::String;
 use core::convert::Infallible;
-use core::fmt::Debug;
 use core::future::Future;
 use core::pin::Pin;
 #[cfg(feature = "std")]
@@ -22,12 +22,12 @@ use rand::rngs::OsRng;
 #[cfg(feature = "std")]
 use secp256k1::{All, Secp256k1};
 use secp256k1::{Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey, ecdh};
-use serde::Serialize;
-use serde::de::DeserializeOwned;
 
 #[cfg(feature = "nip44")]
 pub mod hkdf;
+mod json;
 
+pub(crate) use self::json::impl_json_methods;
 use crate::{PublicKey, SecretKey, key};
 
 /// A boxed future
@@ -100,52 +100,6 @@ pub static SECP256K1: LazyLock<Secp256k1<All>> = LazyLock::new(|| {
 
     ctx
 });
-
-/// JSON util
-pub trait JsonUtil: Sized + Serialize + DeserializeOwned
-where
-    <Self as JsonUtil>::Err: From<serde_json::Error>,
-{
-    /// Error
-    type Err: Debug;
-
-    /// Deserialize JSON
-    #[inline]
-    fn from_json<T>(json: T) -> Result<Self, Self::Err>
-    where
-        T: AsRef<[u8]>,
-    {
-        Ok(serde_json::from_slice(json.as_ref())?)
-    }
-
-    /// Serialize as JSON string
-    ///
-    /// This method could panic! Use `try_as_json` for error propagation.
-    #[inline]
-    fn as_json(&self) -> String {
-        self.try_as_json().unwrap()
-    }
-
-    /// Serialize as JSON string
-    #[inline]
-    fn try_as_json(&self) -> Result<String, Self::Err> {
-        Ok(serde_json::to_string(self)?)
-    }
-
-    /// Serialize as pretty JSON string
-    ///
-    /// This method could panic! Use `try_as_pretty_json` for error propagation.
-    #[inline]
-    fn as_pretty_json(&self) -> String {
-        self.try_as_pretty_json().unwrap()
-    }
-
-    /// Serialize as pretty JSON string
-    #[inline]
-    fn try_as_pretty_json(&self) -> Result<String, Self::Err> {
-        Ok(serde_json::to_string_pretty(self)?)
-    }
-}
 
 pub(crate) trait UnwrapInfallible<T>: Sized {
     fn unwrap_infallible(self) -> T;

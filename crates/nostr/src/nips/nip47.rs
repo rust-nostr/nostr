@@ -26,7 +26,8 @@ use crate::event::FinalizeEvent;
 use crate::signer::SignerError;
 use crate::types::url::form_urlencoded::byte_serialize;
 use crate::types::url::{RelayUrl, Url};
-use crate::{Event, JsonUtil, PublicKey, SecretKey, Timestamp};
+use crate::util::impl_json_methods;
+use crate::{Event, PublicKey, SecretKey, Timestamp};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::{EventBuilder, Keys, Kind, Tag};
 
@@ -632,9 +633,7 @@ impl Request {
     }
 }
 
-impl JsonUtil for Request {
-    type Err = Error;
-}
+impl_json_methods!(Request, Error);
 
 impl<'de> Deserialize<'de> for Request {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -1088,9 +1087,7 @@ impl Response {
     }
 }
 
-impl JsonUtil for Response {
-    type Err = Error;
-}
+impl_json_methods!(Response, Error);
 
 impl<'de> Deserialize<'de> for Response {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
@@ -1362,9 +1359,7 @@ impl Notification {
     }
 }
 
-impl JsonUtil for Notification {
-    type Err = Error;
-}
+impl_json_methods!(Notification, Error);
 
 impl<'de> Deserialize<'de> for Notification {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>

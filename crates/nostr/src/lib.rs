@@ -69,8 +69,6 @@ pub use self::nips::nip19::{FromBech32, ToBech32};
 #[doc(hidden)]
 pub use self::types::{ImageDimensions, RelayUrl, RelayUrlArg, Timestamp, Url};
 #[doc(hidden)]
-pub use self::util::JsonUtil;
-#[doc(hidden)]
 #[cfg(feature = "std")]
 pub use self::util::SECP256K1;
 

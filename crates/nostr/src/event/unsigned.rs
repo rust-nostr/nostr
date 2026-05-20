@@ -17,8 +17,8 @@ use super::{FinalizeEvent, FinalizeEventAsync};
 use crate::SECP256K1;
 use crate::nips::nip13::{AsyncPowAdapter, PowAdapter};
 use crate::signer::{AsyncSignEvent, SignEvent, SignerError};
-use crate::util::BoxedFuture;
-use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Tag, Tags, Timestamp};
+use crate::util::{BoxedFuture, impl_json_methods};
+use crate::{Event, EventId, Kind, PublicKey, Tag, Tags, Timestamp};
 
 /// Unsigned event
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -203,9 +203,7 @@ where
     }
 }
 
-impl JsonUtil for UnsignedEvent {
-    type Err = Error;
-}
+impl_json_methods!(UnsignedEvent, Error);
 
 impl From<Event> for UnsignedEvent {
     fn from(event: Event) -> Self {

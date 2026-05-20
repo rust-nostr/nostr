@@ -900,7 +900,6 @@ impl TryFrom<Vec<Tag>> for LiveEvent {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::JsonUtil;
 
     #[test]
     fn test_live_event_marker() {

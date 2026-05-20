@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP59: Gift Wrap
+//! NIP-59: Gift Wrap
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/59.md>
 
@@ -32,7 +32,7 @@ use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent, 
 use crate::util::BoxedFuture;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::{EventBuilder, Timestamp};
-use crate::{JsonUtil, Kind, PublicKey, Tag};
+use crate::{Kind, PublicKey, Tag};
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
 const RANGE_RANDOM_TIMESTAMP_TWEAK: Range<u64> = 0..172800; // From 0 secs to 2 days

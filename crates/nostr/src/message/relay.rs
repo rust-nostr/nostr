@@ -15,7 +15,8 @@ use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::{Value, json};
 
 use super::MessageHandleError;
-use crate::{Event, EventId, JsonUtil, SubscriptionId};
+use crate::util::impl_json_methods;
+use crate::{Event, EventId, SubscriptionId};
 
 /// A string that must be exactly one word.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -443,16 +444,10 @@ impl<'de> Deserialize<'de> for RelayMessage<'_> {
     }
 }
 
-impl JsonUtil for RelayMessage<'_> {
-    type Err = MessageHandleError;
-
-    /// Deserialize [`RelayMessage`] from JSON string
-    ///
-    /// **This method doesn't verify the event signature!**
-    fn from_json<T>(json: T) -> Result<Self, Self::Err>
-    where
-        T: AsRef<[u8]>,
-    {
+impl_json_methods! {
+    RelayMessage<'_>,
+    MessageHandleError,
+    from_json(json) {
         let msg: &[u8] = json.as_ref();
 
         if msg.is_empty() {

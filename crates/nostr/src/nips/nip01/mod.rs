@@ -24,7 +24,8 @@ use super::nip19::{self, FromBech32, Nip19Coordinate, ToBech32};
 use super::nip21::{FromNostrUri, ToNostrUri};
 use crate::event::TagCodecError;
 use crate::types::url::{self, Url};
-use crate::{Filter, JsonUtil, Kind, PublicKey, Tag, event, key};
+use crate::util::impl_json_methods;
+use crate::{Filter, Kind, PublicKey, Tag, event, key};
 
 /// NIP-01 error
 #[derive(Debug, PartialEq)]
@@ -477,9 +478,7 @@ impl Metadata {
     }
 }
 
-impl JsonUtil for Metadata {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(Metadata, serde_json::Error);
 
 fn serialize_custom_fields<S>(
     custom_fields: &BTreeMap<String, Value>,

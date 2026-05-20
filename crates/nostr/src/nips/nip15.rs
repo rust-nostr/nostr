@@ -9,7 +9,8 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
-use crate::{JsonUtil, PublicKey, Tag};
+use crate::util::impl_json_methods;
+use crate::{PublicKey, Tag};
 
 /// Payload for creating or updating stall
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -59,9 +60,7 @@ impl From<StallData> for Vec<Tag> {
     }
 }
 
-impl JsonUtil for StallData {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(StallData, serde_json::Error);
 
 /// Payload for creating or updating product
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -175,9 +174,7 @@ impl From<ProductData> for Vec<Tag> {
     }
 }
 
-impl JsonUtil for ProductData {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(ProductData, serde_json::Error);
 
 /// A shipping method as defined by the merchant
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -232,9 +229,7 @@ impl ShippingMethod {
     }
 }
 
-impl JsonUtil for ShippingMethod {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(ShippingMethod, serde_json::Error);
 
 /// Delivery cost for shipping method as defined by the merchant in the product
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -245,9 +240,7 @@ pub struct ShippingCost {
     pub cost: f64,
 }
 
-impl JsonUtil for ShippingCost {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(ShippingCost, serde_json::Error);
 
 /// Payload for customer creating an order
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -271,9 +264,7 @@ pub struct CustomerOrder {
     pub shipping_id: String,
 }
 
-impl JsonUtil for CustomerOrder {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(CustomerOrder, serde_json::Error);
 
 /// Payload for a merchant to create a payment request
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -287,9 +278,7 @@ pub struct MerchantPaymentRequest {
     pub payment_options: Vec<PaymentOption>,
 }
 
-impl JsonUtil for MerchantPaymentRequest {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(MerchantPaymentRequest, serde_json::Error);
 
 /// Payload to notify a customer about the received payment and or shipping
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -305,9 +294,7 @@ pub struct MerchantVerifyPayment {
     pub shipped: bool,
 }
 
-impl JsonUtil for MerchantVerifyPayment {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(MerchantVerifyPayment, serde_json::Error);
 
 /// A customers contact options
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -320,9 +307,7 @@ pub struct CustomerContact {
     pub email: Option<String>,
 }
 
-impl JsonUtil for CustomerContact {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(CustomerContact, serde_json::Error);
 
 /// An item in the order
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -333,9 +318,7 @@ pub struct CustomerOrderItem {
     pub quantity: u64,
 }
 
-impl JsonUtil for CustomerOrderItem {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(CustomerOrderItem, serde_json::Error);
 
 /// A payment option of an invoice
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -347,9 +330,7 @@ pub struct PaymentOption {
     pub link: String,
 }
 
-impl JsonUtil for PaymentOption {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(PaymentOption, serde_json::Error);
 
 #[cfg(test)]
 mod tests {

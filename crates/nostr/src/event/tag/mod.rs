@@ -389,7 +389,7 @@ mod tests {
     use secp256k1::schnorr::Signature;
 
     use super::*;
-    use crate::{Event, JsonUtil, Kind, Timestamp};
+    use crate::{Event, Kind, Timestamp};
 
     #[test]
     fn test_parse_empty_tag() {

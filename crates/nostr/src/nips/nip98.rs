@@ -36,8 +36,6 @@ use crate::signer::SignerError;
 use crate::signer::{AsyncGetPublicKey, AsyncSignEvent};
 use crate::types::url;
 #[cfg(feature = "std")]
-use crate::util::JsonUtil;
-#[cfg(feature = "std")]
 use crate::{Kind, PublicKey, Timestamp};
 
 #[cfg(feature = "std")]

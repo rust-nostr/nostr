@@ -555,7 +555,7 @@ impl<'de> Deserialize<'de> for Tags {
 mod tests {
     use super::*;
     use crate::event::tag::TagCodec;
-    use crate::{Event, JsonUtil, RelayUrl};
+    use crate::{Event, RelayUrl};
 
     #[test]
     fn test_collect() {

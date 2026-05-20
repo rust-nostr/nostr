@@ -27,8 +27,8 @@ use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent, 
 use crate::types::url::{self, ParseError, RelayUrl, Url};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::util;
-use crate::util::BoxedFuture;
-use crate::{Event, EventBuilder, JsonUtil, Kind, PublicKey, Tag, event, key};
+use crate::util::{BoxedFuture, impl_json_methods};
+use crate::{Event, EventBuilder, Kind, PublicKey, Tag, event, key};
 
 /// NIP46 URI Scheme
 pub const NOSTR_CONNECT_URI_SCHEME: &str = "nostrconnect";
@@ -760,9 +760,7 @@ impl NostrConnectMessage {
     }
 }
 
-impl JsonUtil for NostrConnectMessage {
-    type Err = Error;
-}
+impl_json_methods!(NostrConnectMessage, Error);
 
 /// Nostr Connect Metadata
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -823,9 +821,7 @@ impl NostrConnectMetadata {
     }
 }
 
-impl JsonUtil for NostrConnectMetadata {
-    type Err = Error;
-}
+impl_json_methods!(NostrConnectMetadata, Error);
 
 #[allow(missing_docs)]
 #[deprecated(since = "0.45.0", note = "use `NostrConnectUri` instead")]

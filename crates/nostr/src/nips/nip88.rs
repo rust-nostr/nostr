@@ -303,7 +303,6 @@ impl PollResponse {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::JsonUtil;
 
     #[test]
     fn test_poll_type() {

@@ -16,11 +16,11 @@ use core::str::FromStr;
 use super::util::{
     take_and_parse_from_str, take_and_parse_optional_relay_url, take_optional_string, take_string,
 };
+use crate::PublicKey;
 use crate::event::{
     self, Event, EventId, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
 };
 use crate::types::url::{self, RelayUrl};
-use crate::{JsonUtil, PublicKey};
 
 const INPUT: &str = "i";
 const OUTPUT: &str = "output";

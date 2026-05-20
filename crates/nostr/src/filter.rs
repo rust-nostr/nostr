@@ -20,7 +20,8 @@ use serde::{Deserialize, Serialize};
 
 use crate::event::TagsIndexes;
 use crate::nips::nip01::Coordinate;
-use crate::{Event, EventId, JsonUtil, Kind, PublicKey, Timestamp};
+use crate::util::impl_json_methods;
+use crate::{Event, EventId, Kind, PublicKey, Timestamp};
 
 type GenericTags = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
@@ -943,9 +944,7 @@ impl Filter {
     }
 }
 
-impl JsonUtil for Filter {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(Filter, serde_json::Error);
 
 impl From<Filter> for Vec<Filter> {
     fn from(filter: Filter) -> Self {

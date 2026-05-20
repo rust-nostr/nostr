@@ -36,8 +36,8 @@ use crate::SECP256K1;
 use crate::nips::nip01::Coordinate;
 use crate::nips::nip19::{self, Nip19Event, ToBech32};
 use crate::nips::nip21::ToNostrUri;
-use crate::util::BoxedFuture;
-use crate::{JsonUtil, Metadata, PublicKey, Timestamp};
+use crate::util::{BoxedFuture, impl_json_methods};
+use crate::{Metadata, PublicKey, Timestamp};
 
 const ID: &str = "id";
 const PUBKEY: &str = "pubkey";
@@ -267,20 +267,7 @@ impl Event {
     }
 }
 
-impl JsonUtil for Event {
-    type Err = Error;
-
-    /// Deserialize [`Event`] from JSON
-    ///
-    /// **This method doesn't verify the signature!**
-    #[inline]
-    fn from_json<T>(json: T) -> Result<Self, Self::Err>
-    where
-        T: AsRef<[u8]>,
-    {
-        Ok(serde_json::from_slice(json.as_ref())?)
-    }
-}
+impl_json_methods!(Event, Error);
 
 impl ToBech32 for Event {
     type Err = nip19::Error;

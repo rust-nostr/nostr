@@ -8,7 +8,7 @@ use nostr::event::FinalizeEventAsync;
 use nostr::hashes::Hash;
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::signer::{AsyncGetPublicKey, AsyncSignEvent};
-use nostr::{Event, EventBuilder, JsonUtil, PublicKey, Timestamp, Url};
+use nostr::{Event, EventBuilder, PublicKey, Timestamp, Url};
 use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, RANGE};
 #[cfg(not(target_arch = "wasm32"))]
 use reqwest::redirect::Policy;

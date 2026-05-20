@@ -12,7 +12,8 @@ use alloc::vec::Vec;
 
 use url::Url;
 
-use crate::{JsonUtil, PublicKey, Timestamp};
+use crate::util::impl_json_methods;
+use crate::{PublicKey, Timestamp};
 
 /// Relay information document
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
@@ -56,9 +57,7 @@ impl RelayInformationDocument {
     }
 }
 
-impl JsonUtil for RelayInformationDocument {
-    type Err = serde_json::Error;
-}
+impl_json_methods!(RelayInformationDocument, serde_json::Error);
 
 /// These are limitations imposed by the relay on clients. Your client should
 /// expect that requests which exceed these practical limitations are rejected or fail immediately.

@@ -195,7 +195,7 @@ impl FromIterator<Event> for Events {
 
 #[cfg(test)]
 mod tests {
-    use nostr::{JsonUtil, Kind};
+    use nostr::Kind;
 
     use super::*;
 
