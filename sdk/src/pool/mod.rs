@@ -782,6 +782,7 @@ impl RelayPool {
 
         task::spawn(async move {
             let mut futures = FuturesUnordered::<Pin<Box<dyn Future<Output = ()> + Send>>>::new();
+            println!("Policy: {pool_policy:?}");
 
             for (relay, filter) in relay_map {
                 let url = relay.url().clone();
@@ -806,20 +807,22 @@ impl RelayPool {
                         }
                         Ok(mut stream) => {
                             loop {
-                                if should_exit.load(Ordering::SeqCst) {
-                                    let _ = relay.unsubscribe(&id).await;
-                                    break;
-                                }
-
                                 tokio::select! {
                                     _ = tx.closed() => {
                                         break;
                                     }
                                     res = stream.next() => {
+                                        if should_exit.load(Ordering::SeqCst) {
+                                            let _ = relay.unsubscribe(&id).await;
+                                            break;
+                                        }
+
                                         match res {
                                             Some(Ok(event)) => {
                                                 // Deduplicate across relays.
                                                 let mut ids = processed_events.lock().await;
+
+                                                println!("From '{url}': {}", event.id);
 
                                                 if ids.insert(event.id) {
                                                     drop(ids);
