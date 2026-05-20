@@ -1,14 +1,12 @@
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet};
 use std::future::{Future, IntoFuture};
-use std::iter::Zip;
 use std::mem;
 use std::num::NonZeroUsize;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
-use std::vec::IntoIter;
 
 use async_utility::task;
 use futures::stream::FuturesUnordered;
@@ -18,6 +16,9 @@ use tokio::sync::{Mutex, RwLock, broadcast, mpsc};
 
 mod builder;
 mod error;
+mod policy;
+
+pub(crate) use policy::PoolExitPolicy;
 
 pub(crate) use self::builder::RelayPoolBuilder;
 pub(crate) use self::error::Error;
@@ -742,6 +743,7 @@ impl RelayPool {
         filters: HashMap<RelayUrl, Vec<Filter>>,
         id: Option<SubscriptionId>,
         timeout: Option<Duration>,
+        pool_policy: Option<PoolExitPolicy>,
         policy: ReqExitPolicy,
     ) -> Result<EventStream, Error> {
         // Check if `targets` map is empty
@@ -749,18 +751,23 @@ impl RelayPool {
             return Err(Error::NoRelaysSpecified);
         }
 
-        // Lock with read shared access
-        let relays = self.relays.read().await;
+        // Define the pool exit policy
+        let pool_policy = pool_policy.unwrap_or_default();
 
         // Create a new channel
         // NOTE: the events are deduplicated and the send method awaits, so a huge capacity isn't necessary.
         let (tx, rx) = mpsc::channel(1024);
 
-        let mut urls: Vec<RelayUrl> = Vec::with_capacity(filters.len());
-        let mut futures = Vec::with_capacity(filters.len());
-
         // Get or generate a subscription ID
         let id: SubscriptionId = id.unwrap_or_else(SubscriptionId::generate);
+
+        // Shared state for deduplication and early exit.
+        let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
+        let exit_flag: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+
+        // Lock with read shared access
+        let relays = self.relays.read().await;
+        let mut relay_map: Vec<(Relay, Vec<Filter>)> = vec![];
 
         for (url, filter) in filters {
             // Try to get the relay
@@ -768,106 +775,98 @@ impl RelayPool {
                 .get(&url)
                 .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
 
-            // Push url
-            urls.push(url);
-
-            // Push stream events future
-            futures.push(
-                relay
-                    .stream_events(filter)
-                    .with_id(id.clone())
-                    .maybe_timeout(timeout)
-                    .policy(policy)
-                    .into_future(),
-            );
+            relay_map.push((relay.clone(), filter));
         }
 
-        // Wait that futures complete
-        let awaited = future::join_all(futures).await;
+        drop(relays);
 
-        // The urls and futures len MUST be the same!
-        assert_eq!(urls.len(), awaited.len());
-
-        // Zip-up urls and futures into a single iterator
-        let streams: Zip<IntoIter<RelayUrl>, IntoIter<Result<_, _>>> =
-            urls.into_iter().zip(awaited);
-
-        // Single driver task: polls all streams, de-duplicates, forwards
         task::spawn(async move {
-            #[cfg(not(target_arch = "wasm32"))]
-            type OutFuture = Pin<Box<dyn Future<Output = ()> + Send>>;
-            #[cfg(target_arch = "wasm32")]
-            type OutFuture = Pin<Box<dyn Future<Output = ()>>>;
+            let mut futures = FuturesUnordered::<Pin<Box<dyn Future<Output = ()> + Send>>>::new();
 
-            // IDs collection, needed to check if an event was already sent to the stream
-            let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
-
-            let mut futures: Vec<OutFuture> = Vec::with_capacity(streams.len());
-
-            for (url, res) in streams.into_iter() {
+            for (relay, filter) in relay_map {
+                let url = relay.url().clone();
                 let tx = tx.clone();
+                let ids = ids.clone();
+                let exit_flag = exit_flag.clone();
+                let id = id.clone();
 
-                let future: OutFuture = match res {
-                    // Streaming available
-                    Ok(mut stream) => {
-                        let ids = ids.clone();
+                let future = async move {
+                    let stream = relay
+                        .stream_events(filter)
+                        .with_id(id)
+                        .maybe_timeout(timeout)
+                        .policy(policy) // per‑relay policy, unchanged
+                        .into_future()
+                        .await;
 
-                        Box::pin(async move {
-                            // Start handling stream items
+                    match stream {
+                        Err(e) => {
+                            let _ = tx.send((url.clone(), Err(e))).await;
+                        }
+                        Ok(mut stream) => {
                             loop {
+                                if exit_flag.load(Ordering::SeqCst) {
+                                    break;
+                                }
+
                                 tokio::select! {
-                                    // The received dropped, we should terminate the stream
-                                    _ = tx.closed() => break,
-                                    // Handle stream item
+                                    _ = tx.closed() => {
+                                        break;
+                                    }
                                     res = stream.next() => {
                                         match res {
                                             Some(Ok(event)) => {
-                                                let mut ids = ids.lock().await;
+                                                // Deduplicate across relays.
+                                                let mut id_set = ids.lock().await;
 
-                                                // Check if ID was already seen or insert into set.
-                                                if ids.insert(event.id) {
-                                                    // Immediately drop the set
-                                                    drop(ids);
+                                                if id_set.insert(event.id) {
+                                                    drop(id_set);
 
-                                                    // Send event
+                                                    if pool_policy.exit_on_first_response() {
+                                                        exit_flag.store(true, Ordering::SeqCst);
+                                                    }
+
                                                     if tx.send((url.clone(), Ok(event))).await.is_err() {
                                                         break;
                                                     }
                                                 }
                                             }
                                             Some(Err(e)) => {
-                                                // Send error
+                                                // Relay returned an error.
                                                 if tx.send((url.clone(), Err(e))).await.is_err() {
                                                     break;
                                                 }
                                             }
-                                            None => break,
+                                            None => {
+                                                break;
+                                            }
                                         }
                                     }
                                 }
                             }
-                        })
-                    }
-                    // No streaming available
-                    Err(e) => {
-                        Box::pin(async move {
-                            // Send error
-                            let _ = tx.send((url, Err(e))).await;
-                        })
+                        }
                     }
                 };
 
-                futures.push(future);
+                futures.push(Box::pin(future));
             }
 
-            // Wait that all futures complete
-            future::join_all(futures).await;
+            loop {
+                if futures.is_empty() {
+                    break;
+                }
+                tokio::select! {
+                    _ = tx.closed() => {
+                        break;
+                    }
+                    Some(_) = futures.next() => {}
+                }
+            }
 
-            // Close the channel
             drop(tx);
         });
 
-        // Return stream
+        // Return the live event stream immediately.
         Ok(Box::pin(ReceiverStream::new(rx)))
     }
 }

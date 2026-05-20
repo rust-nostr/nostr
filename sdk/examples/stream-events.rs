@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use nostr_sdk::prelude::*;
 
@@ -16,8 +16,9 @@ async fn main() -> Result<()> {
 
     client.connect().await;
 
+    let start = Instant::now();
     // Stream events from all connected relays
-    let filter = Filter::new().kind(Kind::TextNote).limit(100);
+    let filter = Filter::new().kind(Kind::TextNote).limit(1);
     let mut stream = client
         .stream_events(filter)
         .timeout(Duration::from_secs(15))
@@ -28,6 +29,31 @@ async fn main() -> Result<()> {
         let event = res?;
         println!("Received event from '{url}': {}", event.as_json());
     }
+    let duration = start.elapsed();
+    println!(
+        "stream with PoolExitPolicy::ExitOnAllResponses: {:?}",
+        duration
+    );
+
+    let start = Instant::now();
+    // Stream events from all connected relays
+    let filter = Filter::new().kind(Kind::TextNote).limit(1);
+    let mut stream = client
+        .stream_events(filter)
+        .timeout(Duration::from_secs(15))
+        .exit_early()
+        .policy(ReqExitPolicy::ExitOnEOSE)
+        .await?;
+
+    while let Some((url, res)) = stream.next().await {
+        let event = res?;
+        println!("Received event from '{url}': {}", event.as_json());
+    }
+    let duration = start.elapsed();
+    println!(
+        "stream with PoolExitPolicy::ExitOnFirstResponse: {:?}",
+        duration
+    );
 
     Ok(())
 }

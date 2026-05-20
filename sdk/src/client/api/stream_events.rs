@@ -11,6 +11,7 @@ use super::req_target::ReqTarget;
 use super::util::build_targets;
 use crate::client::{Client, Error};
 use crate::future::BoxedFuture;
+use crate::pool::PoolExitPolicy;
 use crate::relay::{self, ReqExitPolicy};
 
 type EventStream = Pin<Box<dyn Stream<Item = (RelayUrl, Result<Event, relay::Error>)> + Send>>;
@@ -27,6 +28,7 @@ pub struct StreamEvents<'client, 'url> {
     target: ReqTarget<'url>,
     id: Option<SubscriptionId>,
     timeout: Option<Duration>,
+    pool_policy: Option<PoolExitPolicy>,
     policy: ReqExitPolicy,
 }
 
@@ -37,6 +39,7 @@ impl<'client, 'url> StreamEvents<'client, 'url> {
             target,
             id: None,
             timeout: None,
+            pool_policy: None,
             policy: ReqExitPolicy::ExitOnEOSE,
         }
     }
@@ -54,6 +57,13 @@ impl<'client, 'url> StreamEvents<'client, 'url> {
     #[inline]
     pub fn timeout(mut self, timeout: Duration) -> Self {
         self.timeout = Some(timeout);
+        self
+    }
+
+    /// Set pool exit policy to [`PoolExitPolicy::ExitOnFirstResponse`].
+    #[inline]
+    pub fn exit_early(mut self) -> Self {
+        self.pool_policy = Some(PoolExitPolicy::ExitOnFirstResponse);
         self
     }
 
@@ -82,7 +92,13 @@ where
             Ok(self
                 .client
                 .pool()
-                .stream_events(targets, self.id, self.timeout, self.policy)
+                .stream_events(
+                    targets,
+                    self.id,
+                    self.timeout,
+                    self.pool_policy,
+                    self.policy,
+                )
                 .await?)
         })
     }

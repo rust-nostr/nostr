@@ -11,6 +11,7 @@ use super::{
     BrokenDownFilters, Gossip, GossipFilterPattern, GossipSemaphorePermit, find_filter_pattern,
 };
 use crate::client::{Client, Error, Output, SyncSummary};
+use crate::pool::PoolExitPolicy;
 use crate::relay::{RelayCapabilities, ReqExitPolicy, SyncDirection, SyncOptions};
 
 impl Client {
@@ -259,6 +260,7 @@ impl Client {
                     targets,
                     None,
                     Some(self.config().gossip_config.fetch_timeout),
+                    Some(PoolExitPolicy::ExitOnFirstResponse),
                     ReqExitPolicy::ExitOnEOSE,
                 )
                 .await?;
@@ -318,6 +320,7 @@ impl Client {
                 targets,
                 None,
                 Some(self.config().gossip_config.fetch_timeout),
+                Some(PoolExitPolicy::ExitOnFirstResponse),
                 ReqExitPolicy::ExitOnEOSE,
             )
             .await?;
