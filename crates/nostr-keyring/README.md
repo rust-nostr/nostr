@@ -8,7 +8,7 @@ The crate keeps all serialization in-memory and relies on the OS-provided creden
 ```rust,no_run
 use nostr_keyring::prelude::*;
 
-fn main() -> Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let keyring = NostrKeyring::new("my-nostr-app");
     
     // Save a key

@@ -1978,6 +1978,7 @@ dependencies = [
  "async-utility",
  "keyring",
  "nostr",
+ "opaquerr",
  "tokio",
 ]
 

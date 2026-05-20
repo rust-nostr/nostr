@@ -10,58 +10,15 @@
 #![warn(clippy::large_futures)]
 #![doc = include_str!("../README.md")]
 
-use std::fmt;
-
 #[cfg(feature = "async")]
-use async_utility::{task, tokio};
+use async_utility::task;
 pub use keyring::{Entry, Error as KeyringError};
 use nostr::key::{Keys, SecretKey};
 
+pub mod error;
 pub mod prelude;
 
-/// Keyring error
-#[derive(Debug)]
-pub enum Error {
-    /// Nostr protocol error
-    Protocol(nostr::error::Error),
-    /// Join error
-    #[cfg(feature = "async")]
-    Join(tokio::task::JoinError),
-    /// Keyring error
-    Keyring(KeyringError),
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Protocol(e) => e.fmt(f),
-            #[cfg(feature = "async")]
-            Self::Join(e) => write!(f, "{e}"),
-            Self::Keyring(e) => write!(f, "{e}"),
-        }
-    }
-}
-
-impl From<nostr::error::Error> for Error {
-    fn from(e: nostr::error::Error) -> Self {
-        Self::Protocol(e)
-    }
-}
-
-#[cfg(feature = "async")]
-impl From<tokio::task::JoinError> for Error {
-    fn from(e: tokio::task::JoinError) -> Self {
-        Self::Join(e)
-    }
-}
-
-impl From<KeyringError> for Error {
-    fn from(e: KeyringError) -> Self {
-        Self::Keyring(e)
-    }
-}
+use self::error::Error;
 
 /// Nostr keyring
 #[derive(Debug, Clone)]
