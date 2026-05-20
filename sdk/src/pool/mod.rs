@@ -762,8 +762,8 @@ impl RelayPool {
         let id: SubscriptionId = id.unwrap_or_else(SubscriptionId::generate);
 
         // Shared state for deduplication and early exit.
-        let ids: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
-        let exit_flag: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
+        let processed_events: Arc<Mutex<HashSet<EventId>>> = Arc::new(Mutex::new(HashSet::new()));
+        let should_exit: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
 
         // Lock with read shared access
         let relays = self.relays.read().await;
@@ -786,14 +786,15 @@ impl RelayPool {
             for (relay, filter) in relay_map {
                 let url = relay.url().clone();
                 let tx = tx.clone();
-                let ids = ids.clone();
-                let exit_flag = exit_flag.clone();
+
                 let id = id.clone();
+                let should_exit = should_exit.clone();
+                let processed_events = processed_events.clone();
 
                 let future = async move {
                     let stream = relay
                         .stream_events(filter)
-                        .with_id(id)
+                        .with_id(id.clone())
                         .maybe_timeout(timeout)
                         .policy(policy) // per‑relay policy, unchanged
                         .into_future()
@@ -805,7 +806,8 @@ impl RelayPool {
                         }
                         Ok(mut stream) => {
                             loop {
-                                if exit_flag.load(Ordering::SeqCst) {
+                                if should_exit.load(Ordering::SeqCst) {
+                                    let _ = relay.unsubscribe(&id).await;
                                     break;
                                 }
 
@@ -817,13 +819,14 @@ impl RelayPool {
                                         match res {
                                             Some(Ok(event)) => {
                                                 // Deduplicate across relays.
-                                                let mut id_set = ids.lock().await;
+                                                let mut ids = processed_events.lock().await;
 
-                                                if id_set.insert(event.id) {
-                                                    drop(id_set);
+                                                if ids.insert(event.id) {
+                                                    drop(ids);
 
+                                                    // Exit on first response if configured.
                                                     if pool_policy.exit_on_first_response() {
-                                                        exit_flag.store(true, Ordering::SeqCst);
+                                                        should_exit.store(true, Ordering::SeqCst);
                                                     }
 
                                                     if tx.send((url.clone(), Ok(event))).await.is_err() {
@@ -856,10 +859,8 @@ impl RelayPool {
                     break;
                 }
                 tokio::select! {
-                    _ = tx.closed() => {
-                        break;
-                    }
-                    Some(_) = futures.next() => {}
+                    Some(_) = futures.next() => {},
+                    _ = tx.closed() => break,
                 }
             }
 
