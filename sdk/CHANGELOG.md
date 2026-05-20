@@ -31,7 +31,6 @@
 
 ### Breaking changes
 
-- Require `AsyncNostrSigner` in client, relay and builder APIs instead of `NostrSigner` (https://github.com/rust-nostr/nostr/pull/1329)
 - Replace signer-based NIP-42 authentication with a dedicated `Authenticator` (https://github.com/rust-nostr/nostr/pull/1340)
 - Remove `ClientBuilder::signer` and `RelayBuilder::signer` (https://github.com/rust-nostr/nostr/pull/1340)
 - Remove `Client::signer`, `Client::automatic_authentication`, `Client::sign_event_builder`, `Client::send_event_builder` and `Client::send_event_builder_to` (https://github.com/rust-nostr/nostr/pull/1340)

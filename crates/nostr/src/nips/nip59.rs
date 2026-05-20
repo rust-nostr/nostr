@@ -20,14 +20,14 @@ use secp256k1::{Secp256k1, Verification};
 use crate::SECP256K1;
 use crate::event::{self, Event, UnsignedEvent};
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use crate::event::{FinalizeEvent, FinalizeEventAsync};
+use crate::event::{AsyncSignEvent, FinalizeEvent, FinalizeEventAsync, SignEvent};
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use crate::key::Keys;
+use crate::key::{AsyncGetPublicKey, GetPublicKey, Keys};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::nips::nip44;
 use crate::nips::nip44::{AsyncNip44, Nip44};
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent, SignerError};
+use crate::signer::SignerError;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::util::BoxedFuture;
 #[cfg(all(feature = "std", feature = "os-rng"))]

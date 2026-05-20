@@ -1469,9 +1469,9 @@ where
     type Error = SignerError;
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
-        let public_key: PublicKey = signer.get_public_key()?;
+        let public_key: PublicKey = signer.get_public_key().map_err(SignerError::backend)?;
         let unsigned: UnsignedEvent = self.finalize_unsigned(public_key);
-        signer.sign_event(unsigned)
+        signer.sign_event(unsigned).map_err(SignerError::backend)
     }
 }
 
@@ -1487,9 +1487,15 @@ where
         S: 'a,
     {
         Box::pin(async move {
-            let public_key: PublicKey = signer.get_public_key_async().await?;
+            let public_key: PublicKey = signer
+                .get_public_key_async()
+                .await
+                .map_err(SignerError::backend)?;
             let unsigned: UnsignedEvent = self.finalize_unsigned(public_key);
-            signer.sign_event_async(unsigned).await
+            signer
+                .sign_event_async(unsigned)
+                .await
+                .map_err(SignerError::backend)
         })
     }
 }

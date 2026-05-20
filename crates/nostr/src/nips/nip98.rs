@@ -24,16 +24,18 @@ use hashes::sha256::Hash as Sha256Hash;
 use super::util::take_and_parse_from_str;
 use crate::Url;
 #[cfg(all(feature = "std", feature = "rand"))]
+use crate::event::AsyncSignEvent;
+#[cfg(all(feature = "std", feature = "rand"))]
 use crate::event::EventBuilder;
 #[cfg(all(feature = "std", feature = "rand"))]
 use crate::event::FinalizeEventAsync;
 #[cfg(feature = "std")]
 use crate::event::{self, Event};
 use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+#[cfg(all(feature = "std", feature = "rand"))]
+use crate::key::AsyncGetPublicKey;
 #[cfg(feature = "std")]
 use crate::signer::SignerError;
-#[cfg(all(feature = "std", feature = "rand"))]
-use crate::signer::{AsyncGetPublicKey, AsyncSignEvent};
 use crate::types::url;
 #[cfg(feature = "std")]
 use crate::{Kind, PublicKey, Timestamp};

@@ -12,11 +12,10 @@ use secp256k1::schnorr::Signature;
 use secp256k1::{Secp256k1, Verification};
 
 use super::error::Error;
-use super::{FinalizeEvent, FinalizeEventAsync};
+use super::{AsyncSignEvent, FinalizeEvent, FinalizeEventAsync, SignEvent};
 #[cfg(feature = "std")]
 use crate::SECP256K1;
 use crate::nips::nip13::{AsyncPowAdapter, PowAdapter};
-use crate::signer::{AsyncSignEvent, SignEvent, SignerError};
 use crate::util::{BoxedFuture, impl_json_methods};
 use crate::{Event, EventId, Kind, PublicKey, Tag, Tags, Timestamp};
 
@@ -179,7 +178,7 @@ impl<S> FinalizeEvent<S> for UnsignedEvent
 where
     S: SignEvent + ?Sized,
 {
-    type Error = SignerError;
+    type Error = S::Error;
 
     #[inline]
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
@@ -191,7 +190,7 @@ impl<S> FinalizeEventAsync<S> for UnsignedEvent
 where
     S: AsyncSignEvent + ?Sized,
 {
-    type Error = SignerError;
+    type Error = S::Error;
 
     #[inline]
     fn finalize_async<'a>(self, signer: &'a S) -> BoxedFuture<'a, Result<Event, Self::Error>>

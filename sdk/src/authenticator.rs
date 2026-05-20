@@ -3,9 +3,7 @@
 use std::any::Any;
 use std::fmt::Debug;
 
-use nostr::event::FinalizeEventAsync;
-use nostr::signer::{AsyncGetPublicKey, AsyncSignEvent};
-use nostr::{Event, EventBuilder, RelayUrl};
+use nostr::prelude::*;
 
 use crate::future::BoxedFuture;
 

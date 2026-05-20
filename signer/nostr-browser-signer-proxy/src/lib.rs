@@ -458,85 +458,63 @@ impl BrowserSignerProxy {
 }
 
 impl AsyncGetPublicKey for BrowserSignerProxy {
+    type Error = Error;
+
     #[inline]
-    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
-        Box::pin(async move { self._get_public_key().await.map_err(SignerError::backend) })
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, Self::Error>> {
+        Box::pin(async move { self._get_public_key().await })
     }
 }
 
 impl AsyncSignEvent for BrowserSignerProxy {
+    type Error = Error;
+
     #[inline]
     fn sign_event_async(
         &self,
         unsigned: UnsignedEvent,
-    ) -> BoxedFuture<'_, Result<Event, SignerError>> {
-        Box::pin(async move {
-            self._sign_event(unsigned)
-                .await
-                .map_err(SignerError::backend)
-        })
+    ) -> BoxedFuture<'_, Result<Event, Self::Error>> {
+        Box::pin(async move { self._sign_event(unsigned).await })
     }
 }
 
 impl AsyncNip04 for BrowserSignerProxy {
-    type Error = SignerError;
+    type Error = Error;
 
     fn nip04_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>> {
-        Box::pin(async move {
-            self._nip04_encrypt(public_key, content)
-                .await
-                .map_err(SignerError::backend)
-        })
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
+        Box::pin(async move { self._nip04_encrypt(public_key, content).await })
     }
 
     fn nip04_decrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         encrypted_content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>> {
-        Box::pin(async move {
-            self._nip04_decrypt(public_key, encrypted_content)
-                .await
-                .map_err(SignerError::backend)
-        })
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
+        Box::pin(async move { self._nip04_decrypt(public_key, encrypted_content).await })
     }
 }
 
 impl AsyncNip44 for BrowserSignerProxy {
-    type Error = SignerError;
+    type Error = Error;
 
     fn nip44_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>> {
-        Box::pin(async move {
-            self._nip44_encrypt(public_key, content)
-                .await
-                .map_err(SignerError::backend)
-        })
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
+        Box::pin(async move { self._nip44_encrypt(public_key, content).await })
     }
 
     fn nip44_decrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         payload: &'a str,
-    ) -> BoxedFuture<'a, Result<String, SignerError>> {
-        Box::pin(async move {
-            self._nip44_decrypt(public_key, payload)
-                .await
-                .map_err(SignerError::backend)
-        })
-    }
-}
-
-impl AsyncNostrSigner for BrowserSignerProxy {
-    fn backend(&self) -> SignerBackend<'_> {
-        SignerBackend::BrowserExtension
+    ) -> BoxedFuture<'a, Result<String, Self::Error>> {
+        Box::pin(async move { self._nip44_decrypt(public_key, payload).await })
     }
 }
 

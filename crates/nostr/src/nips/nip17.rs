@@ -18,14 +18,17 @@ use super::nip44::{AsyncNip44, Nip44};
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
 use super::nip59::{self, GiftWrapBuilder};
 use super::util::take_relay_url;
-use crate::event::{Event, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
 use crate::event::{
-    EventBuilder, FinalizeEvent, FinalizeEventAsync, FinalizeUnsignedEvent, Kind, UnsignedEvent,
+    AsyncSignEvent, EventBuilder, FinalizeEvent, FinalizeEventAsync, FinalizeUnsignedEvent, Kind,
+    SignEvent, UnsignedEvent,
 };
+use crate::event::{Event, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
 use crate::key::PublicKey;
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent, SignerError};
+use crate::key::{AsyncGetPublicKey, GetPublicKey};
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+use crate::signer::SignerError;
 use crate::types::url::{self, RelayUrl};
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
 use crate::util::BoxedFuture;
@@ -163,7 +166,7 @@ where
     type Error = Error;
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
-        let public_key: PublicKey = signer.get_public_key()?;
+        let public_key: PublicKey = signer.get_public_key().map_err(SignerError::backend)?;
         let rumor: UnsignedEvent = make_rumor(
             public_key,
             self.receiver,
@@ -189,7 +192,10 @@ where
         S: 'a,
     {
         Box::pin(async move {
-            let public_key: PublicKey = signer.get_public_key_async().await?;
+            let public_key: PublicKey = signer
+                .get_public_key_async()
+                .await
+                .map_err(SignerError::backend)?;
             let rumor: UnsignedEvent = make_rumor(
                 public_key,
                 self.receiver,

@@ -286,28 +286,28 @@ impl BrowserSigner {
 }
 
 impl AsyncGetPublicKey for BrowserSigner {
+    type Error = Error;
+
     #[inline]
-    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
-        Box::pin(async move { self._get_public_key().await.map_err(SignerError::backend) })
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, Self::Error>> {
+        Box::pin(async move { self._get_public_key().await })
     }
 }
 
 impl AsyncSignEvent for BrowserSigner {
+    type Error = Error;
+
     #[inline]
     fn sign_event_async(
         &self,
         unsigned: UnsignedEvent,
-    ) -> BoxedFuture<'_, Result<Event, SignerError>> {
-        Box::pin(async move {
-            self._sign_event(unsigned)
-                .await
-                .map_err(SignerError::backend)
-        })
+    ) -> BoxedFuture<'_, Result<Event, Self::Error>> {
+        Box::pin(async move { self._sign_event(unsigned).await })
     }
 }
 
 impl AsyncNip04 for BrowserSigner {
-    type Error = SignerError;
+    type Error = Error;
 
     fn nip04_encrypt_async<'a>(
         &'a self,
@@ -317,7 +317,6 @@ impl AsyncNip04 for BrowserSigner {
         Box::pin(async move {
             self.encryption_decryption(NIP04, ENCRYPT, public_key, content)
                 .await
-                .map_err(SignerError::backend)
         })
     }
 
@@ -329,13 +328,12 @@ impl AsyncNip04 for BrowserSigner {
         Box::pin(async move {
             self.encryption_decryption(NIP04, DECRYPT, public_key, encrypted_content)
                 .await
-                .map_err(SignerError::backend)
         })
     }
 }
 
 impl AsyncNip44 for BrowserSigner {
-    type Error = SignerError;
+    type Error = Error;
 
     fn nip44_encrypt_async<'a>(
         &'a self,
@@ -345,7 +343,6 @@ impl AsyncNip44 for BrowserSigner {
         Box::pin(async move {
             self.encryption_decryption(NIP44, ENCRYPT, public_key, content)
                 .await
-                .map_err(SignerError::backend)
         })
     }
 
@@ -357,13 +354,6 @@ impl AsyncNip44 for BrowserSigner {
         Box::pin(async move {
             self.encryption_decryption(NIP44, DECRYPT, public_key, payload)
                 .await
-                .map_err(SignerError::backend)
         })
-    }
-}
-
-impl AsyncNostrSigner for BrowserSigner {
-    fn backend(&self) -> SignerBackend<'_> {
-        SignerBackend::BrowserExtension
     }
 }

@@ -31,7 +31,7 @@
 
 ### Breaking changes
 
-- Split signer APIs into synchronous `NostrSigner` and asynchronous `AsyncNostrSigner` (https://github.com/rust-nostr/nostr/pull/1329)
+- Remove `NostrSigner` trait (https://github.com/rust-nostr/nostr/pull/1366)
 - Make `EventBuilder::sign` and `UnsignedEvent::sign` synchronous and add `sign_async` variants for asynchronous signers (https://github.com/rust-nostr/nostr/pull/1329)
 - Change the output and behavior of nip17::extract_relay_list and nip17::extract_owned_relay_list functions
 - Add `rand` feature (https://github.com/rust-nostr/nostr/pull/1167)

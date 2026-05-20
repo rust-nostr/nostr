@@ -470,44 +470,35 @@ where
 }
 
 impl AsyncGetPublicKey for NostrConnect {
+    type Error = Error;
+
     #[inline]
-    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, SignerError>> {
-        Box::pin(async move {
-            self._get_public_key()
-                .await
-                .copied()
-                .map_err(SignerError::backend)
-        })
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, Self::Error>> {
+        Box::pin(async move { self._get_public_key().await.copied() })
     }
 }
 
 impl AsyncSignEvent for NostrConnect {
+    type Error = Error;
+
     #[inline]
     fn sign_event_async(
         &self,
         unsigned: UnsignedEvent,
-    ) -> BoxedFuture<'_, Result<Event, SignerError>> {
-        Box::pin(async move {
-            self._sign_event(unsigned)
-                .await
-                .map_err(SignerError::backend)
-        })
+    ) -> BoxedFuture<'_, Result<Event, Self::Error>> {
+        Box::pin(async move { self._sign_event(unsigned).await })
     }
 }
 
 impl AsyncNip04 for NostrConnect {
-    type Error = SignerError;
+    type Error = Error;
 
     fn nip04_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>> {
-        Box::pin(async move {
-            self._nip04_encrypt(*public_key, content.to_string())
-                .await
-                .map_err(SignerError::backend)
-        })
+        Box::pin(async move { self._nip04_encrypt(*public_key, content.to_string()).await })
     }
 
     fn nip04_decrypt_async<'a>(
@@ -518,24 +509,19 @@ impl AsyncNip04 for NostrConnect {
         Box::pin(async move {
             self._nip04_decrypt(*public_key, encrypted_content.to_string())
                 .await
-                .map_err(SignerError::backend)
         })
     }
 }
 
 impl AsyncNip44 for NostrConnect {
-    type Error = SignerError;
+    type Error = Error;
 
     fn nip44_encrypt_async<'a>(
         &'a self,
         public_key: &'a PublicKey,
         content: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>> {
-        Box::pin(async move {
-            self._nip44_encrypt(*public_key, content.to_string())
-                .await
-                .map_err(SignerError::backend)
-        })
+        Box::pin(async move { self._nip44_encrypt(*public_key, content.to_string()).await })
     }
 
     fn nip44_decrypt_async<'a>(
@@ -543,17 +529,7 @@ impl AsyncNip44 for NostrConnect {
         public_key: &'a PublicKey,
         payload: &'a str,
     ) -> BoxedFuture<'a, Result<String, Self::Error>> {
-        Box::pin(async move {
-            self._nip44_decrypt(*public_key, payload.to_string())
-                .await
-                .map_err(SignerError::backend)
-        })
-    }
-}
-
-impl AsyncNostrSigner for NostrConnect {
-    fn backend(&self) -> SignerBackend<'_> {
-        SignerBackend::NostrConnect
+        Box::pin(async move { self._nip44_decrypt(*public_key, payload.to_string()).await })
     }
 }
 

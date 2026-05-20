@@ -82,8 +82,8 @@ impl RelayBuilder {
     /// client needs to build an `AUTH` event.
     ///
     /// If you already have a signer that implements
-    /// [`AsyncGetPublicKey`](nostr::signer::AsyncGetPublicKey) and
-    /// [`AsyncSignEvent`](nostr::signer::AsyncSignEvent), you can wrap it with
+    /// [`AsyncGetPublicKey`](nostr::key::AsyncGetPublicKey) and
+    /// [`AsyncSignEvent`](nostr::event::AsyncSignEvent), you can wrap it with
     /// [`SignerAuthenticator`](crate::authenticator::SignerAuthenticator).
     ///
     /// # Example

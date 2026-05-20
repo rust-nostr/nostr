@@ -4,9 +4,13 @@
 
 //! Public key
 
+use alloc::boxed::Box;
 use alloc::string::String;
+use core::any::Any;
 use core::cmp::Ordering;
+use core::convert::Infallible;
 use core::fmt;
+use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::str::{self, FromStr};
 
@@ -16,6 +20,25 @@ use serde::{Deserialize, Deserializer, Serialize};
 use super::{Error, SecretKey};
 use crate::nips::nip19::{FromBech32, PREFIX_BECH32_PROFILE, PREFIX_BECH32_PUBLIC_KEY};
 use crate::nips::nip21::{FromNostrUri, SCHEME_WITH_COLON};
+use crate::util::BoxedFuture;
+
+/// Get public key
+pub trait GetPublicKey: Any + Debug + Send + Sync {
+    /// Error type
+    type Error: core::error::Error;
+
+    /// Get public key
+    fn get_public_key(&self) -> Result<PublicKey, Self::Error>;
+}
+
+/// Get public key
+pub trait AsyncGetPublicKey: Any + Debug + Send + Sync {
+    /// Error type
+    type Error: core::error::Error;
+
+    /// Get public key
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, Self::Error>>;
+}
 
 /// Public Key
 #[derive(Clone, Copy)]
@@ -155,6 +178,24 @@ impl PublicKey {
     pub fn xonly(&self) -> Result<XOnlyPublicKey, Error> {
         // TODO: use a OnceCell
         Ok(XOnlyPublicKey::from_slice(self.as_bytes())?)
+    }
+}
+
+impl GetPublicKey for PublicKey {
+    type Error = Infallible;
+
+    #[inline]
+    fn get_public_key(&self) -> Result<PublicKey, Self::Error> {
+        Ok(*self)
+    }
+}
+
+impl AsyncGetPublicKey for PublicKey {
+    type Error = Infallible;
+
+    #[inline]
+    fn get_public_key_async(&self) -> BoxedFuture<'_, Result<PublicKey, Self::Error>> {
+        Box::pin(async move { GetPublicKey::get_public_key(self) })
     }
 }
 

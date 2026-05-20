@@ -7,8 +7,10 @@
 
 use alloc::borrow::Cow;
 use alloc::string::String;
+use core::any::Any;
 use core::cmp::Ordering;
 use core::fmt;
+use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 
 use secp256k1::constants::SCHNORR_SIGNATURE_SIZE;
@@ -352,6 +354,27 @@ impl<'de> Deserialize<'de> for Event {
             sig: inter.sig.into_owned(),
         })
     }
+}
+
+/// Sign event
+pub trait SignEvent: Any + Debug + Send + Sync {
+    /// Error type
+    type Error: core::error::Error;
+
+    /// Sign an unsigned event
+    fn sign_event(&self, unsigned: UnsignedEvent) -> Result<Event, Self::Error>;
+}
+
+/// Sign event
+pub trait AsyncSignEvent: Any + Debug + Send + Sync {
+    /// Error type
+    type Error: core::error::Error;
+
+    /// Sign an unsigned event
+    fn sign_event_async(
+        &self,
+        unsigned: UnsignedEvent,
+    ) -> BoxedFuture<'_, Result<Event, Self::Error>>;
 }
 
 /// Finalize a builder into a signed event.

@@ -132,10 +132,7 @@ pub mod tests {
     use std::time::Duration;
 
     use super::*;
-    use crate::event::EventBuilder;
-    use crate::event::unsigned::FinalizeUnsignedEvent;
-    use crate::key::PublicKey;
-    use crate::nips::nip13::get_leading_zero_bits;
+    use crate::prelude::*;
 
     #[test]
     fn threaded_adapter() {

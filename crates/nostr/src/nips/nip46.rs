@@ -22,8 +22,9 @@ use rand::rngs::OsRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::nip44::{AsyncNip44, Nip44};
-use crate::event::{FinalizeEvent, FinalizeEventAsync, UnsignedEvent};
-use crate::signer::{AsyncGetPublicKey, AsyncSignEvent, GetPublicKey, SignEvent, SignerError};
+use crate::event::{AsyncSignEvent, FinalizeEvent, FinalizeEventAsync, SignEvent, UnsignedEvent};
+use crate::key::{AsyncGetPublicKey, GetPublicKey};
+use crate::signer::SignerError;
 use crate::types::url::{self, ParseError, RelayUrl, Url};
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use crate::util;
