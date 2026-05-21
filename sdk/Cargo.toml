@@ -15,6 +15,15 @@ keywords = ["nostr", "sdk"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[features]
+default = ["ring", "rustls-tls-webpki-roots"]
+aws_lc_rs = ["async-wsocket/aws_lc_rs"]
+native-tls = ["async-wsocket/native-tls"]
+native-tls-vendored = ["async-wsocket/native-tls-vendored"]
+ring = ["async-wsocket/ring"]
+rustls-tls-native-roots = ["async-wsocket/rustls-tls-native-roots"]
+rustls-tls-webpki-roots = ["async-wsocket/rustls-tls-webpki-roots"]
+
 [dependencies]
 async-utility.workspace = true
 async-wsocket = { workspace = true, features = ["socks"] }

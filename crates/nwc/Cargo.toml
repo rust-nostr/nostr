@@ -15,6 +15,15 @@ keywords = ["nostr", "nwc"]
 all-features = true
 rustdoc-args = ["--cfg", "docsrs"]
 
+[features]
+default = ["ring", "rustls-tls-webpki-roots"]
+aws_lc_rs = ["nostr-sdk/aws_lc_rs"]
+native-tls = ["nostr-sdk/native-tls"]
+native-tls-vendored = ["nostr-sdk/native-tls-vendored"]
+ring = ["nostr-sdk/ring"]
+rustls-tls-native-roots = ["nostr-sdk/rustls-tls-native-roots"]
+rustls-tls-webpki-roots = ["nostr-sdk/rustls-tls-webpki-roots"]
+
 [dependencies]
 nostr = { workspace = true, features = ["std", "nip47"] }
 nostr-sdk.workspace = true
