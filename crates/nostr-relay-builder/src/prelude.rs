@@ -14,6 +14,7 @@ pub use nostr_database::prelude::*;
 pub use nostr_sdk::relay::SyncOptions;
 
 pub use crate::builder::{self, *};
+pub use crate::error::{Error, ErrorKind};
 pub use crate::local::{self, *};
 pub use crate::mock::{self, *};
 pub use crate::*;

@@ -2049,6 +2049,7 @@ dependencies = [
  "nostr-lmdb",
  "nostr-memory",
  "nostr-sdk",
+ "opaquerr",
  "tokio",
  "tracing",
  "tracing-subscriber",

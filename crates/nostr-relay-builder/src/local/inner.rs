@@ -27,7 +27,7 @@ use crate::builder::{
     LocalRelayBuilder, LocalRelayBuilderMode, LocalRelayBuilderNip42, LocalRelayTestOptions,
     QueryPolicy, QueryPolicyResult, RateLimit, WritePolicy, WritePolicyResult,
 };
-use crate::error::Error;
+use crate::error::{Error, ErrorKind};
 
 type WsTx<S> = SplitSink<WebSocketStream<S>, Message>;
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
@@ -117,9 +117,11 @@ impl InnerLocalRelay {
     }
 
     /// Start socket to listen for new websocket connections
-    pub async fn run(&self) -> Result<(), Error> {
+    ///
+    /// Returns `true` if the relay has started, `false` if it's already running.
+    pub async fn run(&self) -> Result<bool, Error> {
         if self.running.load(Ordering::SeqCst) {
-            return Err(Error::AlreadyRunning);
+            return Ok(false);
         }
 
         // Get the address
@@ -158,7 +160,7 @@ impl InnerLocalRelay {
             tracing::info!("Local relay listener loop terminated.");
         });
 
-        Ok(())
+        Ok(true)
     }
 
     #[inline]
@@ -212,7 +214,7 @@ impl InnerLocalRelay {
                 // Return reconciliation output
                 Ok(result?)
             },
-            _ = fut => Err(Error::PrematureExit)
+            _ = fut => Err(Error::with_static_message(ErrorKind::Other, "notifications exited before sync completed"))
         }
     }
 
@@ -1014,7 +1016,7 @@ where
 {
     tx.send(Message::Text(msg.as_json().into()))
         .await
-        .map_err(|e| Error::Other(e.to_string()))?;
+        .map_err(|e| Error::new(ErrorKind::Other, e))?;
     Ok(())
 }
 
@@ -1102,6 +1104,6 @@ where
     let mut stream = stream::iter(json_msgs).map(|msg| Ok(Message::Text(msg.into())));
     tx.send_all(&mut stream)
         .await
-        .map_err(|e| Error::Other(e.to_string()))?;
+        .map_err(|e| Error::new(ErrorKind::Other, e))?;
     Ok(())
 }

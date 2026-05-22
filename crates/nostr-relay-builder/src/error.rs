@@ -4,97 +4,37 @@
 
 //! Relay builder error
 
-use std::{fmt, io};
-
 use nostr::Event;
 use nostr_sdk::client;
 use tokio::sync::broadcast;
 
-/// Relay builder error
-#[derive(Debug)]
-pub enum Error {
-    /// I/O error
-    IO(io::Error),
-    /// Database error
-    Database(nostr_database::error::Error),
-    /// Client error
-    Client(client::Error),
-    /// Nostr protocol error
-    Protocol(nostr::error::Error),
-    /// Other error
-    Other(String),
-    /// Relay already running
-    AlreadyRunning,
-    /// Premature exit
-    PrematureExit,
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::IO(e) => write!(f, "{e}"),
-            Self::Database(e) => write!(f, "{e}"),
-            Self::Client(e) => e.fmt(f),
-            Self::Protocol(e) => e.fmt(f),
-            Self::Other(e) => f.write_str(e),
-            Self::AlreadyRunning => write!(f, "the relay is already running"),
-            Self::PrematureExit => write!(f, "premature exit"),
-        }
+opaquerr::define_kind! {
+    /// Relay builder error kind
+    pub ErrorKind {
+        /// Nostr protocol error
+        Protocol => "nostr protocol error",
+        /// Database error
+        Database => "database error",
+        /// I/O error
+        IO => "I/O error",
+        /// Anything not covered by the stable categories above.
+        Other => "other error",
     }
 }
 
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Self::IO(e)
-    }
-}
+opaquerr::define_error! {
+    /// Relay builder error
+    pub Error(ErrorKind)
 
-impl From<nostr_database::error::Error> for Error {
-    fn from(e: nostr_database::error::Error) -> Self {
-        Self::Database(e)
-    }
-}
-
-impl From<client::Error> for Error {
-    fn from(e: client::Error) -> Self {
-        Self::Client(e)
-    }
-}
-
-impl From<nostr::error::Error> for Error {
-    fn from(e: nostr::error::Error) -> Self {
-        Self::Protocol(e)
-    }
-}
-
-impl From<async_wsocket::Error> for Error {
-    fn from(e: async_wsocket::Error) -> Self {
-        Self::Other(e.to_string())
-    }
-}
-
-impl From<tokio::sync::TryAcquireError> for Error {
-    fn from(e: tokio::sync::TryAcquireError) -> Self {
-        Self::Other(e.to_string())
-    }
-}
-
-impl From<broadcast::error::SendError<Event>> for Error {
-    fn from(e: broadcast::error::SendError<Event>) -> Self {
-        Self::Other(e.to_string())
-    }
-}
-
-impl From<negentropy::Error> for Error {
-    fn from(e: negentropy::Error) -> Self {
-        Self::Other(e.to_string())
-    }
-}
-
-impl From<faster_hex::Error> for Error {
-    fn from(e: faster_hex::Error) -> Self {
-        Self::Other(e.to_string())
+    from {
+        nostr::error::Error => ErrorKind::Protocol,
+        nostr_database::error::Error => ErrorKind::Database,
+        std::io::Error => ErrorKind::IO,
+        client::Error => ErrorKind::Other,
+        async_wsocket::Error => ErrorKind::Other,
+        negentropy::Error => ErrorKind::Other,
+        tokio::sync::TryAcquireError => ErrorKind::Other,
+        broadcast::error::SendError<Event> => ErrorKind::Other,
+        faster_hex::Error => ErrorKind::Other,
     }
 }
