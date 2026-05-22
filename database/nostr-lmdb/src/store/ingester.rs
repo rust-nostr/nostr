@@ -18,7 +18,7 @@ use nostr::{Event, Filter};
 use nostr_database::{FlatBufferBuilder, SaveEventStatus};
 use tokio::sync::oneshot;
 
-use super::error::Error;
+use super::error::StoreError;
 use super::lmdb::Lmdb;
 
 /// Pre-allocated buffer size for FlatBufferBuilder
@@ -29,20 +29,20 @@ const FLATBUFFER_CAPACITY: usize = 70_000;
 
 enum OperationResult {
     Reindex {
-        result: Result<(), Error>,
-        tx: Option<oneshot::Sender<Result<(), Error>>>,
+        result: Result<(), StoreError>,
+        tx: Option<oneshot::Sender<Result<(), StoreError>>>,
     },
     Save {
-        result: Result<SaveEventStatus, Error>,
-        tx: Option<oneshot::Sender<Result<SaveEventStatus, Error>>>,
+        result: Result<SaveEventStatus, StoreError>,
+        tx: Option<oneshot::Sender<Result<SaveEventStatus, StoreError>>>,
     },
     Delete {
-        result: Result<(), Error>,
-        tx: Option<oneshot::Sender<Result<(), Error>>>,
+        result: Result<(), StoreError>,
+        tx: Option<oneshot::Sender<Result<(), StoreError>>>,
     },
     Wipe {
-        result: Result<(), Error>,
-        tx: Option<oneshot::Sender<Result<(), Error>>>,
+        result: Result<(), StoreError>,
+        tx: Option<oneshot::Sender<Result<(), StoreError>>>,
     },
 }
 
@@ -92,24 +92,24 @@ impl OperationResult {
 
 enum IngesterOperation {
     Reindex {
-        tx: Option<oneshot::Sender<Result<(), Error>>>,
+        tx: Option<oneshot::Sender<Result<(), StoreError>>>,
     },
     SaveEvent {
         event: Event,
-        tx: Option<oneshot::Sender<Result<SaveEventStatus, Error>>>,
+        tx: Option<oneshot::Sender<Result<SaveEventStatus, StoreError>>>,
     },
     Delete {
         filter: Filter,
-        tx: Option<oneshot::Sender<Result<(), Error>>>,
+        tx: Option<oneshot::Sender<Result<(), StoreError>>>,
     },
     Wipe {
-        tx: Option<oneshot::Sender<Result<(), Error>>>,
+        tx: Option<oneshot::Sender<Result<(), StoreError>>>,
     },
 }
 
 impl IngesterOperation {
     /// Create an error result for this operation type, moving the channel
-    fn into_error_result(self, error: Error) -> OperationResult {
+    fn into_error_result(self, error: StoreError) -> OperationResult {
         match self {
             Self::Reindex { tx } => OperationResult::Reindex {
                 result: Err(error),
@@ -137,7 +137,7 @@ pub(super) struct IngesterItem {
 
 impl IngesterItem {
     #[must_use]
-    pub(super) fn reindex() -> (Self, oneshot::Receiver<Result<(), Error>>) {
+    pub(super) fn reindex() -> (Self, oneshot::Receiver<Result<(), StoreError>>) {
         let (tx, rx) = oneshot::channel();
         let item: Self = Self {
             operation: IngesterOperation::Reindex { tx: Some(tx) },
@@ -148,7 +148,7 @@ impl IngesterItem {
     #[must_use]
     pub(super) fn save_event_with_feedback(
         event: Event,
-    ) -> (Self, oneshot::Receiver<Result<SaveEventStatus, Error>>) {
+    ) -> (Self, oneshot::Receiver<Result<SaveEventStatus, StoreError>>) {
         let (tx, rx) = oneshot::channel();
         let item: Self = Self {
             operation: IngesterOperation::SaveEvent {
@@ -162,7 +162,7 @@ impl IngesterItem {
     #[must_use]
     pub(super) fn delete_with_feedback(
         filter: Filter,
-    ) -> (Self, oneshot::Receiver<Result<(), Error>>) {
+    ) -> (Self, oneshot::Receiver<Result<(), StoreError>>) {
         let (tx, rx) = oneshot::channel();
         let item: Self = Self {
             operation: IngesterOperation::Delete {
@@ -174,7 +174,7 @@ impl IngesterItem {
     }
 
     #[must_use]
-    pub(super) fn wipe_with_feedback() -> (Self, oneshot::Receiver<Result<(), Error>>) {
+    pub(super) fn wipe_with_feedback() -> (Self, oneshot::Receiver<Result<(), StoreError>>) {
         let (tx, rx) = oneshot::channel();
         let item: Self = Self {
             operation: IngesterOperation::Wipe { tx: Some(tx) },
@@ -260,7 +260,7 @@ impl Ingester {
                 for item in batch {
                     results.push(
                         item.operation
-                            .into_error_result(Error::BatchTransactionFailed),
+                            .into_error_result(StoreError::BatchTransactionFailed),
                     );
                 }
 
@@ -302,7 +302,7 @@ impl Ingester {
                 for item in batch_iter {
                     results.push(
                         item.operation
-                            .into_error_result(Error::BatchTransactionFailed),
+                            .into_error_result(StoreError::BatchTransactionFailed),
                     );
                 }
 
@@ -354,13 +354,17 @@ fn mark_all_as_failed(results: &mut [OperationResult]) {
     for prev_result in results.iter_mut() {
         match prev_result {
             OperationResult::Reindex { result: res, .. } => {
-                *res = Err(Error::BatchTransactionFailed)
+                *res = Err(StoreError::BatchTransactionFailed)
             }
-            OperationResult::Save { result: res, .. } => *res = Err(Error::BatchTransactionFailed),
+            OperationResult::Save { result: res, .. } => {
+                *res = Err(StoreError::BatchTransactionFailed)
+            }
             OperationResult::Delete { result: res, .. } => {
-                *res = Err(Error::BatchTransactionFailed)
+                *res = Err(StoreError::BatchTransactionFailed)
             }
-            OperationResult::Wipe { result: res, .. } => *res = Err(Error::BatchTransactionFailed),
+            OperationResult::Wipe { result: res, .. } => {
+                *res = Err(StoreError::BatchTransactionFailed)
+            }
         }
     }
 }

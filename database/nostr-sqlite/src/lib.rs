@@ -7,7 +7,7 @@
 #![doc = include_str!("../README.md")]
 
 pub mod builder;
-pub mod error;
+mod error;
 mod migration;
 mod model;
 mod pool;

@@ -5,12 +5,13 @@ use std::path::Path;
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::PathBuf;
 
+use nostr_database::error::Error;
 use nostr_database::prelude::*;
 use rusqlite::types::Value;
 use rusqlite::{Connection, OptionalExtension, Transaction, params, params_from_iter};
 
 use crate::builder::{DatabaseConnType, NostrSqliteBuilder};
-use crate::error::Error;
+use crate::error::StoreError;
 use crate::migration;
 use crate::model::{EventDb, extract_tags};
 use crate::pool::Pool;
@@ -121,7 +122,7 @@ impl NostrSqlite {
     }
 
     /// Returns true if successfully inserted
-    fn insert_event_tx(tx: &Transaction<'_>, event: &Event) -> Result<bool, Error> {
+    fn insert_event_tx(tx: &Transaction<'_>, event: &Event) -> Result<bool, StoreError> {
         let tags = serde_json::to_string(&event.tags)?;
 
         let rows = tx.execute(
@@ -140,7 +141,7 @@ impl NostrSqlite {
         Ok(rows > 0)
     }
 
-    fn handle_deletion_event(tx: &Transaction<'_>, event: &Event) -> Result<bool, Error> {
+    fn handle_deletion_event(tx: &Transaction<'_>, event: &Event) -> Result<bool, StoreError> {
         for id in event.tags.event_ids() {
             if let Some(pubkey) = Self::get_pubkey_of_event_by_id(tx, &id)? {
                 // Author must match
@@ -180,7 +181,7 @@ impl NostrSqlite {
         conn: &mut Connection,
         event: &Event,
         options: &NostrSqliteOptions,
-    ) -> Result<SaveEventStatus, Error> {
+    ) -> Result<SaveEventStatus, StoreError> {
         if event.kind.is_ephemeral() {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Ephemeral));
         }
@@ -313,7 +314,7 @@ impl NostrSqlite {
         }
     }
 
-    fn mark_event_as_deleted(tx: &Transaction<'_>, id: &EventId) -> Result<(), Error> {
+    fn mark_event_as_deleted(tx: &Transaction<'_>, id: &EventId) -> Result<(), StoreError> {
         tx.execute(
             "INSERT OR IGNORE INTO deleted_ids(event_id) VALUES (?1)",
             params![id.as_bytes().as_slice()],
@@ -325,7 +326,7 @@ impl NostrSqlite {
         tx: &Transaction<'_>,
         coordinate: &Coordinate,
         deleted_at: Timestamp,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         tx.execute(
             "INSERT OR IGNORE INTO deleted_coordinates(pubkey, kind, identifier, deleted_at) VALUES (?1, ?2, ?3, ?4)",
             params![
@@ -338,7 +339,7 @@ impl NostrSqlite {
         Ok(())
     }
 
-    fn event_is_deleted(tx: &Transaction<'_>, id: &EventId) -> Result<bool, Error> {
+    fn event_is_deleted(tx: &Transaction<'_>, id: &EventId) -> Result<bool, StoreError> {
         let is_deleted: i64 = tx.query_row(
             "SELECT EXISTS(SELECT 1 FROM deleted_ids WHERE event_id = ?1)",
             params![id.as_bytes().as_slice()],
@@ -350,7 +351,7 @@ impl NostrSqlite {
     fn when_is_coordinate_deleted(
         tx: &Transaction<'_>,
         coordinate: &Coordinate,
-    ) -> Result<Option<Timestamp>, Error> {
+    ) -> Result<Option<Timestamp>, StoreError> {
         let timestamp: Option<i64> = tx
             .query_row(
                 "SELECT deleted_at FROM deleted_coordinates WHERE pubkey = ?1 AND kind = ?2 AND identifier = ?3",
@@ -369,7 +370,7 @@ impl NostrSqlite {
         }
     }
 
-    fn pubkey_is_vanished(tx: &Transaction<'_>, pubkey: &PublicKey) -> Result<bool, Error> {
+    fn pubkey_is_vanished(tx: &Transaction<'_>, pubkey: &PublicKey) -> Result<bool, StoreError> {
         let is_vanished: i64 = tx.query_row(
             "SELECT EXISTS(SELECT 1 FROM vanished_public_keys WHERE pubkey = ?1)",
             params![pubkey.as_bytes().as_slice()],
@@ -378,7 +379,7 @@ impl NostrSqlite {
         Ok(is_vanished != 0)
     }
 
-    fn mark_pubkey_as_vanished(tx: &Transaction<'_>, pubkey: &PublicKey) -> Result<(), Error> {
+    fn mark_pubkey_as_vanished(tx: &Transaction<'_>, pubkey: &PublicKey) -> Result<(), StoreError> {
         tx.execute(
             "INSERT OR IGNORE INTO vanished_public_keys(pubkey) VALUES (?1)",
             params![pubkey.as_bytes().as_slice()],
@@ -386,7 +387,10 @@ impl NostrSqlite {
         Ok(())
     }
 
-    fn handle_request_to_vanish(tx: &Transaction<'_>, pubkey: &PublicKey) -> Result<(), Error> {
+    fn handle_request_to_vanish(
+        tx: &Transaction<'_>,
+        pubkey: &PublicKey,
+    ) -> Result<(), StoreError> {
         Self::mark_pubkey_as_vanished(tx, pubkey)?;
 
         // Delete all user events
@@ -416,7 +420,7 @@ impl NostrSqlite {
         Ok(())
     }
 
-    fn has_event(tx: &Transaction<'_>, id: &EventId) -> Result<bool, Error> {
+    fn has_event(tx: &Transaction<'_>, id: &EventId) -> Result<bool, StoreError> {
         let exists: i64 = tx.query_row(
             "SELECT EXISTS(SELECT 1 FROM events WHERE id = ?1)",
             params![id.as_bytes().as_slice()],
@@ -428,7 +432,7 @@ impl NostrSqlite {
     fn get_pubkey_of_event_by_id(
         tx: &Transaction<'_>,
         id: &EventId,
-    ) -> Result<Option<PublicKey>, Error> {
+    ) -> Result<Option<PublicKey>, StoreError> {
         let pubkey: Option<Vec<u8>> = tx
             .query_row(
                 "SELECT pubkey FROM events WHERE id = ?1",
@@ -442,7 +446,7 @@ impl NostrSqlite {
         }
     }
 
-    fn get_event_by_id(conn: &Connection, id: &EventId) -> Result<Option<Event>, Error> {
+    fn get_event_by_id(conn: &Connection, id: &EventId) -> Result<Option<Event>, StoreError> {
         let mut stmt = conn.prepare("SELECT * FROM events WHERE id = ?1")?;
         let event: Option<EventDb> = stmt
             .query_row(params![id.as_bytes().as_slice()], EventDb::from_row)
@@ -453,7 +457,7 @@ impl NostrSqlite {
         }
     }
 
-    fn remove_event(tx: &Transaction<'_>, id: &EventId) -> Result<(), Error> {
+    fn remove_event(tx: &Transaction<'_>, id: &EventId) -> Result<(), StoreError> {
         tx.execute(
             "DELETE FROM events where id = ?1",
             params![id.as_bytes().as_slice()],
@@ -467,7 +471,7 @@ impl NostrSqlite {
         tx: &Transaction<'_>,
         coordinate: &Coordinate,
         until: &Timestamp,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         tx.execute(
             "DELETE FROM events\n         WHERE pubkey = ?1 AND kind = ?2 AND created_at <= ?3",
             params![
@@ -486,7 +490,7 @@ impl NostrSqlite {
         tx: &Transaction<'_>,
         coordinate: &Coordinate,
         until: Timestamp,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         tx.execute(
             "DELETE FROM events\n         WHERE id IN (\n             SELECT e.id FROM events e\n             INNER JOIN event_tags t ON e.id = t.event_id\n             WHERE e.pubkey = ?1 AND e.kind = ?2\n             AND t.tag_name = 'd' AND t.tag_value = ?3\n             AND e.created_at <= ?4\n         )",
             params![
@@ -518,23 +522,24 @@ impl NostrDatabase for NostrSqlite {
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
-    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, Error>> {
         Box::pin(async move {
             let event = event.clone();
-            self.pool
+            Ok(self
+                .pool
                 .interact_options(move |conn, options| Self::save_event_sync(conn, &event, options))
-                .await
-                .map_err(DatabaseError::backend)
+                .await?)
         })
     }
 
     fn check_id<'a>(
         &'a self,
         event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, Error>> {
         Box::pin(async move {
             let event_id = *event_id;
-            self.pool
+            Ok(self
+                .pool
                 .interact(move |conn| {
                     let tx = conn.transaction()?;
 
@@ -546,28 +551,28 @@ impl NostrDatabase for NostrSqlite {
                         Ok(DatabaseEventStatus::NotExistent)
                     }
                 })
-                .await
-                .map_err(DatabaseError::backend)
+                .await?)
         })
     }
 
     fn event_by_id<'a>(
         &'a self,
         event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<Option<Event>, Error>> {
         Box::pin(async move {
             let event_id = *event_id;
-            self.pool
+            Ok(self
+                .pool
                 .interact(move |conn| Self::get_event_by_id(conn, &event_id))
-                .await
-                .map_err(DatabaseError::backend)
+                .await?)
         })
     }
 
-    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
+    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, Error>> {
         Box::pin(async move {
             let filter = with_limit(filter, EVENTS_QUERY_LIMIT);
-            self.pool
+            Ok(self
+                .pool
                 .interact(move |conn| {
                     let query = build_filter(&filter, SqlSelectClause::Count);
                     let mut stmt = conn.prepare(&query.sql)?;
@@ -575,15 +580,15 @@ impl NostrDatabase for NostrSqlite {
                         stmt.query_row(params_from_iter(query.params), |row| row.get(0))?;
                     Ok(count as usize)
                 })
-                .await
-                .map_err(DatabaseError::backend)
+                .await?)
         })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, Error>> {
         Box::pin(async move {
             let filter = with_limit(filter, EVENTS_QUERY_LIMIT);
-            self.pool
+            Ok(self
+                .pool
                 .interact(move |conn| {
                     let mut events = Events::new(&filter);
                     let query = build_filter(&filter, SqlSelectClause::Select);
@@ -598,29 +603,29 @@ impl NostrDatabase for NostrSqlite {
 
                     Ok(events)
                 })
-                .await
-                .map_err(DatabaseError::backend)
+                .await?)
         })
     }
 
     // TODO: impl negentropy_items deserializing only ids and timestamps
 
-    fn delete(&self, filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
+    fn delete(&self, filter: Filter) -> BoxedFuture<'_, Result<(), Error>> {
         Box::pin(async move {
-            self.pool
+            Ok(self
+                .pool
                 .interact(move |conn| {
                     let query = build_filter(&filter, SqlSelectClause::Delete);
                     conn.execute(&query.sql, params_from_iter(query.params))?;
                     Ok(())
                 })
-                .await
-                .map_err(DatabaseError::backend)
+                .await?)
         })
     }
 
-    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>> {
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), Error>> {
         Box::pin(async move {
-            self.pool
+            Ok(self
+                .pool
                 .interact(move |conn| {
                     // Delete all data (CASCADE will handle event_tags)
                     conn.execute("DELETE FROM events", [])?;
@@ -632,8 +637,7 @@ impl NostrDatabase for NostrSqlite {
 
                     Ok(())
                 })
-                .await
-                .map_err(DatabaseError::backend)
+                .await?)
         })
     }
 }

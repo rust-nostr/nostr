@@ -22,7 +22,7 @@ pub use nostr;
 use nostr::prelude::*;
 
 mod collections;
-mod error;
+pub mod error;
 pub mod ext;
 #[cfg(feature = "flatbuf")]
 pub mod flatbuffers;
@@ -30,7 +30,7 @@ pub mod prelude;
 pub mod profile;
 
 pub use self::collections::events::Events;
-pub use self::error::DatabaseError;
+use self::error::Error;
 #[cfg(feature = "flatbuf")]
 pub use self::flatbuffers::{FlatBufferBuilder, FlatBufferDecode, FlatBufferEncode};
 pub use self::profile::Profile;
@@ -190,7 +190,7 @@ pub trait NostrDatabase: Any + Debug + Send + Sync {
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
-    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>>;
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, Error>>;
 
     /// Check event status by ID
     ///
@@ -198,27 +198,27 @@ pub trait NostrDatabase: Any + Debug + Send + Sync {
     fn check_id<'a>(
         &'a self,
         event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>>;
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, Error>>;
 
     /// Get [`Event`] by [`EventId`]
     fn event_by_id<'a>(
         &'a self,
         event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>>;
+    ) -> BoxedFuture<'a, Result<Option<Event>, Error>>;
 
     /// Count the number of events found with [`Filter`].
     ///
     /// Use `Filter::new()` or `Filter::default()` to count all events.
-    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>>;
+    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, Error>>;
 
     /// Query stored events.
-    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>>;
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, Error>>;
 
     /// Get `negentropy` items
     fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, Error>> {
         Box::pin(async move {
             let events: Events = self.query(filter).await?;
             Ok(events.into_iter().map(|e| (e.id, e.created_at)).collect())
@@ -226,8 +226,8 @@ pub trait NostrDatabase: Any + Debug + Send + Sync {
     }
 
     /// Delete all events that match the [Filter]
-    fn delete(&self, filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>>;
+    fn delete(&self, filter: Filter) -> BoxedFuture<'_, Result<(), Error>>;
 
     /// Wipe all data
-    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>>;
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), Error>>;
 }

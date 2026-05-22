@@ -18,7 +18,7 @@ use nostr_database::{FlatBufferBuilder, FlatBufferEncode, RejectedReason, SaveEv
 mod index;
 
 use self::index::EventIndexKeys;
-use super::error::{Error, MigrationError};
+use super::error::{MigrationError, StoreError};
 use super::filter::DatabaseFilter;
 use crate::NostrLmdbBuilder;
 
@@ -113,7 +113,7 @@ pub(crate) struct Lmdb {
 }
 
 impl Lmdb {
-    pub(super) fn from_builder(builder: NostrLmdbBuilder) -> Result<Self, Error> {
+    pub(super) fn from_builder(builder: NostrLmdbBuilder) -> Result<Self, StoreError> {
         // Construct LMDB env
         let env: Env = unsafe {
             EnvOpenOptions::new()
@@ -221,7 +221,7 @@ impl Lmdb {
     }
 
     /// Check database version and run migrations if needed
-    fn migrate(&self) -> Result<(), Error> {
+    fn migrate(&self) -> Result<(), StoreError> {
         let mut txn = self.write_txn()?;
 
         // Get current database version (defaults to 0 if not set)
@@ -254,7 +254,7 @@ impl Lmdb {
             }
             Ordering::Greater => {
                 txn.abort();
-                Err(Error::Migration(MigrationError::NewerVersion {
+                Err(StoreError::Migration(MigrationError::NewerVersion {
                     current_version,
                     new_version: DB_VERSION,
                 }))
@@ -263,7 +263,7 @@ impl Lmdb {
     }
 
     /// Migrate from version 1 to version 2: Build kc_index
-    fn migrate_v1_to_v2(&self, txn: &mut RwTxn) -> Result<(), Error> {
+    fn migrate_v1_to_v2(&self, txn: &mut RwTxn) -> Result<(), StoreError> {
         tracing::info!("Building kc_index for existing events...");
 
         let event_count = self.events.len(txn)?;
@@ -299,7 +299,7 @@ impl Lmdb {
     ///
     /// This should never block the current thread
     #[inline]
-    pub(crate) fn read_txn(&self) -> Result<RoTxn<'_>, Error> {
+    pub(crate) fn read_txn(&self) -> Result<RoTxn<'_>, StoreError> {
         Ok(self.env.read_txn()?)
     }
 
@@ -307,7 +307,7 @@ impl Lmdb {
     ///
     /// This blocks the current thread if there is another write txn
     #[inline]
-    pub(crate) fn write_txn(&self) -> Result<RwTxn<'_>, Error> {
+    pub(crate) fn write_txn(&self) -> Result<RwTxn<'_>, StoreError> {
         Ok(self.env.write_txn()?)
     }
 
@@ -317,7 +317,7 @@ impl Lmdb {
         txn: &mut RwTxn,
         fbb: &mut FlatBufferBuilder,
         event: &Event,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // Store event
         self.events
             .put(txn, event.id.as_bytes(), event.encode(fbb))?;
@@ -328,7 +328,7 @@ impl Lmdb {
         self.index_event(txn, index)
     }
 
-    fn index_event(&self, txn: &mut RwTxn, index: EventIndexKeys) -> Result<(), Error> {
+    fn index_event(&self, txn: &mut RwTxn, index: EventIndexKeys) -> Result<(), StoreError> {
         self.ci_index.put(txn, &index.ci_index, &index.id)?;
         self.akc_index.put(txn, &index.akc_index, &index.id)?;
         self.ac_index.put(txn, &index.ac_index, &index.id)?;
@@ -360,7 +360,7 @@ impl Lmdb {
     /// - Check if the event exists
     ///
     /// It only performs the mechanical deletion from all indexes.
-    fn remove(&self, txn: &mut RwTxn, index: &EventIndexKeys) -> Result<(), Error> {
+    fn remove(&self, txn: &mut RwTxn, index: &EventIndexKeys) -> Result<(), StoreError> {
         self.events.delete(txn, &index.id)?;
         self.ci_index.delete(txn, &index.ci_index)?;
         self.akc_index.delete(txn, &index.akc_index)?;
@@ -377,7 +377,7 @@ impl Lmdb {
         Ok(())
     }
 
-    pub(crate) fn wipe(&self, txn: &mut RwTxn) -> Result<(), Error> {
+    pub(crate) fn wipe(&self, txn: &mut RwTxn) -> Result<(), StoreError> {
         // Wipe events
         self.events.clear(txn)?;
 
@@ -387,7 +387,7 @@ impl Lmdb {
         Ok(())
     }
 
-    fn wipe_indexes(&self, txn: &mut RwTxn) -> Result<(), Error> {
+    fn wipe_indexes(&self, txn: &mut RwTxn) -> Result<(), StoreError> {
         self.ci_index.clear(txn)?;
         self.tc_index.clear(txn)?;
         self.ac_index.clear(txn)?;
@@ -401,7 +401,7 @@ impl Lmdb {
         Ok(())
     }
 
-    pub(super) fn reindex(&self, txn: &mut RwTxn) -> Result<(), Error> {
+    pub(super) fn reindex(&self, txn: &mut RwTxn) -> Result<(), StoreError> {
         // First, wipe all indexes
         self.wipe_indexes(txn)?;
 
@@ -429,7 +429,7 @@ impl Lmdb {
     }
 
     #[inline]
-    pub(crate) fn has_event(&self, txn: &RoTxn, event_id: &EventId) -> Result<bool, Error> {
+    pub(crate) fn has_event(&self, txn: &RoTxn, event_id: &EventId) -> Result<bool, StoreError> {
         Ok(self.get_event_by_id(txn, event_id.as_bytes())?.is_some())
     }
 
@@ -439,7 +439,7 @@ impl Lmdb {
         txn: &mut RwTxn,
         fbb: &mut FlatBufferBuilder,
         event: &Event,
-    ) -> Result<SaveEventStatus, Error> {
+    ) -> Result<SaveEventStatus, StoreError> {
         if event.kind.is_ephemeral() {
             return Ok(SaveEventStatus::Rejected(RejectedReason::Ephemeral));
         }
@@ -525,7 +525,7 @@ impl Lmdb {
         &self,
         txn: &'a RoTxn,
         event_id: &[u8],
-    ) -> Result<Option<EventBorrow<'a>>, Error> {
+    ) -> Result<Option<EventBorrow<'a>>, StoreError> {
         match self.events.get(txn, event_id)? {
             Some(bytes) => Ok(Some(EventBorrow::decode(bytes)?)),
             None => Ok(None),
@@ -533,7 +533,7 @@ impl Lmdb {
     }
 
     /// Delete events
-    pub fn delete(&self, txn: &mut RwTxn, filter: Filter) -> Result<(), Error> {
+    pub fn delete(&self, txn: &mut RwTxn, filter: Filter) -> Result<(), StoreError> {
         // First, collect all deletion info while we have immutable borrows
         let indexes: Vec<EventIndexKeys> = {
             let events = self.query(txn, filter)?;
@@ -551,7 +551,7 @@ impl Lmdb {
         Ok(())
     }
 
-    pub fn count(&self, txn: &RoTxn, filter: Filter) -> Result<usize, Error> {
+    pub fn count(&self, txn: &RoTxn, filter: Filter) -> Result<usize, StoreError> {
         // Check if we can use fast counting
         let can_fast_count: bool = filter.ids.is_none()
             && filter.authors.is_none()
@@ -598,7 +598,7 @@ impl Lmdb {
         &'a self,
         txn: &'a RoTxn,
         filter: Filter,
-    ) -> Result<Box<dyn Iterator<Item = EventBorrow<'a>> + 'a>, Error> {
+    ) -> Result<Box<dyn Iterator<Item = EventBorrow<'a>> + 'a>, StoreError> {
         if let (Some(since), Some(until)) = (filter.since, filter.until) {
             if since > until {
                 return Ok(Box::new(iter::empty()));
@@ -661,7 +661,7 @@ impl Lmdb {
         filter: DatabaseFilter,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // Fetch by id
         for id in filter.ids.iter() {
             // Check if limit is set
@@ -690,7 +690,7 @@ impl Lmdb {
         until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // We may bring since forward if we hit the limit without going back that
         // far, so we use a mutable since:
         let mut since: Timestamp = since;
@@ -705,7 +705,9 @@ impl Lmdb {
 
                 'per_event: for result in iter {
                     let (_key, value) = result?;
-                    let event = self.get_event_by_id(txn, value)?.ok_or(Error::NotFound)?;
+                    let event = self
+                        .get_event_by_id(txn, value)?
+                        .ok_or(StoreError::NotFound)?;
 
                     // If we have gone beyond since, we can stop early
                     // (We have to check because `since` might change in this loop)
@@ -757,7 +759,7 @@ impl Lmdb {
         until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // We may bring since forward if we hit the limit without going back that
         // far, so we use a mutable since:
         let mut since: Timestamp = since;
@@ -787,7 +789,7 @@ impl Lmdb {
         until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // We may bring since forward if we hit the limit without going back that
         // far, so we use a mutable since:
         let mut since: Timestamp = since;
@@ -841,7 +843,7 @@ impl Lmdb {
         until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // We may bring since forward if we hit the limit without going back that
         // far, so we use a mutable since:
         let mut since: Timestamp = since;
@@ -871,7 +873,7 @@ impl Lmdb {
         until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // We may bring since forward if we hit the limit without going back that
         // far, so we use a mutable since:
         let mut since: Timestamp = since;
@@ -899,7 +901,7 @@ impl Lmdb {
         until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // We may bring since forward if we hit the limit without going back that
         // far, so we use a mutable since:
         let mut since: Timestamp = since;
@@ -923,7 +925,7 @@ impl Lmdb {
         until: Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // We may bring since forward if we hit the limit without going back that
         // far, so we use a mutable since:
         let mut since: Timestamp = since;
@@ -949,7 +951,7 @@ impl Lmdb {
         since: Timestamp,
         until: Timestamp,
         limit: Option<usize>,
-    ) -> Result<Box<dyn Iterator<Item = EventBorrow<'a>> + 'a>, Error> {
+    ) -> Result<Box<dyn Iterator<Item = EventBorrow<'a>> + 'a>, StoreError> {
         // Iterate over created _at index, so events are already sorted
         Ok(Box::new(
             self.ci_iter(txn, since, until)?
@@ -975,7 +977,7 @@ impl Lmdb {
         since: &mut Timestamp,
         limit: Option<usize>,
         output: &mut BTreeSet<EventBorrow<'a>>,
-    ) -> Result<(), Error>
+    ) -> Result<(), StoreError>
     where
         I: IntoIterator<Item = &'i [u8]>,
     {
@@ -983,7 +985,7 @@ impl Lmdb {
 
         for id in iter {
             // Get event by ID
-            let event = self.get_event_by_id(txn, id)?.ok_or(Error::NotFound)?;
+            let event = self.get_event_by_id(txn, id)?.ok_or(StoreError::NotFound)?;
 
             if event.created_at < *since {
                 break;
@@ -1018,9 +1020,9 @@ impl Lmdb {
         txn: &'a RoTxn,
         author: &PublicKey,
         kind: Kind,
-    ) -> Result<Option<EventBorrow<'a>>, Error> {
+    ) -> Result<Option<EventBorrow<'a>>, StoreError> {
         if !kind.is_replaceable() {
-            return Err(Error::WrongEventKind);
+            return Err(StoreError::WrongEventKind);
         }
 
         let mut iter = self.akc_iter(
@@ -1043,9 +1045,9 @@ impl Lmdb {
         &'a self,
         txn: &'a RoTxn,
         addr: &Coordinate,
-    ) -> Result<Option<EventBorrow<'a>>, Error> {
+    ) -> Result<Option<EventBorrow<'a>>, StoreError> {
         if !addr.kind.is_addressable() {
-            return Err(Error::WrongEventKind);
+            return Err(StoreError::WrongEventKind);
         }
 
         let iter = self.atc_iter(
@@ -1059,7 +1061,7 @@ impl Lmdb {
 
         for result in iter {
             let (_key, id) = result?;
-            let event = self.get_event_by_id(txn, id)?.ok_or(Error::NotFound)?;
+            let event = self.get_event_by_id(txn, id)?.ok_or(StoreError::NotFound)?;
 
             // the atc index doesn't have kind, so we have to compare the kinds
             if event.kind != addr.kind.as_u16() {
@@ -1079,9 +1081,9 @@ impl Lmdb {
         txn: &mut RwTxn,
         coordinate: &Coordinate,
         until: Timestamp,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         if !coordinate.kind.is_replaceable() {
-            return Err(Error::WrongEventKind);
+            return Err(StoreError::WrongEventKind);
         }
 
         let iter = self.akc_iter(
@@ -1117,9 +1119,9 @@ impl Lmdb {
         txn: &mut RwTxn,
         coordinate: &Coordinate,
         until: Timestamp,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         if !coordinate.kind.is_addressable() {
-            return Err(Error::WrongEventKind);
+            return Err(StoreError::WrongEventKind);
         }
 
         let iter = self.atc_iter(
@@ -1153,11 +1155,15 @@ impl Lmdb {
     }
 
     #[inline]
-    pub(crate) fn is_deleted(&self, txn: &RoTxn, event_id: &EventId) -> Result<bool, Error> {
+    pub(crate) fn is_deleted(&self, txn: &RoTxn, event_id: &EventId) -> Result<bool, StoreError> {
         Ok(self.deleted_ids.get(txn, event_id.as_bytes())?.is_some())
     }
 
-    pub(crate) fn mark_deleted(&self, txn: &mut RwTxn, event_id: &EventId) -> Result<(), Error> {
+    pub(crate) fn mark_deleted(
+        &self,
+        txn: &mut RwTxn,
+        event_id: &EventId,
+    ) -> Result<(), StoreError> {
         self.deleted_ids.put(txn, event_id.as_bytes(), &())?;
         Ok(())
     }
@@ -1167,7 +1173,7 @@ impl Lmdb {
         txn: &mut RwTxn,
         coordinate: &Coordinate,
         when: Timestamp,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         let key: Vec<u8> = index::make_coordinate_index_key(coordinate);
         self.deleted_coordinates.put(txn, &key, &when.as_secs())?;
         Ok(())
@@ -1177,7 +1183,7 @@ impl Lmdb {
         &self,
         txn: &RoTxn,
         coordinate: &Coordinate,
-    ) -> Result<Option<Timestamp>, Error> {
+    ) -> Result<Option<Timestamp>, StoreError> {
         let key: Vec<u8> = index::make_coordinate_index_key(coordinate);
         Ok(self
             .deleted_coordinates
@@ -1189,13 +1195,17 @@ impl Lmdb {
         &self,
         txn: &mut RwTxn,
         pk: &PublicKey,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         self.vanished_public_keys.put(txn, pk.as_bytes(), &())?;
         Ok(())
     }
 
     #[inline]
-    pub(crate) fn is_pubkey_vanished(&self, txn: &RoTxn, pk: &PublicKey) -> Result<bool, Error> {
+    pub(crate) fn is_pubkey_vanished(
+        &self,
+        txn: &RoTxn,
+        pk: &PublicKey,
+    ) -> Result<bool, StoreError> {
         Ok(self.vanished_public_keys.get(txn, pk.as_bytes())?.is_some())
     }
 
@@ -1203,7 +1213,7 @@ impl Lmdb {
         &self,
         txn: &mut RwTxn,
         pubkey: &PublicKey,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         // Mark public key as vanished
         self.mark_pubkey_vanished(txn, pubkey)?;
         // Delete all authored events
@@ -1220,7 +1230,7 @@ impl Lmdb {
         txn: &'a RoTxn,
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, StoreError> {
         let start_prefix = index::make_ci_index_key(until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_ci_index_key(since, &EVENT_ID_ALL_255);
         let range = (
@@ -1237,7 +1247,7 @@ impl Lmdb {
         tag_value: &str,
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, StoreError> {
         let start_prefix = index::make_tc_index_key(
             tag_name,
             tag_value,
@@ -1258,7 +1268,7 @@ impl Lmdb {
         author: &[u8; 32],
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, StoreError> {
         let start_prefix = index::make_ac_index_key(author, until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_ac_index_key(author, since, &EVENT_ID_ALL_255);
         let range = (
@@ -1275,7 +1285,7 @@ impl Lmdb {
         kind: u16,
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, StoreError> {
         let start_prefix = index::make_akc_index_key(author, kind, until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_akc_index_key(author, kind, since, &EVENT_ID_ALL_255);
         let range = (
@@ -1291,7 +1301,7 @@ impl Lmdb {
         kind: u16,
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, StoreError> {
         let start_prefix = index::make_kc_index_key(kind, until, &EVENT_ID_ALL_ZEROS);
         let end_prefix = index::make_kc_index_key(kind, since, &EVENT_ID_ALL_255);
         let range = (
@@ -1309,7 +1319,7 @@ impl Lmdb {
         tag_value: &str,
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, StoreError> {
         let start_prefix: Vec<u8> = index::make_atc_index_key(
             author,
             tag_name,
@@ -1326,7 +1336,7 @@ impl Lmdb {
         Ok(self.atc_index.range(txn, &range)?)
     }
 
-    fn handle_deletion_event(&self, txn: &mut RwTxn, event: &Event) -> Result<bool, Error> {
+    fn handle_deletion_event(&self, txn: &mut RwTxn, event: &Event) -> Result<bool, StoreError> {
         // Collect DeletionInfo and EventIds for all valid targets first
         let mut deletions_to_process = Vec::new();
 
@@ -1378,7 +1388,7 @@ impl Lmdb {
         tag_value: &str,
         since: Timestamp,
         until: Timestamp,
-    ) -> Result<RoRange<'a, Bytes, Bytes>, Error> {
+    ) -> Result<RoRange<'a, Bytes, Bytes>, StoreError> {
         let start_prefix = index::make_ktc_index_key(
             kind,
             tag_name,
@@ -1524,7 +1534,7 @@ mod tests {
         let result = Lmdb::from_builder(lmdb_builder);
         assert!(matches!(
             result.unwrap_err(),
-            Error::Migration(MigrationError::NewerVersion { .. })
+            StoreError::Migration(MigrationError::NewerVersion { .. })
         ));
     }
 }

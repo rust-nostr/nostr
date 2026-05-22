@@ -15,7 +15,7 @@ mod filter;
 mod ingester;
 pub(crate) mod lmdb;
 
-use self::error::Error;
+use self::error::StoreError;
 use self::ingester::{Ingester, IngesterItem};
 use self::lmdb::Lmdb;
 use crate::NostrLmdbBuilder;
@@ -27,7 +27,7 @@ pub(super) struct Store {
 }
 
 impl Store {
-    pub(super) async fn from_builder(builder: NostrLmdbBuilder) -> Result<Store, Error> {
+    pub(super) async fn from_builder(builder: NostrLmdbBuilder) -> Result<Store, StoreError> {
         // Open the database in a blocking task
         let db: Lmdb = task::spawn_blocking(move || {
             // Create the directory if it doesn't exist
@@ -35,7 +35,7 @@ impl Store {
 
             let db: Lmdb = Lmdb::from_builder(builder)?;
 
-            Ok::<Lmdb, Error>(db)
+            Ok::<Lmdb, StoreError>(db)
         })
         .await??;
 
@@ -46,7 +46,7 @@ impl Store {
     }
 
     #[inline]
-    async fn interact<F, R>(&self, f: F) -> Result<R, Error>
+    async fn interact<F, R>(&self, f: F) -> Result<R, StoreError>
     where
         F: FnOnce(Lmdb) -> R + Send + 'static,
         R: Send + 'static,
@@ -56,19 +56,23 @@ impl Store {
         Ok(task::spawn_blocking(move || f(db)).await?)
     }
 
-    pub(crate) async fn reindex(&self) -> Result<(), Error> {
+    pub(crate) async fn reindex(&self) -> Result<(), StoreError> {
         let (item, rx) = IngesterItem::reindex();
-        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+        self.ingester
+            .send(item)
+            .map_err(|_| StoreError::FlumeSend)?;
         rx.await?
     }
 
-    pub(super) async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, Error> {
+    pub(super) async fn save_event(&self, event: &Event) -> Result<SaveEventStatus, StoreError> {
         let (item, rx) = IngesterItem::save_event_with_feedback(event.clone());
-        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+        self.ingester
+            .send(item)
+            .map_err(|_| StoreError::FlumeSend)?;
         rx.await?
     }
 
-    pub(super) async fn get_event_by_id(&self, id: EventId) -> Result<Option<Event>, Error> {
+    pub(super) async fn get_event_by_id(&self, id: EventId) -> Result<Option<Event>, StoreError> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
             let event: Option<Event> = db
@@ -80,7 +84,7 @@ impl Store {
         .await?
     }
 
-    pub(super) async fn check_id(&self, id: EventId) -> Result<DatabaseEventStatus, Error> {
+    pub(super) async fn check_id(&self, id: EventId) -> Result<DatabaseEventStatus, StoreError> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
 
@@ -99,7 +103,7 @@ impl Store {
         .await?
     }
 
-    pub(super) async fn count(&self, filter: Filter) -> Result<usize, Error> {
+    pub(super) async fn count(&self, filter: Filter) -> Result<usize, StoreError> {
         self.interact(move |db| {
             let txn = db.read_txn()?;
             let len: usize = db.count(&txn, filter)?;
@@ -110,7 +114,7 @@ impl Store {
     }
 
     // Lookup ID: EVENT_ORD_IMPL
-    pub(super) async fn query(&self, filter: Filter) -> Result<Events, Error> {
+    pub(super) async fn query(&self, filter: Filter) -> Result<Events, StoreError> {
         self.interact(move |db| {
             let mut events: Events = Events::new(&filter);
 
@@ -127,7 +131,7 @@ impl Store {
     pub(super) async fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> Result<Vec<(EventId, Timestamp)>, Error> {
+    ) -> Result<Vec<(EventId, Timestamp)>, StoreError> {
         let txn = self.db.read_txn()?;
         let events = self.db.query(&txn, filter)?;
         let items = events
@@ -138,15 +142,19 @@ impl Store {
         Ok(items)
     }
 
-    pub(super) async fn delete(&self, filter: Filter) -> Result<(), Error> {
+    pub(super) async fn delete(&self, filter: Filter) -> Result<(), StoreError> {
         let (item, rx) = IngesterItem::delete_with_feedback(filter);
-        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+        self.ingester
+            .send(item)
+            .map_err(|_| StoreError::FlumeSend)?;
         rx.await?
     }
 
-    pub(super) async fn wipe(&self) -> Result<(), Error> {
+    pub(super) async fn wipe(&self) -> Result<(), StoreError> {
         let (item, rx) = IngesterItem::wipe_with_feedback();
-        self.ingester.send(item).map_err(|_| Error::FlumeSend)?;
+        self.ingester
+            .send(item)
+            .map_err(|_| StoreError::FlumeSend)?;
         rx.await?
     }
 }

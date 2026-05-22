@@ -1919,6 +1919,7 @@ dependencies = [
  "btreecap",
  "flatbuffers 25.12.19",
  "nostr",
+ "opaquerr",
 ]
 
 [[package]]

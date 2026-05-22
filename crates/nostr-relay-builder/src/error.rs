@@ -7,7 +7,6 @@
 use std::{fmt, io};
 
 use nostr::Event;
-use nostr_database::DatabaseError;
 use nostr_sdk::client;
 use tokio::sync::broadcast;
 
@@ -17,7 +16,7 @@ pub enum Error {
     /// I/O error
     IO(io::Error),
     /// Database error
-    Database(DatabaseError),
+    Database(nostr_database::error::Error),
     /// Client error
     Client(client::Error),
     /// Nostr protocol error
@@ -52,8 +51,8 @@ impl From<io::Error> for Error {
     }
 }
 
-impl From<DatabaseError> for Error {
-    fn from(e: DatabaseError) -> Self {
+impl From<nostr_database::error::Error> for Error {
+    fn from(e: nostr_database::error::Error) -> Self {
         Self::Database(e)
     }
 }

@@ -1,7 +1,6 @@
 use std::fmt;
 use std::time::Duration;
 
-use nostr_database::DatabaseError;
 use nostr_gossip::error::GossipError;
 use tokio::sync::{broadcast, oneshot};
 
@@ -20,7 +19,7 @@ pub enum Error {
     /// Policy error
     Policy(PolicyError),
     /// Database error
-    Database(DatabaseError),
+    Database(nostr_database::error::Error),
     /// Gossip error
     Gossip(GossipError),
     /// Hex error
@@ -226,8 +225,8 @@ impl From<PolicyError> for Error {
     }
 }
 
-impl From<DatabaseError> for Error {
-    fn from(e: DatabaseError) -> Self {
+impl From<nostr_database::error::Error> for Error {
+    fn from(e: nostr_database::error::Error) -> Self {
         Self::Database(e)
     }
 }

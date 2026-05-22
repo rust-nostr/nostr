@@ -10,5 +10,6 @@
 
 pub use nostr::prelude::*;
 
+pub use crate::error::{Error, ErrorKind};
 pub use crate::ext::*;
 pub use crate::*;

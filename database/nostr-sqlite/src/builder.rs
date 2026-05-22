@@ -3,8 +3,8 @@
 use std::path::{Path, PathBuf};
 
 use nostr::types::RelayUrl;
+use nostr_database::error::Error;
 
-use crate::error::Error;
 use crate::store::NostrSqlite;
 
 #[derive(Default)]

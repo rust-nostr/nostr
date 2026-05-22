@@ -8,7 +8,7 @@ use async_utility::task;
 use rusqlite::{Connection, OpenFlags};
 use tokio::sync::Mutex;
 
-use crate::error::Error;
+use crate::error::StoreError;
 use crate::store::NostrSqliteOptions;
 
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ impl Pool {
         }
     }
 
-    pub(crate) fn open_in_memory(options: NostrSqliteOptions) -> Result<Self, Error> {
+    pub(crate) fn open_in_memory(options: NostrSqliteOptions) -> Result<Self, StoreError> {
         let conn: Connection = Connection::open_in_memory()?;
         Ok(Self::new(conn, options))
     }
@@ -35,7 +35,7 @@ impl Pool {
     pub(crate) async fn open_with_path(
         path: PathBuf,
         options: NostrSqliteOptions,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, StoreError> {
         let conn: Connection = task::spawn_blocking(move || Connection::open(path)).await??;
         Ok(Self::new(conn, options))
     }
@@ -44,7 +44,7 @@ impl Pool {
         path: P,
         vfs: &str,
         options: NostrSqliteOptions,
-    ) -> Result<Self, Error>
+    ) -> Result<Self, StoreError>
     where
         P: AsRef<Path>,
     {
@@ -54,9 +54,9 @@ impl Pool {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn interact<F, R>(&self, f: F) -> Result<R, Error>
+    pub(crate) async fn interact<F, R>(&self, f: F) -> Result<R, StoreError>
     where
-        F: FnOnce(&mut Connection) -> Result<R, Error> + Send + 'static,
+        F: FnOnce(&mut Connection) -> Result<R, StoreError> + Send + 'static,
         R: Send + 'static,
     {
         let arc: Arc<Mutex<Connection>> = self.conn.clone();
@@ -65,9 +65,9 @@ impl Pool {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub async fn interact<F, R>(&self, f: F) -> Result<R, Error>
+    pub(crate) async fn interact<F, R>(&self, f: F) -> Result<R, StoreError>
     where
-        F: FnOnce(&mut Connection) -> Result<R, Error> + 'static,
+        F: FnOnce(&mut Connection) -> Result<R, StoreError> + 'static,
         R: 'static,
     {
         let mut conn = self.conn.lock().await;
@@ -75,9 +75,9 @@ impl Pool {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn interact_options<F, R>(&self, f: F) -> Result<R, Error>
+    pub(crate) async fn interact_options<F, R>(&self, f: F) -> Result<R, StoreError>
     where
-        F: FnOnce(&mut Connection, &NostrSqliteOptions) -> Result<R, Error> + Send + 'static,
+        F: FnOnce(&mut Connection, &NostrSqliteOptions) -> Result<R, StoreError> + Send + 'static,
         R: Send + 'static,
     {
         let arc: Arc<Mutex<Connection>> = self.conn.clone();
@@ -87,9 +87,9 @@ impl Pool {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub async fn interact_options<F, R>(&self, f: F) -> Result<R, Error>
+    pub(crate) async fn interact_options<F, R>(&self, f: F) -> Result<R, StoreError>
     where
-        F: FnOnce(&mut Connection, &NostrSqliteOptions) -> Result<R, Error> + 'static,
+        F: FnOnce(&mut Connection, &NostrSqliteOptions) -> Result<R, StoreError> + 'static,
         R: 'static,
     {
         let mut conn = self.conn.lock().await;

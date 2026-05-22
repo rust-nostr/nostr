@@ -2,6 +2,7 @@ use std::num::NonZeroUsize;
 
 use lru::LruCache;
 use nostr::prelude::*;
+use nostr_database::error::Error;
 use nostr_database::prelude::*;
 use tokio::sync::RwLock;
 
@@ -38,7 +39,7 @@ impl NostrDatabase for MemoryEventsTracker {
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
-    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, Error>> {
         Box::pin(async move {
             // Mark it as seen
             let mut seen_event_ids = self.tracker.write().await;
@@ -51,7 +52,7 @@ impl NostrDatabase for MemoryEventsTracker {
     fn check_id<'a>(
         &'a self,
         event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, Error>> {
         Box::pin(async move {
             let seen_event_ids = self.tracker.read().await;
 
@@ -66,30 +67,34 @@ impl NostrDatabase for MemoryEventsTracker {
     fn event_by_id<'a>(
         &'a self,
         _event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<Option<Event>, Error>> {
         Box::pin(async move { Ok(None) })
     }
 
-    fn count(&self, _filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
+    fn count(&self, _filter: Filter) -> BoxedFuture<'_, Result<usize, Error>> {
         Box::pin(async move { Ok(0) })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, Error>> {
         Box::pin(async move { Ok(Events::new(&filter)) })
     }
 
     fn negentropy_items(
         &self,
         _filter: Filter,
-    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, Error>> {
         Box::pin(async move { Ok(Vec::new()) })
     }
 
-    fn delete(&self, _filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
-        Box::pin(async move { Err(DatabaseError::NotSupported) })
+    fn delete(&self, _filter: Filter) -> BoxedFuture<'_, Result<(), Error>> {
+        Box::pin(async move {
+            Err(Error::unsupported(
+                "delete is not supported for the in-memory events tracker",
+            ))
+        })
     }
 
-    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>> {
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), Error>> {
         Box::pin(async move {
             let mut seen_event_ids = self.tracker.write().await;
             seen_event_ids.clear();

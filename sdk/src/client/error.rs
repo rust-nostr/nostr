@@ -5,7 +5,6 @@
 use std::fmt;
 
 use nostr::serde_json;
-use nostr_database::prelude::*;
 use nostr_gossip::error::GossipError;
 
 use crate::{pool, relay};
@@ -20,7 +19,7 @@ pub enum Error {
     /// Relay Pool error
     RelayPool(pool::Error),
     /// Database error
-    Database(DatabaseError),
+    Database(nostr_database::error::Error),
     /// Gossip error
     Gossip(GossipError),
     /// Json error
@@ -74,8 +73,8 @@ impl From<pool::Error> for Error {
     }
 }
 
-impl From<DatabaseError> for Error {
-    fn from(e: DatabaseError) -> Self {
+impl From<nostr_database::error::Error> for Error {
+    fn from(e: nostr_database::error::Error) -> Self {
         Self::Database(e)
     }
 }

@@ -8,15 +8,13 @@ use std::collections::{BTreeSet, HashMap, HashSet};
 
 use nostr::prelude::*;
 
-use crate::{DatabaseError, Events, NostrDatabase, Profile, RelaysMap};
+use crate::error::Error;
+use crate::{Events, NostrDatabase, Profile, RelaysMap};
 
 /// Nostr Event Store Extension
 pub trait NostrDatabaseExt: NostrDatabase {
     /// Get public key metadata
-    fn metadata(
-        &self,
-        public_key: PublicKey,
-    ) -> BoxedFuture<'_, Result<Option<Metadata>, DatabaseError>> {
+    fn metadata(&self, public_key: PublicKey) -> BoxedFuture<'_, Result<Option<Metadata>, Error>> {
         Box::pin(async move {
             let filter = Filter::new()
                 .author(public_key)
@@ -24,9 +22,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
                 .limit(1);
             let events: Events = self.query(filter).await?;
             match events.first_owned() {
-                Some(event) => Ok(Some(
-                    Metadata::from_json(event.content).map_err(DatabaseError::backend)?,
-                )),
+                Some(event) => Ok(Some(Metadata::from_json(event.content)?)),
                 None => Ok(None),
             }
         })
@@ -36,7 +32,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     fn contacts_public_keys(
         &self,
         public_key: PublicKey,
-    ) -> BoxedFuture<'_, Result<HashSet<PublicKey>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<HashSet<PublicKey>, Error>> {
         Box::pin(async move {
             let filter = Filter::new()
                 .author(public_key)
@@ -51,10 +47,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     }
 
     /// Get contact list with metadata of [`PublicKey`]
-    fn contacts(
-        &self,
-        public_key: PublicKey,
-    ) -> BoxedFuture<'_, Result<BTreeSet<Profile>, DatabaseError>> {
+    fn contacts(&self, public_key: PublicKey) -> BoxedFuture<'_, Result<BTreeSet<Profile>, Error>> {
         Box::pin(async move {
             let filter = Filter::new()
                 .author(public_key)
@@ -91,10 +84,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     /// Get relays list for [PublicKey]
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
-    fn relay_list(
-        &self,
-        public_key: PublicKey,
-    ) -> BoxedFuture<'_, Result<RelaysMap, DatabaseError>> {
+    fn relay_list(&self, public_key: PublicKey) -> BoxedFuture<'_, Result<RelaysMap, Error>> {
         Box::pin(async move {
             // Query
             let filter: Filter = Filter::default()
@@ -117,7 +107,7 @@ pub trait NostrDatabaseExt: NostrDatabase {
     fn relay_lists<'a, I>(
         &'a self,
         public_keys: I,
-    ) -> BoxedFuture<'a, Result<HashMap<PublicKey, RelaysMap>, DatabaseError>>
+    ) -> BoxedFuture<'a, Result<HashMap<PublicKey, RelaysMap>, Error>>
     where
         I: IntoIterator<Item = PublicKey> + Send + 'a,
     {

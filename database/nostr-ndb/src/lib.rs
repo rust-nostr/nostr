@@ -10,7 +10,6 @@
 #![allow(clippy::mutable_key_type)] // TODO: remove when possible. Needed to suppress false positive for async_trait
 
 use std::borrow::Cow;
-use std::io::{Error, ErrorKind};
 use std::ops::{Deref, DerefMut};
 use std::path::Path;
 
@@ -18,6 +17,7 @@ pub extern crate nostr;
 pub extern crate nostr_database as database;
 pub extern crate nostrdb;
 
+use nostr_database::error::{Error, ErrorKind};
 use nostr_database::prelude::*;
 use nostrdb::{
     Config, Filter as NdbFilter, IngestMetadata, Ndb, NdbStrVariant, Note, QueryResult, Transaction,
@@ -35,19 +35,19 @@ pub struct NdbDatabase {
 
 impl NdbDatabase {
     /// Open nostrdb
-    pub fn open<P>(path: P) -> Result<Self, DatabaseError>
+    pub fn open<P>(path: P) -> Result<Self, Error>
     where
         P: AsRef<Path>,
     {
         let path: &Path = path.as_ref();
-        let path: &str = path.to_str().ok_or_else(|| {
-            DatabaseError::backend(Error::new(ErrorKind::InvalidInput, "path is not valid "))
-        })?;
+        let path: &str = path
+            .to_str()
+            .ok_or_else(|| Error::with_static_message(ErrorKind::Other, "path is not valid"))?;
 
         let config: Config = Config::new();
 
         Ok(Self {
-            db: Ndb::new(path, &config).map_err(DatabaseError::backend)?,
+            db: Ndb::new(path, &config).map_err(Error::storage)?,
         })
     }
 }
@@ -89,7 +89,7 @@ impl NostrDatabase for NdbDatabase {
     fn save_event<'a>(
         &'a self,
         event: &'a Event,
-    ) -> BoxedFuture<'a, Result<SaveEventStatus, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<SaveEventStatus, Error>> {
         Box::pin(async move {
             let msg = RelayMessage::Event {
                 subscription_id: Cow::Owned(SubscriptionId::new("ndb")),
@@ -98,7 +98,7 @@ impl NostrDatabase for NdbDatabase {
             let json: String = msg.as_json();
             self.db
                 .process_event_with(&json, IngestMetadata::new())
-                .map_err(DatabaseError::backend)?;
+                .map_err(Error::storage)?;
             // TODO: shouldn't return a success since we don't know if the ingestion was successful or not.
             Ok(SaveEventStatus::Success)
         })
@@ -107,9 +107,9 @@ impl NostrDatabase for NdbDatabase {
     fn check_id<'a>(
         &'a self,
         event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<DatabaseEventStatus, Error>> {
         Box::pin(async move {
-            let txn = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let txn = Transaction::new(&self.db).map_err(Error::storage)?;
             let res = self.db.get_note_by_id(&txn, event_id.as_bytes());
             Ok(if res.is_ok() {
                 DatabaseEventStatus::Saved
@@ -122,30 +122,30 @@ impl NostrDatabase for NdbDatabase {
     fn event_by_id<'a>(
         &'a self,
         event_id: &'a EventId,
-    ) -> BoxedFuture<'a, Result<Option<Event>, DatabaseError>> {
+    ) -> BoxedFuture<'a, Result<Option<Event>, Error>> {
         Box::pin(async move {
-            let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let txn: Transaction = Transaction::new(&self.db).map_err(Error::storage)?;
             let res: Result<Note, nostrdb::Error> =
                 self.db.get_note_by_id(&txn, event_id.as_bytes());
             match res {
                 Ok(note) => Ok(Some(ndb_note_to_event(note)?.into_owned())),
                 Err(nostrdb::Error::NotFound) => Ok(None),
-                Err(e) => Err(DatabaseError::backend(e)),
+                Err(e) => Err(Error::storage(e)),
             }
         })
     }
 
-    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, DatabaseError>> {
+    fn count(&self, filter: Filter) -> BoxedFuture<'_, Result<usize, Error>> {
         Box::pin(async move {
-            let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let txn: Transaction = Transaction::new(&self.db).map_err(Error::storage)?;
             let res: Vec<QueryResult> = ndb_query(&self.db, &txn, &filter)?;
             Ok(res.len())
         })
     }
 
-    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, DatabaseError>> {
+    fn query(&self, filter: Filter) -> BoxedFuture<'_, Result<Events, Error>> {
         Box::pin(async move {
-            let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let txn: Transaction = Transaction::new(&self.db).map_err(Error::storage)?;
             let mut events: Events = Events::new(&filter);
             let res: Vec<QueryResult> = ndb_query(&self.db, &txn, &filter)?;
             events.extend(
@@ -160,9 +160,9 @@ impl NostrDatabase for NdbDatabase {
     fn negentropy_items(
         &self,
         filter: Filter,
-    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, DatabaseError>> {
+    ) -> BoxedFuture<'_, Result<Vec<(EventId, Timestamp)>, Error>> {
         Box::pin(async move {
-            let txn: Transaction = Transaction::new(&self.db).map_err(DatabaseError::backend)?;
+            let txn: Transaction = Transaction::new(&self.db).map_err(Error::storage)?;
             let res: Vec<QueryResult> = ndb_query(&self.db, &txn, &filter)?;
             Ok(res
                 .into_iter()
@@ -171,13 +171,14 @@ impl NostrDatabase for NdbDatabase {
         })
     }
 
-    fn delete(&self, _filter: Filter) -> BoxedFuture<'_, Result<(), DatabaseError>> {
-        Box::pin(async move { Err(DatabaseError::NotSupported) })
+    #[inline]
+    fn delete(&self, _filter: Filter) -> BoxedFuture<'_, Result<(), Error>> {
+        Box::pin(async move { Err(Error::unsupported("delete is not supported by nostrdb")) })
     }
 
     #[inline]
-    fn wipe(&self) -> BoxedFuture<'_, Result<(), DatabaseError>> {
-        Box::pin(async move { Err(DatabaseError::NotSupported) })
+    fn wipe(&self) -> BoxedFuture<'_, Result<(), Error>> {
+        Box::pin(async move { Err(Error::unsupported("wiping is not supported by nostrdb")) })
     }
 }
 
@@ -185,7 +186,7 @@ fn ndb_query<'a>(
     db: &Ndb,
     txn: &'a Transaction,
     filter: &Filter,
-) -> Result<Vec<QueryResult<'a>>, DatabaseError> {
+) -> Result<Vec<QueryResult<'a>>, Error> {
     let filter: nostrdb::Filter = ndb_filter_conversion(filter);
     let max_results = filter
         .limit()
@@ -193,7 +194,7 @@ fn ndb_query<'a>(
         .unwrap_or(MAX_RESULTS);
 
     db.query(txn, &[filter], max_results)
-        .map_err(DatabaseError::backend)
+        .map_err(Error::storage)
 }
 
 fn ndb_filter_conversion(f: &Filter) -> nostrdb::Filter {
@@ -242,19 +243,22 @@ fn ndb_filter_conversion(f: &Filter) -> nostrdb::Filter {
     filter.build()
 }
 
-fn ndb_note_to_event(note: Note) -> Result<EventBorrow, DatabaseError> {
+fn ndb_note_to_event(note: Note) -> Result<EventBorrow, Error> {
     Ok(EventBorrow {
         id: note.id(),
         pubkey: note.pubkey(),
         created_at: Timestamp::from(note.created_at()),
-        kind: note.kind().try_into().map_err(DatabaseError::backend)?,
+        kind: note
+            .kind()
+            .try_into()
+            .map_err(|e| Error::new(ErrorKind::Protocol, e))?,
         tags: ndb_note_to_tags(&note)?,
         content: note.content(),
         sig: note.sig(),
     })
 }
 
-fn ndb_note_to_tags<'a>(note: &Note<'a>) -> Result<Vec<CowTag<'a>>, DatabaseError> {
+fn ndb_note_to_tags<'a>(note: &Note<'a>) -> Result<Vec<CowTag<'a>>, Error> {
     let ndb_tags = note.tags();
     let mut tags: Vec<CowTag<'a>> = Vec::with_capacity(ndb_tags.count() as usize);
     for tag in ndb_tags.iter() {
@@ -265,7 +269,7 @@ fn ndb_note_to_tags<'a>(note: &Note<'a>) -> Result<Vec<CowTag<'a>>, DatabaseErro
                 NdbStrVariant::Str(s) => Cow::Borrowed(s),
             })
             .collect();
-        let tag = CowTag::parse(tag_str).map_err(DatabaseError::backend)?;
+        let tag = CowTag::parse(tag_str)?;
         tags.push(tag);
     }
     Ok(tags)

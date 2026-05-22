@@ -3,7 +3,7 @@ use nostr::secp256k1::schnorr::Signature;
 use nostr::{EventId, Kind, PublicKey, SingleLetterTag, Tags, Timestamp};
 use rusqlite::Row;
 
-use crate::error::Error;
+use crate::error::StoreError;
 
 #[derive(Debug, Clone)]
 pub(crate) struct EventDb {
@@ -30,7 +30,7 @@ impl EventDb {
     }
 
     #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event(self) -> Result<Event, Error> {
+    pub(crate) fn to_event(self) -> Result<Event, StoreError> {
         let id: EventId = EventId::from_slice(&self.id)?;
         let pubkey: PublicKey = PublicKey::from_slice(&self.pubkey)?;
         let created_at: Timestamp = self.created_at.try_into()?;

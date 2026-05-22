@@ -11,7 +11,7 @@ use nostr_database::flatbuffers;
 use tokio::sync::oneshot;
 
 #[derive(Debug, PartialEq, Eq)]
-pub enum MigrationError {
+pub(crate) enum MigrationError {
     /// Database version is newer than supported one
     NewerVersion {
         /// Current version of the database
@@ -38,33 +38,24 @@ impl fmt::Display for MigrationError {
 }
 
 #[derive(Debug)]
-pub enum Error {
-    /// Nostr protocol error
+pub(crate) enum StoreError {
     Protocol(nostr::error::Error),
-    /// An upstream I/O error
     Io(io::Error),
-    /// An error from LMDB
     Heed(heed::Error),
-    /// Flatbuffers error
     FlatBuffers(flatbuffers::Error),
     Thread(JoinError),
     Secp256k1(secp256k1::Error),
     OneshotRecv(oneshot::error::RecvError),
-    /// Database migration error
     Migration(MigrationError),
-    /// Flume channel send error
     FlumeSend,
-    /// The event kind is wrong
     WrongEventKind,
-    /// Not found
     NotFound,
-    /// Batched transaction failed - sent to operations that didn't cause the error
     BatchTransactionFailed,
 }
 
-impl std::error::Error for Error {}
+impl std::error::Error for StoreError {}
 
-impl fmt::Display for Error {
+impl fmt::Display for StoreError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Protocol(e) => e.fmt(f),
@@ -83,44 +74,55 @@ impl fmt::Display for Error {
     }
 }
 
-impl From<nostr::error::Error> for Error {
+impl From<nostr::error::Error> for StoreError {
     fn from(e: nostr::error::Error) -> Self {
         Self::Protocol(e)
     }
 }
 
-impl From<io::Error> for Error {
+impl From<io::Error> for StoreError {
     fn from(e: io::Error) -> Self {
         Self::Io(e)
     }
 }
 
-impl From<heed::Error> for Error {
+impl From<heed::Error> for StoreError {
     fn from(e: heed::Error) -> Self {
         Self::Heed(e)
     }
 }
 
-impl From<flatbuffers::Error> for Error {
+impl From<flatbuffers::Error> for StoreError {
     fn from(e: flatbuffers::Error) -> Self {
         Self::FlatBuffers(e)
     }
 }
 
-impl From<JoinError> for Error {
+impl From<JoinError> for StoreError {
     fn from(e: JoinError) -> Self {
         Self::Thread(e)
     }
 }
 
-impl From<secp256k1::Error> for Error {
+impl From<secp256k1::Error> for StoreError {
     fn from(e: secp256k1::Error) -> Self {
         Self::Secp256k1(e)
     }
 }
 
-impl From<oneshot::error::RecvError> for Error {
+impl From<oneshot::error::RecvError> for StoreError {
     fn from(e: oneshot::error::RecvError) -> Self {
         Self::OneshotRecv(e)
+    }
+}
+
+impl From<StoreError> for nostr_database::error::Error {
+    fn from(e: StoreError) -> Self {
+        match e {
+            StoreError::Protocol(e) => e.into(),
+            StoreError::Io(e) => e.into(),
+            StoreError::Migration(e) => Self::migration(e),
+            e => Self::storage(e),
+        }
     }
 }
