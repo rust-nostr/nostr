@@ -344,7 +344,11 @@ pub(super) async fn sync(
     let mut last_relevant_msg: Instant = Instant::now();
 
     // Start reconciliation
-    while let Ok(notification) = notifications.recv().await {
+    loop {
+        let notification = time::timeout(Some(opts.idle_timeout), notifications.recv())
+            .await
+            .ok_or(Error::Timeout)??;
+
         if last_relevant_msg.elapsed() > opts.idle_timeout {
             return Err(Error::Timeout);
         }
@@ -539,7 +543,9 @@ async fn check_negentropy_support(
     temp_notifications: &mut broadcast::Receiver<RelayNotification>,
 ) -> nostr::Result<(), Error> {
     time::timeout(Some(opts.initial_timeout), async {
-        while let Ok(notification) = temp_notifications.recv().await {
+        loop {
+            let notification = temp_notifications.recv().await?;
+
             if let RelayNotification::Message { message } = notification {
                 match *message {
                     RelayMessage::NegMsg {
@@ -631,9 +637,41 @@ mod tests {
 
     use nostr_memory::prelude::*;
     use nostr_relay_builder::prelude::*;
+    use tokio::sync::broadcast;
 
     use super::*;
-    use crate::relay::{SyncDirection, SyncOptions};
+    use crate::relay::{Error, SyncDirection, SyncOptions};
+
+    #[tokio::test]
+    async fn test_check_negentropy_support_times_out() {
+        let (_tx, mut rx) = broadcast::channel(1);
+        let sub_id = SubscriptionId::generate();
+        let opts = SyncOptions::default().initial_timeout(Duration::from_millis(10));
+
+        let error = check_negentropy_support(&sub_id, &opts, &mut rx)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(error, Error::Timeout));
+    }
+
+    #[tokio::test]
+    async fn test_check_negentropy_support_fails_when_notifications_close() {
+        let (tx, mut rx) = broadcast::channel(1);
+        drop(tx);
+
+        let sub_id = SubscriptionId::generate();
+        let opts = SyncOptions::default().initial_timeout(Duration::from_secs(1));
+
+        let error = check_negentropy_support(&sub_id, &opts, &mut rx)
+            .await
+            .unwrap_err();
+
+        assert!(matches!(
+            error,
+            Error::BroadcastRecv(broadcast::error::RecvError::Closed)
+        ));
+    }
 
     #[tokio::test]
     async fn test_negentropy_sync() {

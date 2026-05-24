@@ -5,7 +5,7 @@ use nostr::event;
 use nostr::message::MessageHandleError;
 use nostr_database::DatabaseError;
 use nostr_gossip::error::GossipError;
-use tokio::sync::oneshot;
+use tokio::sync::{broadcast, oneshot};
 
 use crate::policy::PolicyError;
 use crate::transport::error::TransportError;
@@ -33,6 +33,8 @@ pub enum Error {
     Negentropy(negentropy::Error),
     /// Oneshot recv error
     OneshotRecv(oneshot::error::RecvError),
+    /// Broadcast recv error
+    BroadcastRecv(broadcast::error::RecvError),
     /// Generic timeout
     Timeout,
     /// Not replied to ping
@@ -143,6 +145,7 @@ impl fmt::Display for Error {
             Self::Hex(e) => e.fmt(f),
             Self::Negentropy(e) => e.fmt(f),
             Self::OneshotRecv(e) => e.fmt(f),
+            Self::BroadcastRecv(e) => e.fmt(f),
             Self::Timeout => f.write_str("timeout"),
             Self::NotRepliedToPing => f.write_str("not replied to ping"),
             Self::CantParsePong => f.write_str("can't parse pong"),
@@ -261,5 +264,11 @@ impl From<negentropy::Error> for Error {
 impl From<oneshot::error::RecvError> for Error {
     fn from(e: oneshot::error::RecvError) -> Self {
         Self::OneshotRecv(e)
+    }
+}
+
+impl From<broadcast::error::RecvError> for Error {
+    fn from(e: broadcast::error::RecvError) -> Self {
+        Self::BroadcastRecv(e)
     }
 }
