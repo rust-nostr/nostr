@@ -2,19 +2,19 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-#![feature(alloc_error_handler)]
 #![no_std]
 #![no_main]
 
 extern crate alloc;
 extern crate nostr;
 
+use core::convert::Infallible;
 use core::panic::PanicInfo;
 
 use alloc_cortex_m::CortexMHeap;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
-use nostr::rand::Rng;
+use nostr::rand::TryRng;
 use nostr::secp256k1::Secp256k1;
 use nostr::{FromBech32, Keys, ToBech32, SecretKey};
 use nostr::nips::nip06::FromMnemonic;
@@ -27,21 +27,25 @@ const HEAP_SIZE: usize = 1024 * 256; // 256 KB
 
 struct FakeRng;
 
-impl Rng for FakeRng {
-    fn next_u32(&mut self) -> u32 {
-        57
+impl TryRng for FakeRng {
+    type Error = Infallible;
+
+    fn try_next_u32(&mut self) -> Result<u32, Self::Error> {
+        Ok(57)
     }
 
-    fn next_u64(&mut self) -> u64 {
-        57
+    fn try_next_u64(&mut self) -> Result<u64, Self::Error> {
+        Ok(57)
     }
 
-    fn fill_bytes(&mut self, dest: &mut [u8]) {
-        for i in dest {
+    fn try_fill_bytes(&mut self, dst: &mut [u8]) -> Result<(), Self::Error> {
+        for i in dst {
             *i = 57;
         }
+        Ok(())
     }
 }
+
 
 #[entry]
 fn main() -> ! {
