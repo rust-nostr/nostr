@@ -14,11 +14,11 @@ use core::hash::{Hash, Hasher};
 use core::str::FromStr;
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
+use rand::rand_core::UnwrapErr;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use rand::rngs::SysRng;
 #[cfg(feature = "rand")]
-use rand::{CryptoRng, RngCore};
+use rand::{CryptoRng, Rng};
 use secp256k1::schnorr::Signature;
 use secp256k1::{self, Keypair, Message, Secp256k1, Signing, XOnlyPublicKey};
 
@@ -170,7 +170,7 @@ impl Keys {
 
     /// Generate random keys
     ///
-    /// This constructor uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
+    /// This constructor uses a random number generator that retrieves randomness from the operating system (see [`SysRng`]).
     ///
     /// Use [`Keys::generate_with_rng`] to specify a custom random source.
     ///
@@ -179,7 +179,7 @@ impl Keys {
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn generate() -> Self {
-        Self::generate_with_rng(&SECP256K1, &mut OsRng.unwrap_err())
+        Self::generate_with_rng(&SECP256K1, &mut UnwrapErr(SysRng))
     }
 
     /// Generate random keys
@@ -191,7 +191,7 @@ impl Keys {
     pub fn generate_with_rng<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
         C: Signing,
-        R: RngCore,
+        R: Rng,
     {
         let secret_key: SecretKey = SecretKey::generate_with_rng(rng);
         Self::new_with_ctx(secp, secret_key)
@@ -217,11 +217,11 @@ impl Keys {
 
     /// Creates a schnorr signature of the [`Message`].
     ///
-    /// This method uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
+    /// This method uses a random number generator that retrieves randomness from the operating system (see [`SysRng`]).
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn sign_schnorr(&self, message: &Message) -> Signature {
-        self.sign_schnorr_with_rng(&SECP256K1, message, &mut OsRng.unwrap_err())
+        self.sign_schnorr_with_rng(&SECP256K1, message, &mut UnwrapErr(SysRng))
     }
 
     /// Creates a schnorr signature of the [`Message`] using a custom random number generation source.
@@ -234,7 +234,7 @@ impl Keys {
     ) -> Signature
     where
         C: Signing,
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         let aux: [u8; 32] = util::random_32_bytes(rng);
         self.sign_schnorr_with_aux_rand(secp, message, &aux)

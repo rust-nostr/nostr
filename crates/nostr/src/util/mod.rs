@@ -14,11 +14,11 @@ use core::pin::Pin;
 use std::sync::LazyLock;
 
 #[cfg(feature = "rand")]
-use rand::RngCore;
+use rand::Rng;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
+use rand::rand_core::UnwrapErr;
 #[cfg(feature = "os-rng")]
-use rand::rngs::OsRng;
+use rand::rngs::SysRng;
 #[cfg(feature = "std")]
 use secp256k1::{All, Secp256k1};
 use secp256k1::{Parity, PublicKey as NormalizedPublicKey, XOnlyPublicKey, ecdh};
@@ -41,7 +41,7 @@ pub type BoxedFuture<'a, T> = Pin<Box<dyn Future<Output = T> + 'a>>;
 #[cfg(feature = "rand")]
 fn random_bytes<R, const N: usize>(rng: &mut R) -> [u8; N]
 where
-    R: RngCore,
+    R: Rng,
 {
     let mut ret: [u8; N] = [0u8; N];
     rng.fill_bytes(&mut ret);
@@ -52,7 +52,7 @@ where
 #[cfg(feature = "rand")]
 pub(crate) fn random_32_bytes<R>(rng: &mut R) -> [u8; 32]
 where
-    R: RngCore,
+    R: Rng,
 {
     random_bytes(rng)
 }
@@ -60,7 +60,7 @@ where
 #[cfg(feature = "rand")]
 pub(crate) fn random_hex_string<R, const N: usize>(rng: &mut R) -> String
 where
-    R: RngCore,
+    R: Rng,
 {
     let bytes: [u8; N] = random_bytes(rng);
     faster_hex::hex_string(&bytes)
@@ -94,7 +94,7 @@ pub static SECP256K1: LazyLock<Secp256k1<All>> = LazyLock::new(|| {
     // Randomize
     #[cfg(feature = "os-rng")]
     {
-        let seed: [u8; 32] = random_32_bytes(&mut OsRng.unwrap_err());
+        let seed: [u8; 32] = random_32_bytes(&mut UnwrapErr(SysRng));
         ctx.seeded_randomize(&seed);
     }
 

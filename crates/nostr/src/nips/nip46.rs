@@ -14,11 +14,11 @@ use core::fmt;
 use core::str::FromStr;
 
 #[cfg(feature = "rand")]
-use rand::RngCore;
+use rand::Rng;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
+use rand::rand_core::UnwrapErr;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use rand::rngs::SysRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use super::nip44::{AsyncNip44, Nip44};
@@ -687,7 +687,7 @@ impl NostrConnectMessage {
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn request(req: &NostrConnectRequest) -> Self {
-        Self::request_with_rng(&mut OsRng.unwrap_err(), req)
+        Self::request_with_rng(&mut UnwrapErr(SysRng), req)
     }
 
     /// Compose [`NostrConnectMessage::Request`] from [`NostrConnectRequest`].
@@ -695,7 +695,7 @@ impl NostrConnectMessage {
     #[cfg(feature = "rand")]
     pub fn request_with_rng<R>(rng: &mut R, req: &NostrConnectRequest) -> Self
     where
-        R: RngCore,
+        R: Rng,
     {
         Self::Request {
             id: rng.next_u32().to_string(),
@@ -867,7 +867,7 @@ impl NostrConnectUri {
         I: IntoIterator<Item = RelayUrl>,
         S: Into<String>,
     {
-        let mut rng = OsRng.unwrap_err();
+        let mut rng = UnwrapErr(SysRng);
         let secret: String = util::random_hex_string::<_, 16>(&mut rng);
         Self::client_with_secret(public_key, relays, app_name, secret)
     }

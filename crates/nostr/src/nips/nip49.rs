@@ -14,11 +14,11 @@ use core::fmt;
 use chacha20poly1305::XChaCha20Poly1305;
 use chacha20poly1305::aead::{Aead, KeyInit, Payload};
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
+use rand::rand_core::UnwrapErr;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use rand::rngs::SysRng;
 #[cfg(feature = "rand")]
-use rand::{CryptoRng, RngCore};
+use rand::{CryptoRng, Rng};
 use scrypt::Params as ScryptParams;
 use scrypt::errors::{InvalidOutputLen, InvalidParams};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
@@ -199,7 +199,7 @@ impl EncryptedSecretKey {
             password,
             log_n,
             key_security,
-            &mut OsRng.unwrap_err(),
+            &mut UnwrapErr(SysRng),
         )
     }
 
@@ -213,7 +213,7 @@ impl EncryptedSecretKey {
         rng: &mut R,
     ) -> Result<Self, Error>
     where
-        R: RngCore + CryptoRng,
+        R: Rng + CryptoRng,
     {
         // Generate salt
         let salt: [u8; SALT_SIZE] = {

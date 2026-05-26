@@ -9,11 +9,11 @@ use core::ops::{Deref, DerefMut};
 use core::str::FromStr;
 
 #[cfg(feature = "rand")]
-use rand::RngCore;
+use rand::Rng;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
+use rand::rand_core::UnwrapErr;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use rand::rngs::SysRng;
 use serde::{Deserialize, Deserializer};
 
 use super::Error;
@@ -88,15 +88,15 @@ impl SecretKey {
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn generate() -> Self {
-        Self::generate_with_rng(&mut OsRng.unwrap_err())
+        Self::generate_with_rng(&mut UnwrapErr(SysRng))
     }
 
-    /// Generate random a secret key with a custom [`RngCore`].
+    /// Generate random a secret key with a custom [`Rng`].
     #[inline]
     #[cfg(feature = "rand")]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
-        R: RngCore,
+        R: Rng,
     {
         let mut data: [u8; Self::LEN] = util::random_32_bytes(rng);
 

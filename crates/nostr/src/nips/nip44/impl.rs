@@ -9,11 +9,11 @@ use core::fmt::Debug;
 
 use base64::engine::{Engine, general_purpose};
 #[cfg(feature = "rand")]
-use rand::RngCore;
+use rand::Rng;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
+use rand::rand_core::UnwrapErr;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use rand::rngs::SysRng;
 
 use super::v2::{self, ConversationKey};
 #[cfg(feature = "rand")]
@@ -125,7 +125,7 @@ where
         public_key,
         content,
         version,
-        &mut OsRng.unwrap_err(),
+        &mut UnwrapErr(SysRng),
     )
 }
 
@@ -139,7 +139,7 @@ pub fn encrypt_with_rng<R, T>(
     rng: &mut R,
 ) -> Result<String, Error>
 where
-    R: RngCore,
+    R: Rng,
     T: AsRef<[u8]>,
 {
     let nonce: Nonce = match version {

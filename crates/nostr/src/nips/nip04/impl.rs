@@ -14,11 +14,11 @@ use aes::cipher::{BlockDecryptMut, BlockEncryptMut, KeyIvInit};
 use base64::engine::{Engine, general_purpose};
 use cbc::{Decryptor, Encryptor};
 #[cfg(feature = "rand")]
-use rand::RngCore;
+use rand::Rng;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
+use rand::rand_core::UnwrapErr;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use rand::rngs::SysRng;
 
 use crate::{PublicKey, SecretKey, key, util};
 
@@ -75,7 +75,7 @@ pub fn encrypt<T>(
 where
     T: AsRef<[u8]>,
 {
-    encrypt_with_rng(&mut OsRng.unwrap_err(), secret_key, public_key, content)
+    encrypt_with_rng(&mut UnwrapErr(SysRng), secret_key, public_key, content)
 }
 
 /// Encrypt
@@ -89,7 +89,7 @@ pub fn encrypt_with_rng<R, T>(
     content: T,
 ) -> Result<String, Error>
 where
-    R: RngCore,
+    R: Rng,
     T: AsRef<[u8]>,
 {
     // Generate iv

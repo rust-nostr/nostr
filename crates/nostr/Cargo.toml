@@ -49,7 +49,7 @@ alloc = [
 # Enable random stuff
 rand = ["dep:rand"]
 # Enable OS Random Number Generator
-os-rng = ["rand", "rand/os_rng"]
+os-rng = ["rand", "rand/sys_rng"]
 # Enable event POW mining using multi-threads
 pow-multi-thread = ["std"]
 all-nips = ["nip04", "nip06", "nip44", "nip46", "nip47", "nip49", "nip59", "nip60", "nip98"]
@@ -75,7 +75,7 @@ chacha20 = { version = "0.9", optional = true }
 chacha20poly1305 = { version = "0.10", default-features = false, optional = true }
 faster-hex.workspace = true
 nostr-ots = { version = "0.2", optional = true }
-rand = { version = "0.9", default-features = false, optional = true }
+rand = { version = "0.10", default-features = false, optional = true }
 scrypt = { version = "0.12", default-features = false, optional = true }
 secp256k1 = { version = "0.29", default-features = false, features = ["serde"] }
 serde = { workspace = true, default-features = false, features = ["derive"] }

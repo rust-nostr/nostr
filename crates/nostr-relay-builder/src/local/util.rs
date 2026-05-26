@@ -4,12 +4,13 @@
 
 use std::net::{IpAddr, SocketAddr};
 
-use nostr::rand::rngs::OsRng;
-use nostr::rand::{Rng, TryRngCore};
+use nostr::rand::RngExt;
+use nostr::rand::rand_core::UnwrapErr;
+use nostr::rand::rngs::SysRng;
 use tokio::net::TcpListener;
 
 pub async fn find_available_port(ip: IpAddr) -> u16 {
-    let mut rng = OsRng.unwrap_err();
+    let mut rng = UnwrapErr(SysRng);
     loop {
         let port: u16 = rng.random_range(1024..=u16::MAX);
         if port_is_available(ip, port).await {

@@ -14,9 +14,11 @@ use core::str::{self, FromStr};
 use core::time::Duration;
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use rand::rand_core::UnwrapErr;
+#[cfg(all(feature = "std", feature = "os-rng"))]
+use rand::rngs::SysRng;
 #[cfg(feature = "rand")]
-use rand::{Rng, RngCore, TryRngCore};
+use rand::{Rng, RngExt};
 use universal_time::{SystemTime, UNIX_EPOCH};
 
 // 2000-03-01 (mod 400 year, immediately after feb29)
@@ -84,7 +86,7 @@ impl Timestamp {
     #[cfg(feature = "rand")]
     pub fn tweaked_with_rng<R>(rng: &mut R, range: Range<u64>) -> Self
     where
-        R: RngCore,
+        R: Rng,
     {
         let mut now: Timestamp = Self::now();
         now.tweak_with_rng(rng, range);
@@ -95,16 +97,15 @@ impl Timestamp {
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn tweak(&mut self, range: Range<u64>) {
-        self.tweak_with_rng(&mut OsRng.unwrap_err(), range);
+        self.tweak_with_rng(&mut UnwrapErr(SysRng), range);
     }
 
     /// Remove a random number of seconds from [`Timestamp`]
     #[cfg(feature = "rand")]
     pub fn tweak_with_rng<R>(&mut self, rng: &mut R, range: Range<u64>)
     where
-        R: TryRngCore,
+        R: Rng,
     {
-        let mut rng = rng.unwrap_mut();
         let secs: u64 = rng.random_range(range);
         self.0 = self.0.saturating_sub(secs);
     }

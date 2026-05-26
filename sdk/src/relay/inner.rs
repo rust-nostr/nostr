@@ -10,9 +10,10 @@ use async_utility::{task, time};
 use async_wsocket::Message;
 use futures::{self, SinkExt, StreamExt};
 #[cfg(not(target_arch = "wasm32"))]
-use nostr::rand::RngCore;
-use nostr::rand::rngs::OsRng;
-use nostr::rand::{Rng, TryRngCore};
+use nostr::rand::Rng;
+use nostr::rand::RngExt;
+use nostr::rand::rand_core::UnwrapErr;
+use nostr::rand::rngs::SysRng;
 use nostr_database::prelude::*;
 use tokio::sync::mpsc::{self, Receiver, Sender};
 use tokio::sync::{Mutex, MutexGuard, Notify, RwLock, RwLockWriteGuard, broadcast, oneshot};
@@ -622,7 +623,7 @@ impl InnerRelay {
 
             // The jitter is added to avoid situations where multiple relays reconnect simultaneously after a failure.
             // This helps prevent synchronized retry storms.
-            let jitter: i8 = OsRng.unwrap_err().random_range(JITTER_RANGE);
+            let jitter: i8 = UnwrapErr(SysRng).random_range(JITTER_RANGE);
 
             // Apply jitter
             if jitter >= 0 {
@@ -842,7 +843,7 @@ impl InnerRelay {
                         }
 
                         // Generate and save nonce
-                        let mut rng = OsRng.unwrap_err();
+                        let mut rng = UnwrapErr(SysRng);
                         let nonce: u64 = rng.next_u64();
                         ping.set_last_nonce(nonce);
                         ping.set_replied(false);

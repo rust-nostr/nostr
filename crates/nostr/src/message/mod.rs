@@ -8,11 +8,11 @@ use alloc::string::String;
 use core::fmt;
 
 #[cfg(feature = "rand")]
-use rand::RngCore;
+use rand::Rng;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::TryRngCore;
+use rand::rand_core::UnwrapErr;
 #[cfg(all(feature = "std", feature = "os-rng"))]
-use rand::rngs::OsRng;
+use rand::rngs::SysRng;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 pub mod client;
@@ -67,7 +67,7 @@ impl SubscriptionId {
     #[inline]
     #[cfg(all(feature = "std", feature = "os-rng"))]
     pub fn generate() -> Self {
-        Self::generate_with_rng(&mut OsRng.unwrap_err())
+        Self::generate_with_rng(&mut UnwrapErr(SysRng))
     }
 
     /// Generate new random [`SubscriptionId`]
@@ -75,7 +75,7 @@ impl SubscriptionId {
     #[cfg(feature = "rand")]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
     where
-        R: RngCore,
+        R: Rng,
     {
         // Cut the hash and encode to hex
         Self::new(util::random_hex_string::<R, 16>(rng))

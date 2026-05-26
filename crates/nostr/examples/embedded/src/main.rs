@@ -14,7 +14,7 @@ use core::panic::PanicInfo;
 use alloc_cortex_m::CortexMHeap;
 use cortex_m_rt::entry;
 use cortex_m_semihosting::{debug, hprintln};
-use nostr::rand::RngCore;
+use nostr::rand::Rng;
 use nostr::secp256k1::Secp256k1;
 use nostr::{FromBech32, Keys, ToBech32, SecretKey};
 use nostr::nips::nip06::FromMnemonic;
@@ -27,7 +27,7 @@ const HEAP_SIZE: usize = 1024 * 256; // 256 KB
 
 struct FakeRng;
 
-impl RngCore for FakeRng {
+impl Rng for FakeRng {
     fn next_u32(&mut self) -> u32 {
         57
     }
