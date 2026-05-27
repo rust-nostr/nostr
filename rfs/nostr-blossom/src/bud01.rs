@@ -2,7 +2,7 @@
 
 use std::fmt;
 
-use nostr::event::TagCodec;
+use nostr::event::{EventBuilderTemplate, TagCodec};
 use nostr::hashes::sha256::Hash as Sha256Hash;
 use nostr::nips::nipb7::NipB7Tag;
 use nostr::{EventBuilder, Kind, Tag, Timestamp, Url};
@@ -81,28 +81,14 @@ impl BlossomAuthorizationVerb {
     }
 }
 
-/// An extension trait for `nostr::EventBuilder` to add Blossom authorization functionality.
-pub trait BlossomBuilderExtension {
-    /// Creates a Blossom authorization event.
+impl EventBuilderTemplate for BlossomAuthorization {
+    /// Blossom authorization event
     ///
     /// <https://github.com/hzrd149/blossom/blob/master/buds/01.md>
-    fn blossom_auth(authorization: BlossomAuthorization) -> Self;
-}
+    fn build(self) -> EventBuilder {
+        let mut tags: Vec<Tag> = Vec::new();
 
-impl From<BlossomAuthorization> for Vec<Tag> {
-    fn from(value: BlossomAuthorization) -> Self {
-        let mut tags: Vec<Tag> = value.scope.into();
-        tags.push(Tag::expiration(value.expiration));
-        // Add the 't' tag to say what this auth is for
-        tags.push(Tag::hashtag(value.action.to_string()));
-        tags
-    }
-}
-
-impl From<BlossomAuthorizationScope> for Vec<Tag> {
-    fn from(value: BlossomAuthorizationScope) -> Self {
-        let mut tags = Vec::new();
-        match value {
+        match self.scope {
             BlossomAuthorizationScope::BlobSha256Hashes(hashes) => {
                 for hash in hashes.into_iter() {
                     let tag =
@@ -114,17 +100,12 @@ impl From<BlossomAuthorizationScope> for Vec<Tag> {
                 tags.push(NipB7Tag::Server(url).to_tag());
             }
         }
-        tags
-    }
-}
 
-impl BlossomBuilderExtension for EventBuilder {
-    /// Blossom authorization event
-    ///
-    /// <https://github.com/hzrd149/blossom/blob/master/buds/01.md>
-    #[inline]
-    fn blossom_auth(authorization: BlossomAuthorization) -> Self {
-        let tags: Vec<Tag> = authorization.clone().into();
-        Self::new(Kind::BlossomAuth, authorization.content).tags(tags)
+        tags.push(Tag::expiration(self.expiration));
+
+        // Add the 't' tag to say what this auth is for
+        tags.push(Tag::hashtag(self.action.to_string()));
+
+        EventBuilder::new(Kind::BlossomAuth, self.content).tags(tags)
     }
 }

@@ -12,10 +12,7 @@ use reqwest::header::{AUTHORIZATION, CONTENT_TYPE, HeaderMap, HeaderValue, RANGE
 use reqwest::redirect::Policy;
 use reqwest::{Response, StatusCode};
 
-use crate::bud01::{
-    BlossomAuthorization, BlossomAuthorizationScope, BlossomAuthorizationVerb,
-    BlossomBuilderExtension,
-};
+use crate::bud01::{BlossomAuthorization, BlossomAuthorizationScope, BlossomAuthorizationVerb};
 use crate::bud02::BlobDescriptor;
 use crate::error::Error;
 
@@ -79,7 +76,7 @@ impl BlossomClient {
             let final_auth = authorization_options
                 .map(|opts| Self::update_authorization_fixture(&default_auth, opts))
                 .unwrap_or(default_auth);
-            let auth_header = Self::build_auth_header(signer, &final_auth).await?;
+            let auth_header = Self::build_auth_header(signer, final_auth).await?;
             headers.insert(AUTHORIZATION, auth_header);
         }
 
@@ -134,7 +131,7 @@ impl BlossomClient {
             let final_auth = authorization_options
                 .map(|opts| Self::update_authorization_fixture(&default_auth, opts))
                 .unwrap_or(default_auth);
-            let auth_header = Self::build_auth_header(signer, &final_auth).await?;
+            let auth_header = Self::build_auth_header(signer, final_auth).await?;
             headers.insert(AUTHORIZATION, auth_header);
         }
 
@@ -182,7 +179,7 @@ impl BlossomClient {
             let final_auth = authorization_options
                 .map(|opts| Self::update_authorization_fixture(&default_auth, opts))
                 .unwrap_or(default_auth);
-            let auth_header = Self::build_auth_header(signer, &final_auth).await?;
+            let auth_header = Self::build_auth_header(signer, final_auth).await?;
             headers.insert(AUTHORIZATION, auth_header);
         }
 
@@ -236,7 +233,7 @@ impl BlossomClient {
                 .unwrap_or(default_auth);
 
             let mut headers = HeaderMap::new();
-            let auth_header = Self::build_auth_header(signer, &final_auth).await?;
+            let auth_header = Self::build_auth_header(signer, final_auth).await?;
             headers.insert(AUTHORIZATION, auth_header);
 
             request = request.headers(headers);
@@ -276,7 +273,7 @@ impl BlossomClient {
             .map(|opts| Self::update_authorization_fixture(&default_auth, opts))
             .unwrap_or(default_auth);
 
-        let auth_header = Self::build_auth_header(signer, &final_auth).await?;
+        let auth_header = Self::build_auth_header(signer, final_auth).await?;
         headers.insert(AUTHORIZATION, auth_header);
 
         let response: Response = self.client.delete(url).headers(headers).send().await?;
@@ -325,14 +322,12 @@ impl BlossomClient {
     /// <https://github.com/hzrd149/blossom/blob/master/buds/01.md>
     async fn build_auth_header<T>(
         signer: &T,
-        authz: &BlossomAuthorization,
+        authz: BlossomAuthorization,
     ) -> Result<HeaderValue, Error>
     where
         T: AsyncGetPublicKey + AsyncSignEvent,
     {
-        let auth_event: Event = EventBuilder::blossom_auth(authz.clone())
-            .finalize_async(signer)
-            .await?;
+        let auth_event: Event = authz.finalize_async(signer).await?;
         let encoded_auth: String = general_purpose::STANDARD.encode(auth_event.as_json());
         let value: String = format!("Nostr {}", encoded_auth);
         Ok(HeaderValue::try_from(value)?)
