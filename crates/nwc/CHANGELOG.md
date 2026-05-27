@@ -34,6 +34,7 @@
 - Replace `NostrWalletConnectOptions` with `NostrWalletConnectBuilder` (https://github.com/rust-nostr/nostr/pull/1140)
 - Remove `NostrWalletConnect::with_opts` (https://github.com/rust-nostr/nostr/pull/1140)
 - Remove `tor` feature (https://github.com/rust-nostr/nostr/pull/1253)
+- Replace `handle_notifications` with a `Stream`-based notifications API
 
 ### Changed
 
@@ -45,6 +46,7 @@
 ### Added
 
 - Add `NostrWalletConnect::builder` constructor (https://github.com/rust-nostr/nostr/pull/1140)
+- Add `NostrWalletConnect::notifications` method
 
 ## v0.44.0 - 2025/11/06
 

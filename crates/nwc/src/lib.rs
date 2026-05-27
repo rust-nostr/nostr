@@ -11,13 +11,14 @@
 #![allow(clippy::arc_with_non_send_sync)]
 
 use std::collections::HashMap;
-use std::future::Future;
+use std::pin::Pin;
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 pub extern crate nostr;
 
+use futures_core::Stream;
 use nostr::nips::nip47::{Notification, Request, Response};
 use nostr_sdk::prelude::*;
 
@@ -243,71 +244,6 @@ impl NostrWalletConnect {
         Ok(())
     }
 
-    // TODO: remove this and add a notifications stream, like the Client::notifications
-    /// Handle incoming notifications with a callback function
-    pub async fn handle_notifications<F, Fut>(&self, func: F) -> Result<(), Error>
-    where
-        F: Fn(Notification) -> Fut,
-        Fut: Future<Output = Result<bool>>,
-    {
-        let mut notifications = self.client.notifications();
-
-        while let Some(notification) = notifications.next().await {
-            tracing::trace!("Received a client notification: {:?}", notification);
-
-            match notification {
-                ClientNotification::Event {
-                    subscription_id,
-                    event,
-                    ..
-                } => {
-                    tracing::debug!(
-                        "Received event: kind={}, author={}, id={}",
-                        event.kind,
-                        event.pubkey,
-                        event.id
-                    );
-
-                    if subscription_id.as_str() != NOTIFICATIONS_ID {
-                        tracing::trace!("Ignoring event with subscription id: {}", subscription_id);
-                        continue;
-                    }
-
-                    if event.kind != Kind::WalletConnectNotification {
-                        tracing::trace!("Ignoring event with kind: {}", event.kind);
-                        continue;
-                    }
-
-                    tracing::info!("Processing wallet notification event");
-
-                    match Notification::from_event(&self.uri, &event) {
-                        Ok(nip47_notification) => {
-                            tracing::info!(
-                                "Successfully parsed notification: {:?}",
-                                nip47_notification.notification_type
-                            );
-                            let exit: bool = func(nip47_notification)
-                                .await
-                                .map_err(|e| Error::Handler(e.to_string()))?;
-                            if exit {
-                                break;
-                            }
-                        }
-                        Err(e) => {
-                            tracing::error!("Failed to parse notification: {}", e);
-                            tracing::debug!("Event content: {}", event.content);
-                            return Err(Error::from(e));
-                        }
-                    }
-                }
-                ClientNotification::Shutdown => break,
-                _ => {}
-            }
-        }
-
-        Ok(())
-    }
-
     /// Unsubscribe from notifications
     pub async fn unsubscribe_from_notifications(&self) -> Result<(), Error> {
         self.client
@@ -315,6 +251,62 @@ impl NostrWalletConnect {
             .await?;
         self.notifications_subscribed.store(false, Ordering::SeqCst);
         Ok(())
+    }
+
+    /// Get a new notification stream
+    ///
+    /// The stream terminates when the client shutdowns.
+    pub fn notifications(
+        &self,
+    ) -> Pin<Box<dyn Stream<Item = Result<Notification, Error>> + Send + '_>> {
+        let notifications = self.client.notifications();
+
+        Box::pin(notifications.filter_map(move |notification| async move {
+            tracing::trace!("Received a client notification: {:?}", notification);
+
+            if let ClientNotification::Event {
+                subscription_id,
+                event,
+                ..
+            } = notification
+            {
+                tracing::debug!(
+                    "Received event: kind={}, author={}, id={}",
+                    event.kind,
+                    event.pubkey,
+                    event.id
+                );
+
+                if subscription_id.as_str() != NOTIFICATIONS_ID {
+                    tracing::trace!("Ignoring event with subscription id: {}", subscription_id);
+                    return None;
+                }
+
+                if event.kind != Kind::WalletConnectNotification {
+                    tracing::trace!("Ignoring event with kind: {}", event.kind);
+                    return None;
+                }
+
+                tracing::info!("Processing wallet notification event");
+
+                match Notification::from_event(&self.uri, &event) {
+                    Ok(nip47_notification) => {
+                        tracing::info!(
+                            "Successfully parsed notification: {:?}",
+                            nip47_notification.notification_type
+                        );
+                        return Some(Ok(nip47_notification));
+                    }
+                    Err(e) => {
+                        tracing::error!("Failed to parse notification: {}", e);
+                        tracing::debug!("Event content: {}", event.content);
+                        return Some(Err(Error::from(e)));
+                    }
+                }
+            }
+
+            None
+        }))
     }
 
     /// Manually reconnect to a specific relay

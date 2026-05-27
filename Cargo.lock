@@ -2097,6 +2097,7 @@ dependencies = [
 name = "nwc"
 version = "0.45.0-alpha.1"
 dependencies = [
+ "futures-core",
  "nostr",
  "nostr-sdk",
  "tokio",

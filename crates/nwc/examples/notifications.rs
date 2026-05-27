@@ -41,6 +41,8 @@ async fn main() -> Result<()> {
     println!("💡 Try making or receiving payments with your wallet");
     println!("🛑 Press Ctrl+C to stop");
 
+    let mut notifications = nwc.notifications();
+
     let shutdown = tokio::signal::ctrl_c();
     tokio::pin!(shutdown);
 
@@ -49,32 +51,36 @@ async fn main() -> Result<()> {
             println!("\n👋 Shutting down...");
         }
 
-        result = nwc.handle_notifications(|notification| async move {
-            match notification.notification_type {
-                NotificationType::PaymentReceived => {
-                    if let Ok(payment) = notification.to_pay_notification() {
-                        println!("🟢 Payment Received!");
-                        print_payment_details(&payment);
+        _ = async move {
+            while let Some(result) = notifications.next().await {
+                let Ok(notification) = result else {
+                    eprintln!("Error: {}", result.unwrap_err());
+                    continue;
+                };
+
+                match notification.notification_type {
+                    NotificationType::PaymentReceived => {
+                        if let Ok(payment) = notification.to_pay_notification() {
+                            println!("🟢 Payment Received!");
+                            print_payment_details(&payment);
+                        }
                     }
-                }
-                NotificationType::PaymentSent => {
-                    if let Ok(payment) = notification.to_pay_notification() {
-                        println!("🔴 Payment Sent!");
-                        print_payment_details(&payment);
+                    NotificationType::PaymentSent => {
+                        if let Ok(payment) = notification.to_pay_notification() {
+                            println!("🔴 Payment Sent!");
+                            print_payment_details(&payment);
+                        }
                     }
-                }
-                NotificationType::HoldInvoiceAccepted => {
-                    if let Ok(hold_accepted) = notification.to_holdinvoice_accepted_notification() {
-                        println!("🟡 Hold Invoice Accepted!");
-                        print_holdinvoice_details(&hold_accepted);
+                    NotificationType::HoldInvoiceAccepted => {
+                        if let Ok(hold_accepted) = notification.to_holdinvoice_accepted_notification() {
+                            println!("🟡 Hold Invoice Accepted!");
+                            print_holdinvoice_details(&hold_accepted);
+                        }
                     }
                 }
             }
-            Ok(false) // Continue processing
-        }) => {
-            if let Err(e) = result {
-                eprintln!("Error handling notifications: {}", e);
-            }
+        } => {
+            println!("Notifications stream terminated");
         }
     }
 

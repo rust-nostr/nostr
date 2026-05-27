@@ -25,6 +25,7 @@ rustls-tls-native-roots = ["nostr-sdk/rustls-tls-native-roots"]
 rustls-tls-webpki-roots = ["nostr-sdk/rustls-tls-webpki-roots"]
 
 [dependencies]
+futures-core = "0.3"
 nostr = { workspace = true, features = ["std", "nip47"] }
 nostr-sdk.workspace = true
 tracing = { workspace = true, features = ["std"] }
