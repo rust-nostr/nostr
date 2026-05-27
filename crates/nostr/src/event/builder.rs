@@ -407,8 +407,12 @@ impl EventBuilder {
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
     #[inline]
+    #[deprecated(
+        since = "0.45.0",
+        note = "Use `EventDeletionRequest::finalize` or `EventDeletionRequest::finalize_async` instead"
+    )]
     pub fn delete(request: EventDeletionRequest) -> Self {
-        request.to_event_builder()
+        request.build()
     }
 
     /// Request to vanish

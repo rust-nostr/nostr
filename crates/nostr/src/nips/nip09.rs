@@ -2,7 +2,7 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! NIP09: Event Deletion Request
+//! NIP-09: Event Deletion Request
 //!
 //! <https://github.com/nostr-protocol/nips/blob/master/09.md>
 
@@ -10,7 +10,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 
 use super::nip01::Coordinate;
-use crate::event::{EventBuilder, EventId, Kind, Tag};
+use crate::event::{EventBuilder, EventBuilderTemplate, EventId, Kind, Tag};
 
 /// Event deletion request
 #[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -73,9 +73,10 @@ impl EventDeletionRequest {
         self.reason = Some(reason.into());
         self
     }
+}
 
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for EventDeletionRequest {
+    fn build(self) -> EventBuilder {
         let mut tags: Vec<Tag> = Vec::with_capacity(self.ids.len() + self.coordinates.len());
 
         for id in self.ids.into_iter() {
@@ -113,7 +114,7 @@ mod tests {
             .coordinate(coordinate)
             .reason("these posts were published by accident");
 
-        let event: Event = request.to_event_builder().finalize(&keys).unwrap();
+        let event: Event = request.finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::EventDeletion);
         assert_eq!(event.content, "these posts were published by accident");
@@ -134,7 +135,7 @@ mod tests {
         // Event ID without reason
         let request = EventDeletionRequest::new().id(event_id);
 
-        let event: Event = request.to_event_builder().finalize(&keys).unwrap();
+        let event: Event = request.finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::EventDeletion);
         assert!(event.content.is_empty());
