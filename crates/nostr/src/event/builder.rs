@@ -1368,14 +1368,6 @@ impl EventBuilder {
 
         Self::new(Kind::Comment, content).tags(tags)
     }
-
-    /// Web Bookmark
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/B0.md>
-    #[inline]
-    pub fn web_bookmark(web_bookmark: WebBookmark) -> Self {
-        web_bookmark.to_event_builder()
-    }
 }
 
 fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {

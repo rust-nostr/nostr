@@ -13,7 +13,9 @@ use core::fmt;
 use core::num::ParseIntError;
 
 use super::util::{take_string, take_timestamp};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{
+    EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+};
 use crate::{EventBuilder, Kind, Timestamp};
 
 const URL: &str = "d";
@@ -167,10 +169,10 @@ impl WebBookmark {
         }
         self
     }
+}
 
-    /// Convert the web bookmark to an event builder
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for WebBookmark {
+    fn build(self) -> EventBuilder {
         let mut tags: Vec<Tag> = vec![NipB0Tag::Url(self.url).into()];
 
         let mut add_if_some = |tag: Option<NipB0Tag>| {
