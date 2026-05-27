@@ -12,7 +12,9 @@ use alloc::vec::Vec;
 use core::fmt;
 
 use super::util::take_string;
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{
+    EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+};
 use crate::{EventBuilder, Kind};
 
 const LANGUAGE: &str = "l";
@@ -245,10 +247,10 @@ impl CodeSnippet {
         self.repo = Some(repo.into());
         self
     }
+}
 
-    /// Convert the code snippet to an event builder
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for CodeSnippet {
+    fn build(self) -> EventBuilder {
         let mut tags: Vec<Tag> = Vec::new();
 
         let mut add_if_some = |tag: Option<NipC0Tag>| {
