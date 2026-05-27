@@ -1233,14 +1233,6 @@ impl EventBuilder {
         Self::new(Kind::UserStatus, content).tags(tags)
     }
 
-    /// Torrent metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
-    #[inline]
-    pub fn torrent(metadata: Torrent) -> Self {
-        metadata.to_event_builder()
-    }
-
     // TODO: add `torrent_comment`
 
     /// Create a poll

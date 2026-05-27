@@ -11,9 +11,11 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
+use core::convert::Infallible;
 
 use hashes::sha1::Hash as Sha1Hash;
 
+use crate::event::EventBuilderTemplate;
 use crate::types::url::Url;
 use crate::{EventBuilder, Kind, Tag};
 
@@ -45,9 +47,10 @@ pub struct Torrent {
     pub hashtags: Vec<String>,
 }
 
-impl Torrent {
-    /// Converts the torrent metadata into an [`EventBuilder`].
-    pub fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for Torrent {
+    type Error = Infallible;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         let mut tags: Vec<Tag> = Vec::with_capacity(
             2 + self.files.len()
                 + self.trackers.len()
@@ -75,6 +78,6 @@ impl Torrent {
             tags.push(Tag::hashtag(tag));
         }
 
-        EventBuilder::new(Kind::Torrent, self.description).tags(tags)
+        Ok(EventBuilder::new(Kind::Torrent, self.description).tags(tags))
     }
 }
