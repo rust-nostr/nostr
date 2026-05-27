@@ -28,6 +28,7 @@ rustls-tls-webpki-roots = ["nostr-sdk/rustls-tls-webpki-roots"]
 futures-core = "0.3"
 nostr = { workspace = true, features = ["std", "nip47"] }
 nostr-sdk.workspace = true
+opaquerr = { workspace = true, features = ["alloc"] }
 tracing = { workspace = true, features = ["std"] }
 
 [dev-dependencies]

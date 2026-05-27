@@ -158,7 +158,7 @@ impl NostrWalletConnect {
         self.client.send_event(&event).await?;
 
         // Wait for the response
-        let (_, res) = stream.next().await.ok_or(Error::ResponseNotReceived)?;
+        let (_, res) = stream.next().await.ok_or_else(Error::no_response)?;
 
         // Unwrap event
         let received_event: Event = res?;

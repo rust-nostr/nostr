@@ -2130,6 +2130,7 @@ dependencies = [
  "futures-core",
  "nostr",
  "nostr-sdk",
+ "opaquerr",
  "tokio",
  "tracing",
  "tracing-subscriber",
