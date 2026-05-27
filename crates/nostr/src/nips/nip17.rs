@@ -31,7 +31,7 @@ use crate::key::{AsyncGetPublicKey, GetPublicKey};
 use crate::signer::SignerError;
 use crate::types::url::{self, RelayUrl};
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
-use crate::util::BoxedFuture;
+use crate::util::{BoxedFuture, UnwrapInfallible};
 
 const RELAY: &str = "relay";
 
@@ -222,6 +222,7 @@ fn make_rumor(
         .tag(Tag::public_key(receiver))
         .tags(extra_tags)
         .finalize_unsigned(sender)
+        .unwrap_infallible()
 }
 
 /// Standardized NIP-17 tags

@@ -28,8 +28,8 @@ async fn main() -> Result<()> {
     println!("Not sent to: {:?}", output.failed);
 
     // Create a text note POW event to relays
-    let unsigned =
-        EventBuilder::text_note("POW text note from rust-nostr").finalize_unsigned(keys.public_key);
+    let unsigned = EventBuilder::text_note("POW text note from rust-nostr")
+        .finalize_unsigned(keys.public_key)?;
     let unsigned = unsigned
         .mine_async(&SingleThreadPow, NonZeroU8::new(20).unwrap())
         .await?;

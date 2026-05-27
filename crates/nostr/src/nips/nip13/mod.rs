@@ -627,7 +627,8 @@ pub mod tests {
         let unsigned = EventBuilder::text_note(
             "Why must I find leading zero bits? Is there no beauty in the ones?",
         )
-        .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap());
+        .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap())
+        .unwrap_infallible();
 
         let unsigned = unsigned
             .mine(&TestAdapter, NonZeroU8::new(2).unwrap())
@@ -671,7 +672,8 @@ pub mod tests {
         let unsigned = EventBuilder::text_note(
             "Why must I find leading zero bits? Is there no beauty in the ones?",
         )
-        .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap());
+        .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap())
+        .unwrap_infallible();
 
         let unsigned = unsigned
             .mine_async(&AsyncTestAdapter, NonZeroU8::new(2).unwrap())

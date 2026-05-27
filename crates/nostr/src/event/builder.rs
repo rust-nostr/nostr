@@ -7,6 +7,7 @@
 use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 use core::ops::Range;
 
@@ -37,18 +38,23 @@ impl fmt::Display for WrongKindError {
 
 /// Template that can be converted into a generic [`EventBuilder`].
 pub trait EventBuilderTemplate: Sized {
+    /// Error type
+    type Error: core::error::Error;
+
     /// Convert into the generic event builder.
-    fn build(self) -> EventBuilder;
+    fn build(self) -> Result<EventBuilder, Self::Error>;
 }
 
 impl<B> FinalizeUnsignedEvent for B
 where
     B: EventBuilderTemplate,
 {
+    type Error = B::Error;
+
     #[inline]
-    fn finalize_unsigned(self, public_key: PublicKey) -> UnsignedEvent {
-        let builder: EventBuilder = self.build();
-        builder.finalize_unsigned(public_key)
+    fn finalize_unsigned(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error> {
+        let builder: EventBuilder = self.build()?;
+        Ok(builder.finalize_unsigned(public_key).unwrap_infallible())
     }
 }
 
@@ -60,15 +66,18 @@ where
     type Error = SignerError;
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
-        let builder: EventBuilder = self.build();
+        let builder: EventBuilder = self.build().map_err(SignerError::backend)?;
         builder.finalize(signer)
     }
 }
 
 /// Template that can asynchronously be converted into a generic [`EventBuilder`].
 pub trait EventBuilderTemplateAsync {
+    /// Error type
+    type Error: core::error::Error;
+
     /// Convert this typed builder into the generic event builder.
-    fn build_async<'a>(self) -> BoxedFuture<'a, EventBuilder>
+    fn build_async<'a>(self) -> BoxedFuture<'a, Result<EventBuilder, Self::Error>>
     where
         Self: 'a;
 }
@@ -77,8 +86,10 @@ impl<B> EventBuilderTemplateAsync for B
 where
     B: EventBuilderTemplate + Send,
 {
+    type Error = B::Error;
+
     #[inline]
-    fn build_async<'a>(self) -> BoxedFuture<'a, EventBuilder>
+    fn build_async<'a>(self) -> BoxedFuture<'a, Result<EventBuilder, Self::Error>>
     where
         Self: 'a,
     {
@@ -90,14 +101,22 @@ impl<B> FinalizeUnsignedEventAsync for B
 where
     B: EventBuilderTemplateAsync + Send,
 {
+    type Error = B::Error;
+
     #[inline]
-    fn finalize_unsigned_async<'a>(self, public_key: PublicKey) -> BoxedFuture<'a, UnsignedEvent>
+    fn finalize_unsigned_async<'a>(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'a, Result<UnsignedEvent, Self::Error>>
     where
         Self: 'a,
     {
         Box::pin(async move {
-            let builder: EventBuilder = self.build_async().await;
-            builder.finalize_unsigned_async(public_key).await
+            let builder: EventBuilder = self.build_async().await?;
+            Ok(builder
+                .finalize_unsigned_async(public_key)
+                .await
+                .unwrap_infallible())
         })
     }
 }
@@ -115,7 +134,7 @@ where
         S: 'a,
     {
         Box::pin(async move {
-            let builder: EventBuilder = self.build_async().await;
+            let builder: EventBuilder = self.build_async().await.map_err(SignerError::backend)?;
             builder.finalize_async(signer).await
         })
     }
@@ -1438,9 +1457,11 @@ fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
 }
 
 impl FinalizeUnsignedEvent for EventBuilder {
+    type Error = Infallible;
+
     #[inline]
-    fn finalize_unsigned(self, public_key: PublicKey) -> UnsignedEvent {
-        UnsignedEvent {
+    fn finalize_unsigned(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error> {
+        Ok(UnsignedEvent {
             // Not compute event ID, as the user may want POW, so would be an unnecessary computation.
             id: None,
             pubkey: public_key,
@@ -1448,13 +1469,18 @@ impl FinalizeUnsignedEvent for EventBuilder {
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-        }
+        })
     }
 }
 
 impl FinalizeUnsignedEventAsync for EventBuilder {
+    type Error = Infallible;
+
     #[inline]
-    fn finalize_unsigned_async<'a>(self, public_key: PublicKey) -> BoxedFuture<'a, UnsignedEvent>
+    fn finalize_unsigned_async<'a>(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'a, Result<UnsignedEvent, Self::Error>>
     where
         Self: 'a,
     {
@@ -1470,7 +1496,7 @@ where
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
         let public_key: PublicKey = signer.get_public_key().map_err(SignerError::backend)?;
-        let unsigned: UnsignedEvent = self.finalize_unsigned(public_key);
+        let unsigned: UnsignedEvent = self.finalize_unsigned(public_key).unwrap_infallible();
         signer.sign_event(unsigned).map_err(SignerError::backend)
     }
 }
@@ -1491,7 +1517,7 @@ where
                 .get_public_key_async()
                 .await
                 .map_err(SignerError::backend)?;
-            let unsigned: UnsignedEvent = self.finalize_unsigned(public_key);
+            let unsigned: UnsignedEvent = self.finalize_unsigned(public_key).unwrap_infallible();
             signer
                 .sign_event_async(unsigned)
                 .await

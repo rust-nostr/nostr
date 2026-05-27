@@ -38,7 +38,7 @@ async fn main() -> Result<()> {
     // Build a gift wrap
     let receiver =
         PublicKey::parse("npub1drvpzev3syqt0kjrls50050uzf25gehpz9vgdw08hvex7e0vgfeq0eseet")?;
-    let rumor = EventBuilder::new(Kind::Custom(123), "test").finalize_unsigned(public_key);
+    let rumor = EventBuilder::new(Kind::Custom(123), "test").finalize_unsigned(public_key)?;
     let gift_wrap = GiftWrapBuilder::new(receiver, rumor)
         .finalize_async(&proxy)
         .await?;

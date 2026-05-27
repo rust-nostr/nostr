@@ -49,7 +49,7 @@ fn main() -> Result<()> {
 
     // New POW text note
     let difficulty: NonZeroU8 = NonZeroU8::new(16).unwrap();
-    let unsigned: UnsignedEvent = EventBuilder::text_note("POW text note from rust-nostr").finalize_unsigned(keys.public_key);
+    let unsigned: UnsignedEvent = EventBuilder::text_note("POW text note from rust-nostr").finalize_unsigned(keys.public_key)?;
     let unsigned: UnsignedEvent = unsigned.mine(&SingleThreadPow, difficulty)?;
     let event: Event = unsigned.finalize(&keys)?;
 
