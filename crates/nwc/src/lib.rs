@@ -16,8 +16,6 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
-pub extern crate nostr;
-
 use futures_core::Stream;
 use nostr::nips::nip47::{Notification, Request, Response};
 use nostr_sdk::prelude::*;
@@ -29,8 +27,7 @@ pub mod prelude;
 
 pub use self::api::*;
 use self::builder::NostrWalletConnectBuilder;
-#[doc(hidden)]
-pub use self::error::Error;
+use self::error::Error;
 
 const NOTIFICATIONS_ID: &str = "nwc-notifications";
 
@@ -328,7 +325,7 @@ impl NostrWalletConnect {
 
     /// Completely shutdown
     #[inline]
-    pub async fn shutdown(self) {
-        self.client.disconnect().await
+    pub async fn shutdown(&self) {
+        self.client.shutdown().await
     }
 }
