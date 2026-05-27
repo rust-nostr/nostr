@@ -1272,54 +1272,6 @@ impl EventBuilder {
         snippet.to_event_builder()
     }
 
-    /// Git Repository Announcement
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_repository_announcement(announcement: GitRepositoryAnnouncement) -> Self {
-        announcement.to_event_builder()
-    }
-
-    /// Git Issue
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_issue(issue: GitIssue) -> Result<Self, nip34::Error> {
-        issue.to_event_builder()
-    }
-
-    /// Git Patch
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_patch(patch: GitPatch) -> Result<Self, nip34::Error> {
-        patch.to_event_builder()
-    }
-
-    /// Git Pull Request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_pull_request(pull_request: GitPullRequest) -> Result<Self, nip34::Error> {
-        pull_request.to_event_builder()
-    }
-
-    /// Git Pull Request Update
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_pull_request_update(update: GitPullRequestUpdate) -> Result<Self, nip34::Error> {
-        update.to_event_builder()
-    }
-
-    /// Git User Grasp List
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_user_grasp_list(grasp_list: GitUserGraspList) -> Self {
-        grasp_list.to_event_builder()
-    }
-
     /// Torrent metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/35.md>

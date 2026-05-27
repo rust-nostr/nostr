@@ -10,6 +10,7 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
@@ -20,7 +21,9 @@ use hashes::sha1::Hash as Sha1Hash;
 use super::nip01::{self, Coordinate};
 use super::nip22::Nip22Tag;
 use super::util::{take_and_parse_from_str, take_string};
-use crate::event::{EventBuilder, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{
+    EventBuilder, EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+};
 use crate::types::url::{self, Url};
 use crate::{EventId, Kind, PublicKey, RelayUrl, Timestamp, key};
 
@@ -498,8 +501,10 @@ pub struct GitRepositoryAnnouncement {
     pub maintainers: Vec<PublicKey>,
 }
 
-impl GitRepositoryAnnouncement {
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for GitRepositoryAnnouncement {
+    type Error = Infallible;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         let mut tags: Vec<Tag> = Vec::with_capacity(1);
 
         // Add repo ID
@@ -541,7 +546,7 @@ impl GitRepositoryAnnouncement {
         }
 
         // Build
-        EventBuilder::new(Kind::GitRepoAnnouncement, "").tags(tags)
+        Ok(EventBuilder::new(Kind::GitRepoAnnouncement, "").tags(tags))
     }
 }
 
@@ -558,9 +563,10 @@ pub struct GitIssue {
     pub labels: Vec<String>,
 }
 
-impl GitIssue {
-    /// Based on <https://github.com/nostr-protocol/nips/blob/ea36ec9ed7596e49bf7f217b05954c1fecacad88/34.md> revision.
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+impl EventBuilderTemplate for GitIssue {
+    type Error = Error;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
             return Err(Error::UnexpectedKind);
@@ -666,8 +672,10 @@ pub struct GitPatch {
     pub labels: Vec<String>,
 }
 
-impl GitPatch {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+impl EventBuilderTemplate for GitPatch {
+    type Error = Error;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
             return Err(Error::UnexpectedKind);
@@ -753,8 +761,10 @@ pub struct GitPullRequest {
     pub merge_base: Option<Sha1Hash>,
 }
 
-impl GitPullRequest {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+impl EventBuilderTemplate for GitPullRequest {
+    type Error = Error;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
             return Err(Error::UnexpectedKind);
@@ -828,8 +838,10 @@ pub struct GitPullRequestUpdate {
     pub merge_base: Option<Sha1Hash>,
 }
 
-impl GitPullRequestUpdate {
-    pub(crate) fn to_event_builder(self) -> Result<EventBuilder, Error> {
+impl EventBuilderTemplate for GitPullRequestUpdate {
+    type Error = Error;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         // Check if repository address kind is wrong
         if self.repository.kind != Kind::GitRepoAnnouncement {
             return Err(Error::UnexpectedKind);
@@ -895,15 +907,17 @@ pub struct GitUserGraspList {
     pub grasp_servers: Vec<RelayUrl>,
 }
 
-impl GitUserGraspList {
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for GitUserGraspList {
+    type Error = Infallible;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         let tags: Vec<Tag> = self
             .grasp_servers
             .into_iter()
             .map(|url| Nip34Tag::Grasp(url).to_tag())
             .collect();
 
-        EventBuilder::new(Kind::GitUserGraspList, "").tags(tags)
+        Ok(EventBuilder::new(Kind::GitUserGraspList, "").tags(tags))
     }
 }
 
@@ -935,7 +949,7 @@ mod tests {
         };
 
         let keys = Keys::generate();
-        let event: Event = repo.to_event_builder().finalize(&keys).unwrap();
+        let event: Event = repo.finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::GitRepoAnnouncement);
         assert!(event.content.is_empty());
@@ -995,7 +1009,7 @@ mod tests {
         };
 
         let keys = Keys::generate();
-        let event: Event = repo.to_event_builder().unwrap().finalize(&keys).unwrap();
+        let event: Event = repo.finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::GitIssue);
         assert_eq!(event.content, "My issue content");
@@ -1043,7 +1057,7 @@ mod tests {
         };
 
         let keys = Keys::generate();
-        let event: Event = repo.to_event_builder().unwrap().finalize(&keys).unwrap();
+        let event: Event = repo.finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::GitPatch);
         assert_eq!(event.content, "<patch>");
@@ -1100,7 +1114,7 @@ mod tests {
         };
 
         let keys = Keys::generate();
-        let event: Event = update.to_event_builder().unwrap().finalize(&keys).unwrap();
+        let event: Event = update.finalize(&keys).unwrap();
 
         assert_eq!(event.kind, Kind::GitPullRequestUpdate);
         assert!(event.content.is_empty());
