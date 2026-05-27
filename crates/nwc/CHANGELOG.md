@@ -47,6 +47,11 @@
 
 - Add `NostrWalletConnect::builder` constructor (https://github.com/rust-nostr/nostr/pull/1140)
 - Add `NostrWalletConnect::notifications` method
+- Add `NostrWalletConnect::client` method
+
+### Deprecated
+
+- Deprecate `status` and `reconnect_relay` methods
 
 ## v0.44.0 - 2025/11/06
 

@@ -94,7 +94,14 @@ impl NostrWalletConnect {
         &self.uri
     }
 
+    /// Get the inner nostr client
+    #[inline]
+    pub fn client(&self) -> &Client {
+        &self.client
+    }
+
     /// Get relays status
+    #[deprecated(since = "0.45.0", note = "Use the client method instead")]
     pub async fn status(&self) -> HashMap<RelayUrl, RelayStatus> {
         let relays = self.client.relays().await;
         relays.into_iter().map(|(u, r)| (u, r.status())).collect()
@@ -312,6 +319,7 @@ impl NostrWalletConnect {
     /// is disabled via [`RelayOptions::reconnect`].
     ///
     /// If the client is not bootstrapped, it will do nothing.
+    #[deprecated(since = "0.45.0", note = "Use the client method instead")]
     pub async fn reconnect_relay<'a, U>(&self, url: U) -> Result<(), Error>
     where
         U: Into<RelayUrlArg<'a>>,
