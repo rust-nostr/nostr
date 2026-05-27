@@ -9,11 +9,14 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 use core::num::ParseIntError;
 
 use super::util::{take_string, take_timestamp};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{
+    EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+};
 use crate::{EventBuilder, Kind, Timestamp};
 
 const URL: &str = "d";
@@ -167,10 +170,12 @@ impl WebBookmark {
         }
         self
     }
+}
 
-    /// Convert the web bookmark to an event builder
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for WebBookmark {
+    type Error = Infallible;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         let mut tags: Vec<Tag> = vec![NipB0Tag::Url(self.url).into()];
 
         let mut add_if_some = |tag: Option<NipB0Tag>| {
@@ -186,7 +191,7 @@ impl WebBookmark {
             tags.push(NipB0Tag::Hashtag(hashtag).into());
         }
 
-        EventBuilder::new(Kind::WebBookmark, self.description).tags(tags)
+        Ok(EventBuilder::new(Kind::WebBookmark, self.description).tags(tags))
     }
 }
 
