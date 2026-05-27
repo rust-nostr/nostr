@@ -12,4 +12,4 @@
 pub use crate::bud01::*;
 pub use crate::bud02::*;
 pub use crate::client::*;
-pub use crate::error::*;
+pub use crate::error::{Error, ErrorKind};

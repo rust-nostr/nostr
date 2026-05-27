@@ -14,7 +14,7 @@ use reqwest::{Response, StatusCode};
 
 use crate::bud01::{BlossomAuthorization, BlossomAuthorizationScope, BlossomAuthorizationVerb};
 use crate::bud02::BlobDescriptor;
-use crate::error::Error;
+use crate::error::{Error, ErrorKind};
 
 /// A client for interacting with a Blossom server
 ///
@@ -192,10 +192,18 @@ impl BlossomClient {
                 Some(location) => {
                     let location_str: &str = location.to_str()?;
                     if !location_str.contains(&sha256.to_string()) {
-                        return Err(Error::RedirectUrlDoesNotContainSha256);
+                        return Err(Error::with_static_message(
+                            ErrorKind::Invalid,
+                            "Redirect URL does not contain SHA256",
+                        ));
                     }
                 }
-                None => return Err(Error::RedirectResponseMissingLocationHeader),
+                None => {
+                    return Err(Error::with_static_message(
+                        ErrorKind::Invalid,
+                        "Redirect response missing 'Location' header",
+                    ));
+                }
             }
         }
 

@@ -4,105 +4,46 @@
 
 //! Blossom error
 
-use std::fmt;
+use nostr::types::url;
+use reqwest::{Response, header};
 
-use nostr::types::ParseError;
-use reqwest::Response;
-use reqwest::header::{InvalidHeaderValue, ToStrError};
+opaquerr::define_kind! {
+    /// Nostr blossom error kind.
+    pub ErrorKind {
+        /// Nostr protocol error.
+        Protocol => "nostr protocol error",
+        /// HTTP error
+        Http => "HTTP error",
+        /// Input is not well-formed and cannot be parsed.
+        Malformed => "input is malformed",
+        /// Input is well-formed, but violates a protocol/library invariant.
+        Invalid => "input violates a protocol/library invariant",
+        /// Anything not covered by the stable categories above.
+        Other => "other error",
+    }
+}
 
-/// Blossom error
-#[derive(Debug)]
-pub enum Error {
-    /// Nostr protocol error
-    Protocol(nostr::error::Error),
-    /// Reqwest error
-    Reqwest(reqwest::Error),
-    /// Invalid header value
-    InvalidHeaderValue(InvalidHeaderValue),
-    /// Url parse error
-    Url(ParseError),
-    /// To string error
-    ToStr(ToStrError),
-    /// Response error
-    Response {
-        /// Prefix for the error message
-        prefix: String,
-        /// Response
-        res: Response,
-    },
-    /// Returned when a redirect URL does not contain the expected hash
-    RedirectUrlDoesNotContainSha256,
-    /// Returned when a redirect response is missing the Location header
-    RedirectResponseMissingLocationHeader,
+opaquerr::define_error! {
+    /// Nostr blossom error.
+    pub Error(ErrorKind)
+
+    from {
+        nostr::error::Error => ErrorKind::Protocol,
+        reqwest::Error => ErrorKind::Http,
+        header::InvalidHeaderValue => ErrorKind::Http,
+        url::ParseError => ErrorKind::Malformed,
+        header::ToStrError => ErrorKind::Invalid,
+    }
 }
 
 impl Error {
-    #[inline]
-    pub(super) fn response<S>(prefix: S, res: Response) -> Self
-    where
-        S: Into<String>,
-    {
-        Self::Response {
-            prefix: prefix.into(),
-            res,
-        }
-    }
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Protocol(e) => write!(f, "{e}"),
-            Self::Reqwest(e) => write!(f, "{e}"),
-            Self::InvalidHeaderValue(e) => write!(f, "{e}"),
-            Self::Url(e) => write!(f, "{e}"),
-            Self::ToStr(e) => write!(f, "{e}"),
-            Self::Response { prefix, res } => {
-                let reason: &str = res
-                    .headers()
-                    .get("X-Reason")
-                    .map(|h| h.to_str().unwrap_or("Unknown reason"))
-                    .unwrap_or_else(|| "No reason provided");
-                write!(f, "{prefix}: {} - {reason}", res.status())
-            }
-            Self::RedirectUrlDoesNotContainSha256 => {
-                write!(f, "Redirect URL does not contain SHA256")
-            }
-            Self::RedirectResponseMissingLocationHeader => {
-                write!(f, "Redirect response missing 'Location' header")
-            }
-        }
-    }
-}
-
-impl From<nostr::error::Error> for Error {
-    fn from(e: nostr::error::Error) -> Self {
-        Self::Protocol(e)
-    }
-}
-
-impl From<reqwest::Error> for Error {
-    fn from(e: reqwest::Error) -> Self {
-        Self::Reqwest(e)
-    }
-}
-
-impl From<InvalidHeaderValue> for Error {
-    fn from(e: InvalidHeaderValue) -> Self {
-        Self::InvalidHeaderValue(e)
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(e: ParseError) -> Self {
-        Self::Url(e)
-    }
-}
-
-impl From<ToStrError> for Error {
-    fn from(e: ToStrError) -> Self {
-        Self::ToStr(e)
+    pub(crate) fn response(prefix: &'static str, res: Response) -> Self {
+        let reason: &str = res
+            .headers()
+            .get("X-Reason")
+            .map(|h| h.to_str().unwrap_or("Unknown reason"))
+            .unwrap_or_else(|| "No reason provided");
+        let msg: String = format!("{prefix}: {} - {reason}", res.status());
+        Self::new(ErrorKind::Http, msg)
     }
 }
