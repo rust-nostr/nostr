@@ -14,7 +14,7 @@ keywords = ["nostr", "blossom"]
 [dependencies]
 base64.workspace = true
 nostr = { workspace = true, features = ["std"] }
-reqwest = { workspace = true, default-features = false, features = ["json", "rustls-tls"] }
+reqwest = { workspace = true, default-features = false, features = ["http2", "json", "rustls-tls"] }
 serde = { workspace = true, features = ["derive"] }
 
 [dev-dependencies]
