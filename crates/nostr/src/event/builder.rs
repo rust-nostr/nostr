@@ -1284,16 +1284,6 @@ impl EventBuilder {
         grasp_list.to_event_builder()
     }
 
-    /// Torrent metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
-    #[inline]
-    pub fn torrent(metadata: Torrent) -> Self {
-        metadata.to_event_builder()
-    }
-
-    // TODO: add `torrent_comment`
-
     /// Create a poll
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
