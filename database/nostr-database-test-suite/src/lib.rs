@@ -361,7 +361,7 @@ macro_rules! database_unit_tests {
 
             // Create deletion event
             let deletion =
-                EventBuilder::delete(EventDeletionRequest::new().id(event1.id).id(event2.id))
+                EventDeletionRequest::new().id(event1.id).id(event2.id)
                     .finalize(&keys)
                     .expect("Failed to finalize");
 
@@ -406,7 +406,7 @@ macro_rules! database_unit_tests {
             let req = EventDeletionRequest::new()
                 .coordinate(event.coordinate().unwrap());
             let deletion =
-                EventBuilder::delete(req)
+                req
                     .finalize(&keys)
                     .expect("Failed to finalize");
 

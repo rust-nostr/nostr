@@ -412,14 +412,6 @@ impl EventBuilder {
         }
     }
 
-    /// Event deletion request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    #[inline]
-    pub fn delete(request: EventDeletionRequest) -> Self {
-        request.to_event_builder()
-    }
-
     /// Request to vanish
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/62.md>
