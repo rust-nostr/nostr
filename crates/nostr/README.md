@@ -42,7 +42,7 @@ fn main() -> Result<()> {
         .lud16("pay@yukikishimoto.com")
         .custom_field("custom_field", "my value");
 
-    let event: Event = EventBuilder::metadata(&metadata).finalize(&keys)?;
+    let event: Event = metadata.finalize(&keys)?;
 
     // New text note
     let event: Event = EventBuilder::text_note("Hello from rust-nostr").finalize(&keys)?;

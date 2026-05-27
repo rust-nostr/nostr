@@ -184,26 +184,13 @@ impl EventBuilder {
     }
 
     /// Profile metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr::prelude::*;
-    ///
-    /// let metadata = Metadata::new()
-    ///     .name("username")
-    ///     .display_name("My Username")
-    ///     .about("Description")
-    ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
-    ///     .nip05("username@example.com")
-    ///     .lud16("pay@yukikishimoto.com");
-    ///
-    /// let builder = EventBuilder::metadata(&metadata);
-    /// ```
     #[inline]
+    #[deprecated(
+        since = "0.45.0",
+        note = "Use `Metadata::finalize` or `Metadata::finalize_async` instead"
+    )]
     pub fn metadata(metadata: &Metadata) -> Self {
-        Self::new(Kind::Metadata, metadata.as_json())
+        metadata.build()
     }
 
     /// Relay list metadata
