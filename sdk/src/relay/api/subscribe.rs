@@ -4,8 +4,9 @@ use std::future::IntoFuture;
 use nostr::{ClientMessage, Filter, SubscriptionId};
 use tokio::sync::{mpsc, oneshot};
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
-use crate::relay::{Error, Relay, SubscribeAutoCloseOptions, SubscriptionActivity};
+use crate::relay::{Relay, SubscribeAutoCloseOptions, SubscriptionActivity};
 
 /// Subscribe to events
 #[must_use = "Does nothing unless you await!"]
@@ -52,7 +53,7 @@ pub(super) async fn subscribe_auto_closing(
 ) -> Result<(), Error> {
     // Check if filters are empty
     if filters.is_empty() {
-        return Err(Error::EmptyFilters);
+        return Err(Error::invalid_msg("filters cannot be empty"));
     }
 
     // Compose REQ message
@@ -95,7 +96,7 @@ async fn subscribe_long_lived(
 ) -> Result<(), Error> {
     // Check if filters are empty
     if filters.is_empty() {
-        return Err(Error::EmptyFilters);
+        return Err(Error::invalid_msg("filters cannot be empty"));
     }
 
     // Compose REQ message

@@ -17,11 +17,10 @@ use nostr_database::prelude::*;
 use tokio::sync::{Mutex, RwLock, broadcast, mpsc};
 
 mod builder;
-mod error;
 
 pub(crate) use self::builder::RelayPoolBuilder;
-pub(crate) use self::error::Error;
 use crate::client::{ClientNotification, InnerAckPolicy, Output, SendEventOutput, SyncSummary};
+use crate::error::Error;
 use crate::monitor::Monitor;
 use crate::policy::AdmitStatus;
 use crate::relay::{
@@ -164,7 +163,7 @@ impl RelayPool {
     ) -> Result<bool, Error> {
         // Check if the pool has been shutdown
         if self.is_shutdown() {
-            return Err(Error::Shutdown);
+            return Err(Error::shutdown());
         }
 
         // Check if the relay can be added to the pool, per-policy.
@@ -201,7 +200,7 @@ impl RelayPool {
         // Check number fo relays and limit
         if let Some(max) = self.max_relays.map(|m| m.get()) {
             if relays.len() >= max {
-                return Err(Error::TooManyRelays { limit: max });
+                return Err(Error::limit_exceeded("too many relays"));
             }
         }
 
@@ -237,7 +236,7 @@ impl RelayPool {
         // Remove relay
         let relay: Relay = match relays.remove(&url) {
             Some(relay) => relay,
-            None => return Err(Error::RelayNotFound(url.into_owned())),
+            None => return Err(Error::relay_not_found()),
         };
 
         // If NOT force, check if it has `GOSSIP` capability
@@ -340,9 +339,7 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = relays
-            .get(url)
-            .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
+        let relay: &Relay = relays.get(url).ok_or_else(Error::relay_not_found)?;
 
         // Connect
         relay.connect();
@@ -359,9 +356,7 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = relays
-            .get(url)
-            .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
+        let relay: &Relay = relays.get(url).ok_or_else(Error::relay_not_found)?;
 
         // Try to connect
         relay.try_connect().timeout(timeout).await?;
@@ -374,9 +369,7 @@ impl RelayPool {
         let relays = self.relays.read().await;
 
         // Get relay
-        let relay: &Relay = relays
-            .get(url)
-            .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
+        let relay: &Relay = relays.get(url).ok_or_else(Error::relay_not_found)?;
 
         // Disconnect
         relay.disconnect();
@@ -436,7 +429,7 @@ impl RelayPool {
     ) -> Result<Output<()>, Error> {
         // Check if urls set is empty
         if set.is_empty() {
-            return Err(Error::NoRelaysSpecified);
+            return Err(Error::relays_not_specified());
         }
 
         // Lock with read shared access
@@ -450,7 +443,7 @@ impl RelayPool {
         for url in set.into_iter() {
             let relay: &Relay = relays
                 .get(&url)
-                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
+                .ok_or_else(|| Error::relay_not_found_with_url(&url))?;
             urls.push(url);
             futures.push(
                 relay
@@ -495,7 +488,7 @@ impl RelayPool {
 
         // Check if urls set is empty
         if set.is_empty() {
-            return Err(Error::NoRelaysSpecified);
+            return Err(Error::relays_not_specified());
         }
 
         // Lock with read shared access
@@ -514,7 +507,7 @@ impl RelayPool {
             // Try to get relay
             let relay: &Relay = relays
                 .get(&url)
-                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
+                .ok_or_else(|| Error::relay_not_found_with_url(&url))?;
 
             // Create the future request
             futures.push(async move {
@@ -557,7 +550,7 @@ impl RelayPool {
     ) -> Result<Output<SubscriptionId>, Error> {
         // Check if urls set is empty
         if filters.is_empty() {
-            return Err(Error::NoRelaysSpecified);
+            return Err(Error::relays_not_specified());
         }
 
         // Lock with read shared access
@@ -574,7 +567,7 @@ impl RelayPool {
             // Get relay
             let relay: &Relay = relays
                 .get(&url)
-                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
+                .ok_or_else(|| Error::relay_not_found_with_url(&url))?;
 
             // Prepare
             let id: SubscriptionId = id.clone();
@@ -690,7 +683,7 @@ impl RelayPool {
     ) -> Result<Output<SyncSummary>, Error> {
         // Check if urls set is empty
         if targets.is_empty() {
-            return Err(Error::NoRelaysSpecified);
+            return Err(Error::relays_not_specified());
         }
 
         // Lock with read shared access
@@ -706,7 +699,7 @@ impl RelayPool {
         for (url, (filter, items)) in targets.into_iter() {
             let relay: &Relay = relays
                 .get(&url)
-                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
+                .ok_or_else(|| Error::relay_not_found_with_url(&url))?;
             urls.push(url);
             futures.push(
                 relay
@@ -746,7 +739,7 @@ impl RelayPool {
     ) -> Result<ReceiverStream<(RelayUrl, RelayStreamEvent)>, Error> {
         // Check if `targets` map is empty
         if filters.is_empty() {
-            return Err(Error::NoRelaysSpecified);
+            return Err(Error::relays_not_specified());
         }
 
         // Lock with read shared access
@@ -766,7 +759,7 @@ impl RelayPool {
             // Try to get the relay
             let relay: &Relay = relays
                 .get(&url)
-                .ok_or_else(|| Error::RelayNotFound(url.clone()))?;
+                .ok_or_else(|| Error::relay_not_found_with_url(&url))?;
 
             // Push url
             urls.push(url);

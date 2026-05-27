@@ -2,8 +2,9 @@ use std::future::IntoFuture;
 
 use nostr::SubscriptionId;
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
-use crate::relay::{Error, Relay};
+use crate::relay::Relay;
 
 /// Unsubscribe from a REQ
 #[must_use = "Does nothing unless you await!"]

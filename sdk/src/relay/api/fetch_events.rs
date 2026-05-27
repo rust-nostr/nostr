@@ -5,8 +5,9 @@ use futures::StreamExt;
 use nostr::{Event, Filter};
 use nostr_database::Events;
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
-use crate::relay::{Error, Relay, ReqExitPolicy};
+use crate::relay::{Relay, ReqExitPolicy};
 
 /// Fetch events
 #[must_use = "Does nothing unless you await!"]
@@ -99,7 +100,7 @@ mod tests {
 
     use super::*;
     use crate::authenticator::SignerAuthenticator;
-    use crate::relay::{Error, RelayOptions, RelayStatus};
+    use crate::relay::{RelayOptions, RelayStatus};
 
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
     ///
@@ -195,15 +196,10 @@ mod tests {
             .timeout(Duration::from_secs(5))
             .await
             .unwrap_err();
-        match err {
-            Error::RelayMessage(msg) => {
-                assert_eq!(
-                    MachineReadablePrefix::parse(&msg).unwrap(),
-                    MachineReadablePrefix::AuthRequired
-                );
-            }
-            e => panic!("Unexpected error: {e}"),
-        }
+        assert_eq!(
+            MachineReadablePrefix::parse(&err.to_string()).unwrap(),
+            MachineReadablePrefix::AuthRequired
+        );
     }
 
     #[tokio::test]

@@ -190,7 +190,7 @@ where
                     }
                 };
 
-            Ok(self.client.pool().sync(targets, self.opts).await?)
+            self.client.pool().sync(targets, self.opts).await
         })
     }
 }
@@ -200,7 +200,7 @@ mod tests {
     use nostr::Kind;
 
     use super::*;
-    use crate::pool;
+    use crate::error::ErrorKind;
 
     #[tokio::test]
     async fn test_sync_with_empty_list_of_relays() {
@@ -210,9 +210,8 @@ mod tests {
         let relays: Vec<RelayUrl> = Vec::new();
         let res = client.sync(filter).with(relays).await;
 
-        assert!(matches!(
-            res.unwrap_err(),
-            Error::RelayPool(pool::Error::NoRelaysSpecified)
-        ))
+        let err = res.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::Invalid);
+        assert_eq!(err.to_string(), "relay/s not specified");
     }
 }

@@ -18,7 +18,7 @@ use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 use nostr_sdk::prelude::*;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Generate new random keys
     let keys = Keys::generate();
 

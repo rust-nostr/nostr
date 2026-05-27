@@ -8,9 +8,10 @@ use nostr::{Event, Filter, SubscriptionId};
 use tokio::sync::{mpsc, oneshot};
 
 use super::subscribe::subscribe_auto_closing;
+use crate::error::Error;
 use crate::future::BoxedFuture;
 use crate::relay::{
-    Error, Relay, ReqExitPolicy, SubscribeAutoCloseOptions, SubscriptionActivity,
+    Relay, ReqExitPolicy, SubscribeAutoCloseOptions, SubscriptionActivity,
     SubscriptionAutoClosedReason,
 };
 
@@ -159,11 +160,13 @@ impl Stream for SubscriptionActivityEventStream {
                 SubscriptionActivity::Closed(reason) => match reason {
                     SubscriptionAutoClosedReason::AuthenticationFailed => {
                         self.done = true;
-                        Poll::Ready(Some(RelayStreamEvent::Error(Error::AuthenticationFailed)))
+                        Poll::Ready(Some(RelayStreamEvent::Error(Error::authentication_msg(
+                            "authentication failed",
+                        ))))
                     }
                     SubscriptionAutoClosedReason::Closed(message) => {
                         self.done = true;
-                        Poll::Ready(Some(RelayStreamEvent::Error(Error::RelayMessage(message))))
+                        Poll::Ready(Some(RelayStreamEvent::Error(Error::relay_msg(message))))
                     }
                     SubscriptionAutoClosedReason::Completed => {
                         self.done = true;

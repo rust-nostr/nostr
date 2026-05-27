@@ -27,14 +27,12 @@ use super::constants::{
 use super::options::{RelayOptions, ReqExitPolicy, SubscribeAutoCloseOptions};
 use super::ping::PingTracker;
 use super::stats::RelayConnectionStats;
-use super::{
-    Error, RelayNotification, RelayStatus, SubscriptionActivity, SubscriptionAutoClosedReason,
-};
+use super::{RelayNotification, RelayStatus, SubscriptionActivity, SubscriptionAutoClosedReason};
 use crate::client::ClientNotification;
+use crate::error::Error;
 use crate::policy::AdmitStatus;
 use crate::relay::status::AtomicRelayStatus;
 use crate::shared::SharedState;
-use crate::transport::error::TransportError;
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
 
 type ClientMessageJson = String;
@@ -84,7 +82,7 @@ impl RelayChannels {
         self.nostr
             .0
             .try_send(msg)
-            .map_err(|_| Error::CantSendMessageToDispatcher)
+            .map_err(|_| Error::state_msg("can't send message to the transport dispatcher"))
     }
 
     #[inline]
@@ -240,17 +238,17 @@ impl InnerRelay {
 
         // Relay is not ready (never called connect method)
         if status.is_initialized() {
-            return Err(Error::NotReady);
+            return Err(Error::not_ready());
         }
 
         // The relay has been banned
         if status.is_banned() {
-            return Err(Error::Banned);
+            return Err(Error::banned());
         }
 
         // Sanity-check, to ensure that the relay is not sleeping.
         if status.is_sleeping() {
-            return Err(Error::Sleeping);
+            return Err(Error::sleeping());
         }
 
         // This is needed to allow giving the time to the relay to connect,
@@ -266,7 +264,7 @@ impl InnerRelay {
             && self.stats.success_rate() < MIN_SUCCESS_RATE
             && self.stats.woke_up_at() + self.opts.connect_timeout < Timestamp::now()
         {
-            return Err(Error::NotConnected);
+            return Err(Error::not_connected());
         }
 
         // Check avg. latency
@@ -277,7 +275,7 @@ impl InnerRelay {
                 // ONLY LATER get the latency, to avoid unnecessary calculation
                 if let Some(current) = self.stats.latency() {
                     if current > max {
-                        return Err(Error::MaximumLatencyExceeded { max, current });
+                        return Err(Error::limit_exceeded("maximum latency exceeded"));
                     }
                 }
             }
@@ -687,18 +685,18 @@ impl InnerRelay {
                     self.set_status(status_on_failure, false);
 
                     // Return error
-                    Err(Error::Transport(e))
+                    Err(Error::transport(e))
                 }
                 None => {
                     // Update status
                     self.set_status(status_on_failure, false);
 
                     // Return error
-                    Err(Error::Transport(TransportError::timeout()))
+                    Err(Error::timeout())
                 }
             },
             // Handle termination notification
-            _ = self.handle_terminate() => Err(Error::TerminationRequest),
+            _ = self.handle_terminate() => Err(Error::rejected_msg("received termination request")),
         }
     }
 
@@ -839,7 +837,7 @@ impl InnerRelay {
                         // If the last nonce is NOT 0, check if relay replied.
                         // Return error if relay not replied
                         if ping.last_nonce() != 0 && !ping.replied() {
-                            return Err(Error::NotRepliedToPing);
+                            return Err(Error::timeout());
                         }
 
                         // Generate and save nonce
@@ -895,10 +893,7 @@ impl InnerRelay {
 
                             // Check if last nonce not matches the received one
                             if last_nonce != nonce {
-                                return Err(Error::PongNotMatch {
-                                    expected: last_nonce,
-                                    received: nonce,
-                                });
+                                return Err(Error::pong_not_match(last_nonce, nonce));
                             }
 
                             // Set ping as replied
@@ -909,7 +904,7 @@ impl InnerRelay {
                             self.stats.save_latency(sent_at.elapsed());
                         }
                         Err(..) => {
-                            return Err(Error::CantParsePong);
+                            return Err(Error::protocol_msg("can't parse pong"));
                         }
                     }
                 }
@@ -1105,7 +1100,7 @@ impl InnerRelay {
         if let Some(max_size) = self.opts.limits.messages.max_size {
             let max_size: usize = max_size as usize;
             if size > max_size {
-                return Err(Error::RelayMessageTooLarge { size, max_size });
+                return Err(Error::limit_exceeded("relay message too large"));
             }
         }
 
@@ -1132,7 +1127,7 @@ impl InnerRelay {
             let size: usize = event.as_json().len();
             let max_size: usize = max_size as usize;
             if size > max_size {
-                return Err(Error::EventTooLarge { size, max_size });
+                return Err(Error::limit_exceeded("event is too large"));
             }
         }
 
@@ -1141,10 +1136,7 @@ impl InnerRelay {
             let size: usize = event.tags.len();
             let max_num_tags: usize = max_num_tags as usize;
             if size > max_num_tags {
-                return Err(Error::TooManyTags {
-                    size,
-                    max_size: max_num_tags,
-                });
+                return Err(Error::limit_exceeded("too many tags"));
             }
         }
 
@@ -1163,7 +1155,7 @@ impl InnerRelay {
                 ..
             } = subscriptions
                 .get(&subscription_id)
-                .ok_or(Error::SubscriptionNotFound)?;
+                .ok_or_else(|| Error::not_found("subscription not found"))?;
 
             // Check filter limit ONLY if EOSE is not received yet and if there is only ONE filter.
             // We can't ensure that limit is respected if there is more than one filter.
@@ -1184,7 +1176,7 @@ impl InnerRelay {
                             self.ban();
                         }
 
-                        return Err(Error::TooManyEvents);
+                        return Err(Error::limit_exceeded("too many events"));
                     }
                 }
             }
@@ -1201,13 +1193,15 @@ impl InnerRelay {
                     self.ban();
                 }
 
-                return Err(Error::EventNotMatchFilter);
+                return Err(Error::protocol_msg(
+                    "event doesn't match the subscription filter",
+                ));
             }
         }
 
         // Check if the event is expired
         if event.is_expired() {
-            return Err(Error::EventExpired);
+            return Err(Error::invalid_msg("event expired"));
         }
 
         // Check event admission policy
@@ -1339,12 +1333,12 @@ impl InnerRelay {
 
         // If it can't write, check if there are "write" messages
         if !self.capabilities.can_write() && msg.is_event() {
-            return Err(Error::WriteDisabled);
+            return Err(Error::write_disabled());
         }
 
         // If it can't read, check if there are "read" messages
         if !self.capabilities.can_read() && (msg.is_req() || msg.is_close()) {
-            return Err(Error::ReadDisabled);
+            return Err(Error::read_disabled());
         }
 
         match wait_until_sent {
@@ -1361,7 +1355,7 @@ impl InnerRelay {
                 // Wait for confirmation
                 Ok(time::timeout(Some(timeout), rx)
                     .await
-                    .ok_or(Error::Timeout)??)
+                    .ok_or_else(Error::timeout)??)
             }
             None => self.atomic.channels.send_client_msg(JsonMessageItem {
                 json: msg.as_json(),
@@ -1374,12 +1368,17 @@ impl InnerRelay {
         // Check if the relay can authenticate
         if let Some(policy) = &self.state.admit_policy {
             if let AdmitStatus::Rejected { reason } = policy.admit_auth(&self.url).await? {
-                return Err(Error::AuthenticationNotAdmitted { reason });
+                return match reason {
+                    Some(reason) => Err(Error::rejected(format!(
+                        "authentication rejected: {reason}"
+                    ))),
+                    None => Err(Error::authentication_msg("authentication rejected")),
+                };
             }
         }
 
         let Some(authenticator) = &self.state.authenticator else {
-            return Err(Error::AuthenticatorNotConfigured);
+            return Err(Error::state_msg("no authenticator available"));
         };
 
         // Create the NIP-42 auth event
@@ -1387,7 +1386,7 @@ impl InnerRelay {
 
         // Ensure event is valid
         if !nip42::is_valid_auth_event(&event, &self.url, &challenge) {
-            return Err(Error::AuthenticationEventInvalid);
+            return Err(Error::invalid_msg("invalid auth event"));
         }
 
         // Subscribe to notifications
@@ -1407,7 +1406,7 @@ impl InnerRelay {
         if status {
             Ok(())
         } else {
-            Err(Error::RelayMessage(message))
+            Err(Error::relay_msg(message))
         }
     }
 
@@ -1434,16 +1433,16 @@ impl InnerRelay {
                         }
                     }
                     RelayNotification::RelayStatus { status } if status.is_disconnected() => {
-                        return Err(Error::NotConnected);
+                        return Err(Error::not_connected());
                     }
                     _ => (),
                 }
             }
 
-            Err(Error::PrematureExit)
+            Err(Error::state_msg("premature exit"))
         })
         .await
-        .ok_or(Error::Timeout)?
+        .ok_or_else(Error::timeout)?
     }
 
     pub async fn resubscribe(&self) -> Result<(), Error> {
@@ -1779,7 +1778,7 @@ impl InnerRelay {
 async fn send_ws_msg(tx: &mut WebSocketSink, msg: Message) -> Result<(), Error> {
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.send(msg)).await {
         Some(res) => Ok(res?),
-        None => Err(Error::Timeout),
+        None => Err(Error::timeout()),
     }
 }
 
@@ -1788,7 +1787,7 @@ async fn close_ws(tx: &mut WebSocketSink) -> Result<(), Error> {
     // TODO: remove timeout from here?
     match time::timeout(Some(WEBSOCKET_TX_TIMEOUT), tx.close()).await {
         Some(res) => Ok(res?),
-        None => Err(Error::Timeout),
+        None => Err(Error::timeout()),
     }
 }
 

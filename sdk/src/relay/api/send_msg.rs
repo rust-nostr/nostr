@@ -3,8 +3,9 @@ use std::time::Duration;
 
 use nostr::ClientMessage;
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
-use crate::relay::{Error, Relay};
+use crate::relay::Relay;
 
 /// Send the client message
 #[must_use = "Does nothing unless you await!"]
@@ -59,6 +60,7 @@ mod tests {
     use nostr::{Filter, RelayUrl, SubscriptionId};
 
     use super::*;
+    use crate::error::ErrorKind;
 
     // At the moment, before consider a relay disconnected, are required at least 2 attempts and a success rate < 90%
     #[tokio::test]
@@ -70,7 +72,7 @@ mod tests {
 
         // First attempt
         let res = relay.try_connect().timeout(Duration::from_secs(1)).await;
-        assert!(matches!(res.unwrap_err(), Error::Transport(_)));
+        assert_eq!(res.unwrap_err().kind(), ErrorKind::Transport);
 
         // Relay is disconnected, but is required another attempt before consider it non-connected
         let res = relay.send_msg(msg.clone()).await;
@@ -78,10 +80,12 @@ mod tests {
 
         // Second attempt
         let res = relay.try_connect().timeout(Duration::from_secs(1)).await;
-        assert!(matches!(res.unwrap_err(), Error::Transport(_)));
+        assert_eq!(res.unwrap_err().kind(), ErrorKind::Transport);
 
         // Relay is disconnected, we have a 2 attempts and success rate is < 90%
         let res = relay.send_msg(msg).await;
-        assert!(matches!(res.unwrap_err(), Error::NotConnected));
+        let err = res.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::State);
+        assert_eq!(err.to_string(), "relay not connected");
     }
 }

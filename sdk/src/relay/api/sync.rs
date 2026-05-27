@@ -9,12 +9,13 @@ use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::{ClientMessage, EventId, Filter, RelayMessage, SubscriptionId, Timestamp};
 use tokio::sync::broadcast;
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
 use crate::relay::constants::{
     NEGENTROPY_BATCH_SIZE_DOWN, NEGENTROPY_FRAME_SIZE_LIMIT, NEGENTROPY_HIGH_WATER_UP,
     NEGENTROPY_LOW_WATER_UP,
 };
-use crate::relay::{Error, Relay, RelayNotification, SyncOptions};
+use crate::relay::{Relay, RelayNotification, SyncOptions};
 
 /// Relay negentropy reconciliation summary
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -347,10 +348,10 @@ pub(super) async fn sync(
     loop {
         let notification = time::timeout(Some(opts.idle_timeout), notifications.recv())
             .await
-            .ok_or(Error::Timeout)??;
+            .ok_or(Error::timeout())??;
 
         if last_relevant_msg.elapsed() > opts.idle_timeout {
-            return Err(Error::Timeout);
+            return Err(Error::timeout());
         }
 
         match notification {
@@ -411,7 +412,7 @@ pub(super) async fn sync(
                     } => {
                         #[allow(clippy::collapsible_match)]
                         if subscription_id.as_ref() == &sub_id {
-                            return Err(Error::RelayMessage(message.into_owned()));
+                            return Err(Error::relay_msg(message.into_owned()));
                         } else {
                             // Not relevant to this sync
                             false
@@ -496,7 +497,7 @@ pub(super) async fn sync(
                 }
             }
             RelayNotification::RelayStatus { status } if status.is_disconnected() => {
-                return Err(Error::NotConnected);
+                return Err(Error::not_connected());
             }
             _ => (),
         };
@@ -557,26 +558,24 @@ async fn check_negentropy_support(
                         subscription_id,
                         message,
                     } if subscription_id.as_ref() == sub_id => {
-                        return Err(Error::RelayMessage(message.into_owned()));
+                        return Err(Error::relay_msg(message.into_owned()));
                     }
                     RelayMessage::Notice(message) => {
                         if message == "ERROR: negentropy error: negentropy query missing elements" {
                             // The NEG-OPEN message is sent with 4 elements instead of 5
                             // If the relay return this error means that is not support new
                             // negentropy protocol
-                            return Err(Error::Negentropy(
-                                negentropy::Error::UnsupportedProtocolVersion,
-                            ));
+                            return Err(negentropy::Error::UnsupportedProtocolVersion.into());
                         } else if message.contains("bad msg")
                             && (message.contains("unknown cmd")
                                 || message.contains("negentropy")
                                 || message.contains("NEG-"))
                         {
-                            return Err(Error::NegentropyNotSupported);
+                            return Err(Error::negentropy_not_supported());
                         } else if message.contains("bad msg: invalid message")
                             && message.contains("NEG-OPEN")
                         {
-                            return Err(Error::UnknownNegentropyError);
+                            return Err(Error::unknown_negentropy_error());
                         }
                     }
                     _ => (),
@@ -587,7 +586,7 @@ async fn check_negentropy_support(
         Ok(())
     })
     .await
-    .ok_or(Error::Timeout)?
+    .ok_or_else(Error::timeout)?
 }
 
 impl<'relay> IntoFuture for SyncEvents<'relay> {
@@ -601,7 +600,7 @@ impl<'relay> IntoFuture for SyncEvents<'relay> {
 
             // Check if relay can read
             if !self.relay.inner.capabilities.can_read() {
-                return Err(Error::ReadDisabled);
+                return Err(Error::read_disabled());
             }
 
             let items: Vec<(EventId, Timestamp)> = match self.items {
@@ -640,7 +639,8 @@ mod tests {
     use tokio::sync::broadcast;
 
     use super::*;
-    use crate::relay::{Error, SyncDirection, SyncOptions};
+    use crate::error::ErrorKind;
+    use crate::relay::{SyncDirection, SyncOptions};
 
     #[tokio::test]
     async fn test_check_negentropy_support_times_out() {
@@ -652,7 +652,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(error, Error::Timeout));
+        assert_eq!(error.kind(), ErrorKind::Timeout);
     }
 
     #[tokio::test]
@@ -667,10 +667,7 @@ mod tests {
             .await
             .unwrap_err();
 
-        assert!(matches!(
-            error,
-            Error::BroadcastRecv(broadcast::error::RecvError::Closed)
-        ));
+        assert_eq!(error.kind(), ErrorKind::Other);
     }
 
     #[tokio::test]

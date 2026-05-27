@@ -5,10 +5,8 @@ use std::fmt::Debug;
 
 use nostr::prelude::*;
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
-
-/// Authenticator error
-pub type AuthenticationError = Box<dyn std::error::Error + Send + Sync>;
 
 /// Authenticator
 pub trait Authenticator: Any + Debug + Send + Sync {
@@ -19,7 +17,7 @@ pub trait Authenticator: Any + Debug + Send + Sync {
         &'a self,
         relay_url: &'a RelayUrl,
         challenge: &'a str,
-    ) -> BoxedFuture<'a, Result<Event, AuthenticationError>>;
+    ) -> BoxedFuture<'a, Result<Event, Error>>;
 }
 
 /// An authenticator that uses a signer that implements [`AsyncGetPublicKey`] and [`AsyncSignEvent`] for creating NIP-42 events.
@@ -61,7 +59,7 @@ where
         &'a self,
         relay_url: &'a RelayUrl,
         challenge: &'a str,
-    ) -> BoxedFuture<'a, Result<Event, AuthenticationError>> {
+    ) -> BoxedFuture<'a, Result<Event, Error>> {
         Box::pin(async move {
             Ok(EventBuilder::auth(challenge, relay_url.clone())
                 .finalize_async(&self.signer)

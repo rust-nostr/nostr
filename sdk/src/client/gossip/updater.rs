@@ -463,7 +463,7 @@ impl Client {
         }
 
         if filters.is_empty() {
-            return Err(Error::GossipFiltersEmpty);
+            return Err(Error::state_msg("broken down filters are empty"));
         }
 
         Ok(filters)

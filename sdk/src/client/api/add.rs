@@ -4,7 +4,8 @@ use std::time::Duration;
 
 use nostr::types::url::{RelayUrl, RelayUrlArg};
 
-use crate::client::{Client, Error};
+use crate::client::Client;
+use crate::error::Error;
 use crate::future::BoxedFuture;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::proxy::Proxy;
@@ -159,11 +160,10 @@ where
             let url: Cow<RelayUrl> = self.url.try_into_relay_url()?;
 
             // Add relay to the pool
-            Ok(self
-                .client
+            self.client
                 .pool()
                 .add_relay(url, self.capabilities, self.connect, self.opts)
-                .await?)
+                .await
         })
     }
 }
@@ -174,7 +174,7 @@ mod tests {
     use std::net::{Ipv4Addr, SocketAddr, SocketAddrV4};
 
     use super::*;
-    use crate::policy::{AdmitPolicy, AdmitStatus, PolicyError};
+    use crate::policy::{AdmitPolicy, AdmitStatus};
 
     #[derive(Debug)]
     struct RejectRelayPolicy {
@@ -185,7 +185,7 @@ mod tests {
         fn admit_relay<'a>(
             &'a self,
             relay_url: &'a RelayUrl,
-        ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+        ) -> BoxedFuture<'a, Result<AdmitStatus, Error>> {
             Box::pin(async move {
                 if self.rejected_relays.contains(relay_url) {
                     Ok(AdmitStatus::rejected("relay rejected"))

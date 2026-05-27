@@ -58,11 +58,10 @@ where
             let targets: HashMap<RelayUrl, Vec<Filter>> =
                 build_targets(self.client, self.target).await?;
 
-            Ok(self
-                .client
+            self.client
                 .pool()
                 .subscribe(targets, self.id, self.auto_close)
-                .await?)
+                .await
         })
     }
 }

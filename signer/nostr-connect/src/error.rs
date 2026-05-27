@@ -7,7 +7,6 @@
 use std::fmt;
 
 use nostr::PublicKey;
-use nostr_sdk::client;
 use tokio::sync::SetError;
 
 /// Nostr Connect error
@@ -15,8 +14,8 @@ use tokio::sync::SetError;
 pub enum Error {
     /// Nostr protocol error
     Protocol(nostr::error::Error),
-    /// Client
-    Client(client::Error),
+    /// Sdk
+    Sdk(nostr_sdk::error::Error),
     /// Set user public key error
     SetUserPublicKey(SetError<PublicKey>),
     /// Invalid response from remote signer
@@ -41,7 +40,7 @@ impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Self::Protocol(e) => e.fmt(f),
-            Self::Client(e) => e.fmt(f),
+            Self::Sdk(e) => e.fmt(f),
             Self::SetUserPublicKey(e) => e.fmt(f),
             Self::InvalidResponse(e) => e.fmt(f),
             Self::Response(e) => e.fmt(f),
@@ -60,9 +59,9 @@ impl From<nostr::error::Error> for Error {
     }
 }
 
-impl From<client::Error> for Error {
-    fn from(e: client::Error) -> Self {
-        Self::Client(e)
+impl From<nostr_sdk::error::Error> for Error {
+    fn from(e: nostr_sdk::error::Error) -> Self {
+        Self::Sdk(e)
     }
 }
 

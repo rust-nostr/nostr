@@ -44,7 +44,7 @@ where
             let url: Cow<RelayUrl> = self.url.try_into_relay_url()?;
 
             // Remove the relay from the pool
-            Ok(self.client.pool().remove_relay(url, self.force).await?)
+            self.client.pool().remove_relay(url, self.force).await
         })
     }
 }
@@ -52,7 +52,7 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::pool;
+    use crate::error::ErrorKind;
     use crate::relay::RelayCapabilities;
 
     #[tokio::test]
@@ -61,13 +61,12 @@ mod tests {
 
         client.add_relay("ws://127.0.0.1:6666").await.unwrap();
 
-        assert!(matches!(
-            client
-                .remove_relay("ws://127.0.0.1:7777")
-                .await
-                .unwrap_err(),
-            Error::RelayPool(pool::Error::RelayNotFound(..))
-        ));
+        let err = client
+            .remove_relay("ws://127.0.0.1:7777")
+            .await
+            .unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::NotFound);
+        assert_eq!(err.to_string(), "relay not found");
     }
 
     #[tokio::test]

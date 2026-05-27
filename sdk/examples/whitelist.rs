@@ -18,7 +18,7 @@ impl AdmitPolicy for WoT {
         _relay_url: &'a RelayUrl,
         _subscription_id: &'a SubscriptionId,
         event: &'a Event,
-    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+    ) -> BoxedFuture<'a, Result<AdmitStatus, Error>> {
         Box::pin(async move {
             if self.allowed_public_keys.contains(&event.pubkey) {
                 return Ok(AdmitStatus::success());

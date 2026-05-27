@@ -19,7 +19,6 @@ mod api;
 mod builder;
 mod capabilities;
 mod constants;
-mod error;
 mod inner;
 mod limits;
 mod notification;
@@ -31,7 +30,6 @@ mod status;
 pub use self::api::*;
 pub use self::builder::*;
 pub use self::capabilities::*;
-pub use self::error::Error;
 use self::inner::InnerRelay;
 pub use self::limits::*;
 pub use self::notification::*;
@@ -39,6 +37,7 @@ pub use self::options::*;
 pub use self::stats::*;
 pub use self::status::*;
 use crate::client::ClientNotification;
+use crate::error::Error;
 use crate::shared::SharedState;
 use crate::stream::NotificationStream;
 
@@ -440,7 +439,7 @@ impl Relay {
             }
         })
         .await
-        .ok_or(Error::Timeout)?;
+        .ok_or_else(Error::timeout)?;
 
         // Unsubscribe
         self.send_msg(ClientMessage::close(id)).await?;
@@ -463,8 +462,9 @@ mod tests {
     use async_utility::time;
     use nostr_relay_builder::prelude::*;
 
-    use super::{Error, *};
-    use crate::policy::{AdmitPolicy, AdmitStatus, PolicyError};
+    use super::*;
+    use crate::error::{Error, ErrorKind};
+    use crate::policy::{AdmitPolicy, AdmitStatus};
 
     #[derive(Debug)]
     struct CustomTestPolicy {
@@ -475,7 +475,7 @@ mod tests {
         fn admit_connection<'a>(
             &'a self,
             relay_url: &'a RelayUrl,
-        ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+        ) -> BoxedFuture<'a, Result<AdmitStatus, Error>> {
             Box::pin(async move {
                 if self.banned_relays.contains(relay_url) {
                     Ok(AdmitStatus::rejected("banned"))
@@ -741,7 +741,9 @@ mod tests {
         });
 
         let res = relay.try_connect().timeout(Duration::from_secs(7)).await;
-        assert!(matches!(res.unwrap_err(), Error::TerminationRequest));
+        let err = res.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::Rejected);
+        assert_eq!(err.to_string(), "received termination request");
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 
@@ -773,7 +775,9 @@ mod tests {
 
         // Retry to connect
         let res = relay.try_connect().timeout(Duration::from_secs(2)).await;
-        assert!(matches!(res.unwrap_err(), Error::Banned));
+        let err = res.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::State);
+        assert_eq!(err.to_string(), "relay banned");
 
         assert_eq!(relay.status(), RelayStatus::Banned);
 
@@ -784,7 +788,9 @@ mod tests {
 
         // Health check
         let res = relay.inner.ensure_operational();
-        assert!(matches!(res.unwrap_err(), Error::Banned));
+        let err = res.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::State);
+        assert_eq!(err.to_string(), "relay banned");
     }
 
     #[tokio::test]
@@ -815,7 +821,9 @@ mod tests {
 
         // Attempt to reconnect: must fail
         let res = relay.try_connect().timeout(Duration::from_secs(3)).await;
-        assert!(matches!(res.unwrap_err(), Error::Shutdown));
+        let err = res.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::State);
+        assert_eq!(err.to_string(), "shutdown");
     }
 
     #[tokio::test]
@@ -934,7 +942,9 @@ mod tests {
 
         // Retry to connect
         let res = relay.try_connect().timeout(Duration::from_secs(2)).await;
-        assert!(matches!(res.unwrap_err(), Error::ConnectionRejected { .. }));
+        let err = res.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::Rejected);
+        assert_eq!(err.to_string(), "connection rejected: reason=banned");
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
         assert!(!relay.inner.is_running());

@@ -4,8 +4,6 @@
 
 //! Nostr Wallet Connect error
 
-use nostr_sdk::{client, relay};
-
 opaquerr::define_kind! {
     /// Nostr Wallet Connect error kind.
     pub ErrorKind {
@@ -26,8 +24,7 @@ opaquerr::define_error! {
 
     from {
         nostr::error::Error => ErrorKind::Protocol,
-        client::Error => ErrorKind::Sdk,
-        relay::Error => ErrorKind::Sdk,
+        nostr_sdk::error::Error => ErrorKind::Sdk,
     }
 }
 

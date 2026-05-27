@@ -17,15 +17,14 @@ use tokio::sync::oneshot;
 
 mod api;
 mod builder;
-mod error;
 mod gossip;
 mod notification;
 
 pub use self::api::*;
 pub use self::builder::*;
-pub use self::error::Error;
 use self::gossip::*;
 pub use self::notification::*;
+use crate::error::Error;
 use crate::monitor::Monitor;
 use crate::pool::{RelayPool, RelayPoolBuilder};
 #[cfg(not(target_arch = "wasm32"))]
@@ -251,7 +250,7 @@ impl Client {
     ///
     /// ```
     /// # use nostr_sdk::prelude::*;
-    /// # async fn example() -> Result<()> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// # let client = Client::default();
     /// // Not added yet
     /// let relay = client.relay("wss://relay.example.com").await?;
@@ -433,7 +432,7 @@ impl Client {
     {
         let url: RelayUrlArg<'a> = url.into();
         let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-        Ok(self.pool().connect_relay(&url).await?)
+        self.pool().connect_relay(&url).await
     }
 
     /// Try to connect to a previously added relay
@@ -444,7 +443,7 @@ impl Client {
     {
         let url: RelayUrlArg<'a> = url.into();
         let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-        Ok(self.pool().try_connect_relay(&url, timeout).await?)
+        self.pool().try_connect_relay(&url, timeout).await
     }
 
     /// Disconnect relay
@@ -455,7 +454,7 @@ impl Client {
     {
         let url: RelayUrlArg<'a> = url.into();
         let url: Cow<RelayUrl> = url.try_as_relay_url()?;
-        Ok(self.pool().disconnect_relay(&url).await?)
+        self.pool().disconnect_relay(&url).await
     }
 
     /// Connect to relays
@@ -614,7 +613,7 @@ impl Client {
     ///
     /// ```rust,no_run
     /// # use nostr_sdk::prelude::*;
-    /// # async fn example() -> Result<()> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// # let client = Client::default();
     /// # client.add_relay("wss://relay1.example.com").await?;
     /// # client.add_relay("wss://relay2.example.com").await?;
@@ -648,7 +647,7 @@ impl Client {
     /// ```rust,no_run
     /// # use std::collections::HashMap;
     /// # use nostr_sdk::prelude::*;
-    /// # async fn example() -> Result<()> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// # let client = Client::default();
     /// # client.add_relay("wss://relay1.example.com").await?;
     /// # client.add_relay("wss://relay2.example.com").await?;
@@ -689,7 +688,7 @@ impl Client {
     /// ```rust,no_run
     /// # use std::time::Duration;
     /// # use nostr_sdk::prelude::*;
-    /// # async fn example() -> Result<()> {
+    /// # async fn example() -> Result<(), Box<dyn std::error::Error>> {
     /// # let client = Client::default();
     /// # client.add_relay("wss://relay1.example.com").await?;
     /// # client.add_relay("wss://relay2.example.com").await?;
@@ -1196,8 +1195,8 @@ mod tests {
     use nostr_gossip_memory::prelude::*;
     use nostr_relay_builder::MockRelay;
 
-    use super::{Error, *};
-    use crate::pool;
+    use super::*;
+    use crate::error::ErrorKind;
     use crate::relay::RelayStatus;
 
     #[tokio::test]
@@ -1223,10 +1222,9 @@ mod tests {
         // Client must be marked as shutdown
         assert!(client.is_shutdown());
 
-        assert!(matches!(
-            client.add_relay(url).await.unwrap_err(),
-            Error::RelayPool(pool::Error::Shutdown)
-        ));
+        let err = client.add_relay(url).await.unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::State);
+        assert_eq!(err.to_string(), "shutdown");
     }
 
     #[tokio::test]

@@ -7,7 +7,8 @@ use nostr::{Event, EventId, Kind, PublicKey, RelayUrl, RelayUrlArg};
 use nostr_gossip::{BestRelaySelection, GossipListKind};
 
 use crate::client::gossip::Gossip;
-use crate::client::{Client, Error, Output};
+use crate::client::{Client, Output};
+use crate::error::Error;
 use crate::future::BoxedFuture;
 use crate::relay::{EventSendStatus, RelayCapabilities};
 
@@ -177,7 +178,7 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
     /// - [`SendEvent::broadcast`]
     /// - [`SendEvent::to_nip65`]
     ///
-    /// Returns [`Error::GossipNotConfigured`] if gossip is not configured.
+    /// Returns an error if gossip is not configured.
     #[inline]
     pub fn to_nip17(mut self) -> Self {
         self.policy = Some(OverwritePolicy::ToNip17);
@@ -191,7 +192,7 @@ impl<'client, 'event, 'url> SendEvent<'client, 'event, 'url> {
     /// - [`SendEvent::broadcast`]
     /// - [`SendEvent::to_nip17`]
     ///
-    /// Returns [`Error::GossipNotConfigured`] if gossip is not configured.
+    /// Returns an error if gossip is not configured.
     #[inline]
     pub fn to_nip65(mut self) -> Self {
         self.policy = Some(OverwritePolicy::ToNip65);
@@ -294,7 +295,9 @@ async fn gossip_prepare_urls(
         //
         // <https://github.com/nostr-protocol/nips/blob/6e7a618e7f873bb91e743caacc3b09edab7796a0/17.md>
         if relays.is_empty() {
-            return Err(Error::PrivateMsgRelaysNotFound);
+            return Err(Error::not_found(
+                "Private message relays not found. The user is not ready to receive private messages.",
+            ));
         }
 
         // Add outbox and inbox relays
@@ -401,7 +404,7 @@ where
                 }
                 // Send to gossip, but gossip is not available: error
                 (Some(OverwritePolicy::ToNip17 | OverwritePolicy::ToNip65), None) => {
-                    return Err(Error::GossipNotConfigured);
+                    return Err(Error::gossip_not_configured());
                 }
                 // Send to specific relays
                 (Some(OverwritePolicy::To(list)), _) => {
@@ -421,8 +424,7 @@ where
                 }
             };
 
-            Ok(self
-                .client
+            self.client
                 .pool()
                 .send_event(
                     urls,
@@ -431,7 +433,7 @@ where
                     self.wait_for_ok_timeout,
                     self.wait_for_authentication_timeout,
                 )
-                .await?)
+                .await
         })
     }
 }
@@ -444,7 +446,8 @@ mod tests {
     use nostr_relay_builder::MockRelay;
 
     use super::*;
-    use crate::client::{Error, GossipConfig, GossipRelayLimits};
+    use crate::client::{GossipConfig, GossipRelayLimits};
+    use crate::error::ErrorKind;
 
     #[tokio::test]
     async fn test_send_event() {
@@ -659,7 +662,8 @@ mod tests {
 
         // Send event
         let err = client.send_event(&event).to_nip65().await.unwrap_err();
-        assert!(matches!(err, Error::GossipNotConfigured));
+        assert_eq!(err.kind(), ErrorKind::State);
+        assert_eq!(err.to_string(), "gossip not configured");
     }
 
     #[tokio::test]
@@ -746,6 +750,7 @@ mod tests {
 
         // Send event
         let err = client.send_event(&event).to_nip17().await.unwrap_err();
-        assert!(matches!(err, Error::GossipNotConfigured));
+        assert_eq!(err.kind(), ErrorKind::State);
+        assert_eq!(err.to_string(), "gossip not configured");
     }
 }

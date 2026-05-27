@@ -8,6 +8,7 @@
 
 pub mod authenticator;
 pub mod client;
+pub mod error;
 mod events_tracker;
 mod future;
 pub mod monitor;

@@ -15,6 +15,7 @@ pub use nostr_gossip::prelude::*;
 
 pub use crate::authenticator::{self, *};
 pub use crate::client::{self, *};
+pub use crate::error::{self, Error, ErrorKind};
 pub use crate::monitor::{self, *};
 pub use crate::policy::*;
 #[cfg(not(target_arch = "wasm32"))]

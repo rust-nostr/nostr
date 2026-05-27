@@ -8,8 +8,9 @@ use nostr::message::MachineReadablePrefix;
 use nostr::{ClientMessage, Event, EventId};
 use tokio::sync::broadcast;
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
-use crate::relay::{Error, Relay, RelayNotification};
+use crate::relay::{Relay, RelayNotification};
 
 /// Output returned when sending an event to a single relay.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -189,19 +190,19 @@ async fn wait_for_authentication(
                     return Ok(());
                 }
                 RelayNotification::AuthenticationFailed => {
-                    return Err(Error::AuthenticationFailed);
+                    return Err(Error::authentication_msg("authentication failed"));
                 }
                 RelayNotification::RelayStatus { status } if status.is_disconnected() => {
-                    return Err(Error::NotConnected);
+                    return Err(Error::not_connected());
                 }
                 _ => (),
             }
         }
 
-        Err(Error::PrematureExit)
+        Err(Error::state_msg("premature exit"))
     })
     .await
-    .ok_or(Error::Timeout)?
+    .ok_or_else(Error::timeout)?
 }
 
 impl<'relay, 'event> IntoFuture for SendEvent<'relay, 'event>
@@ -232,7 +233,7 @@ where
                 return Ok(RelaySendEventOutput::new(self.event.id, status));
             }
 
-            // If auth required, wait for authentication adn resend it
+            // If auth required, wait for authentication and resend it
             if let Some(MachineReadablePrefix::AuthRequired) =
                 MachineReadablePrefix::parse(&message)
             {
@@ -255,12 +256,12 @@ where
                             EventSendStatus::ack(message),
                         ))
                     } else {
-                        Err(Error::RelayMessage(message))
+                        Err(Error::relay_msg(message))
                     };
                 }
             }
 
-            Err(Error::RelayMessage(message))
+            Err(Error::relay_msg(message))
         })
     }
 }
@@ -351,15 +352,11 @@ mod tests {
         let event = EventBuilder::text_note("Test").finalize(&keys).unwrap();
 
         // Auth disabled, so must fails as is unauthenticated
-        match relay.send_event(&event).await.unwrap_err() {
-            crate::relay::Error::RelayMessage(msg) => {
-                assert_eq!(
-                    MachineReadablePrefix::parse(&msg).unwrap(),
-                    MachineReadablePrefix::AuthRequired
-                );
-            }
-            e => panic!("Unexpected error: {e}"),
-        }
+        let err = relay.send_event(&event).await.unwrap_err();
+        assert_eq!(
+            MachineReadablePrefix::parse(&err.to_string()).unwrap(),
+            MachineReadablePrefix::AuthRequired
+        );
     }
 
     #[tokio::test]

@@ -34,6 +34,7 @@ negentropy = { workspace = true, features = ["std"] }
 nostr = { workspace = true, features = ["std", "rand", "os-rng"] }
 nostr-database.workspace = true
 nostr-gossip.workspace = true
+opaquerr = { workspace = true, features = ["alloc"] }
 tokio = { workspace = true, features = ["macros", "sync"] }
 tokio-stream = { version = "0.1", features = ["sync"] }
 tracing = { workspace = true, features = ["std"] }

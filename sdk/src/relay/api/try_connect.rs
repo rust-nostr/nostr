@@ -1,9 +1,10 @@
 use std::future::IntoFuture;
 use std::time::Duration;
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
 use crate::policy::AdmitStatus;
-use crate::relay::{Error, Relay, RelayStatus};
+use crate::relay::{Relay, RelayStatus};
 use crate::transport::websocket::{WebSocketSink, WebSocketStream};
 
 /// Try to connect relay
@@ -39,11 +40,11 @@ impl<'relay> IntoFuture for TryConnect<'relay> {
             let status: RelayStatus = self.relay.status();
 
             if status.is_shutdown() {
-                return Err(Error::Shutdown);
+                return Err(Error::shutdown());
             }
 
             if status.is_banned() {
-                return Err(Error::Banned);
+                return Err(Error::banned());
             }
 
             // Check if relay can't connect
@@ -59,7 +60,7 @@ impl<'relay> IntoFuture for TryConnect<'relay> {
                 self.relay.inner.set_status(RelayStatus::Terminated, false);
 
                 // Return error
-                return Err(Error::ConnectionRejected { reason });
+                return Err(Error::connection_rejected(reason));
             }
 
             // Try to connect
@@ -84,7 +85,8 @@ mod tests {
     use nostr::RelayUrl;
     use nostr_relay_builder::prelude::*;
 
-    use super::{Error, *};
+    use super::*;
+    use crate::error::ErrorKind;
 
     #[tokio::test]
     async fn test_try_connect() {
@@ -118,7 +120,7 @@ mod tests {
         assert_eq!(relay.status(), RelayStatus::Initialized);
 
         let res = relay.try_connect().timeout(Duration::from_secs(2)).await;
-        assert!(matches!(res.unwrap_err(), Error::Transport(..)));
+        assert_eq!(res.unwrap_err().kind(), ErrorKind::Transport);
 
         assert_eq!(relay.status(), RelayStatus::Terminated);
 

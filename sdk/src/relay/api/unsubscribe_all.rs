@@ -1,7 +1,8 @@
 use std::future::IntoFuture;
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
-use crate::relay::{Error, Relay};
+use crate::relay::Relay;
 
 /// Unsubscribe from all REQs
 #[must_use = "Does nothing unless you await!"]

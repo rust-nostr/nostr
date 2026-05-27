@@ -100,11 +100,10 @@ where
                 }
             };
 
-            Ok(self
-                .client
+            self.client
                 .pool()
                 .send_msg(urls, self.msg, self.wait_until_sent)
-                .await?)
+                .await
         })
     }
 }

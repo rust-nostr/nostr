@@ -2075,6 +2075,7 @@ dependencies = [
  "nostr-memory",
  "nostr-ndb",
  "nostr-relay-builder",
+ "opaquerr",
  "tokio",
  "tokio-stream",
  "tracing",

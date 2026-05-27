@@ -8,35 +8,8 @@ use std::fmt;
 
 use nostr::{Event, RelayUrl, SubscriptionId};
 
+use crate::error::Error;
 use crate::future::BoxedFuture;
-
-/// Policy Error
-#[derive(Debug)]
-pub enum PolicyError {
-    /// An error happened in the underlying backend.
-    Backend(Box<dyn std::error::Error + Send + Sync>),
-}
-
-impl std::error::Error for PolicyError {}
-
-impl fmt::Display for PolicyError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Backend(e) => e.fmt(f),
-        }
-    }
-}
-
-impl PolicyError {
-    /// Create a new backend error.
-    #[inline]
-    pub fn backend<E>(error: E) -> Self
-    where
-        E: Into<Box<dyn std::error::Error + Send + Sync>>,
-    {
-        Self::Backend(error.into())
-    }
-}
 
 /// Admission status
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -77,7 +50,7 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
     fn admit_relay<'a>(
         &'a self,
         relay_url: &'a RelayUrl,
-    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+    ) -> BoxedFuture<'a, Result<AdmitStatus, Error>> {
         let _ = relay_url;
         Box::pin(async move { Ok(AdmitStatus::Success) })
     }
@@ -88,7 +61,7 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
     fn admit_connection<'a>(
         &'a self,
         relay_url: &'a RelayUrl,
-    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+    ) -> BoxedFuture<'a, Result<AdmitStatus, Error>> {
         let _ = relay_url;
         Box::pin(async move { Ok(AdmitStatus::Success) })
     }
@@ -99,7 +72,7 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
     fn admit_auth<'a>(
         &'a self,
         relay_url: &'a RelayUrl,
-    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+    ) -> BoxedFuture<'a, Result<AdmitStatus, Error>> {
         let _ = relay_url;
         Box::pin(async move { Ok(AdmitStatus::Success) })
     }
@@ -112,7 +85,7 @@ pub trait AdmitPolicy: fmt::Debug + Send + Sync {
         relay_url: &'a RelayUrl,
         subscription_id: &'a SubscriptionId,
         event: &'a Event,
-    ) -> BoxedFuture<'a, Result<AdmitStatus, PolicyError>> {
+    ) -> BoxedFuture<'a, Result<AdmitStatus, Error>> {
         let _ = (relay_url, subscription_id, event);
         Box::pin(async move { Ok(AdmitStatus::Success) })
     }

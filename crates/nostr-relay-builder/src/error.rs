@@ -5,7 +5,6 @@
 //! Relay builder error
 
 use nostr::Event;
-use nostr_sdk::client;
 use tokio::sync::broadcast;
 
 opaquerr::define_kind! {
@@ -30,7 +29,7 @@ opaquerr::define_error! {
         nostr::error::Error => ErrorKind::Protocol,
         nostr_database::error::Error => ErrorKind::Database,
         std::io::Error => ErrorKind::IO,
-        client::Error => ErrorKind::Other,
+        nostr_sdk::error::Error => ErrorKind::Other,
         async_wsocket::Error => ErrorKind::Other,
         negentropy::Error => ErrorKind::Other,
         tokio::sync::TryAcquireError => ErrorKind::Other,

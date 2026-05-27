@@ -9,11 +9,12 @@ use nostr::{Event, Filter, SubscriptionId};
 
 use super::req_target::ReqTarget;
 use super::util::build_targets;
-use crate::client::{Client, Error};
+use crate::client::Client;
+use crate::error::Error;
 use crate::future::BoxedFuture;
-use crate::relay::{self, RelayStreamEvent, ReqExitPolicy};
+use crate::relay::{RelayStreamEvent, ReqExitPolicy};
 
-type EventStream = Pin<Box<dyn Stream<Item = (RelayUrl, Result<Event, relay::Error>)> + Send>>;
+type EventStream = Pin<Box<dyn Stream<Item = (RelayUrl, Result<Event, Error>)> + Send>>;
 
 /// Stream events
 #[must_use = "Does nothing unless you await!"]
