@@ -281,9 +281,7 @@ mod tests {
             let keys = Keys::generate();
 
             // Build and send event
-            let event = EventBuilder::metadata(&Metadata::new().name("Test"))
-                .finalize(&keys)
-                .unwrap();
+            let event = Metadata::new().name("Test").finalize(&keys).unwrap();
             r.send_event(&event).await.unwrap();
         });
 

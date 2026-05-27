@@ -202,29 +202,6 @@ impl EventBuilder {
         self
     }
 
-    /// Profile metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr::prelude::*;
-    ///
-    /// let metadata = Metadata::new()
-    ///     .name("username")
-    ///     .display_name("My Username")
-    ///     .about("Description")
-    ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
-    ///     .nip05("username@example.com")
-    ///     .lud16("pay@yukikishimoto.com");
-    ///
-    /// let builder = EventBuilder::metadata(&metadata);
-    /// ```
-    #[inline]
-    pub fn metadata(metadata: &Metadata) -> Self {
-        Self::new(Kind::Metadata, metadata.as_json())
-    }
-
     /// Relay list metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/65.md>
