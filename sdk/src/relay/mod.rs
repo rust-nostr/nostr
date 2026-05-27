@@ -143,6 +143,7 @@ impl Relay {
         let state: SharedState = SharedState::new(
             builder.database,
             builder.websocket_transport,
+            None,
             builder.admit_policy,
             builder.authenticator,
             None,

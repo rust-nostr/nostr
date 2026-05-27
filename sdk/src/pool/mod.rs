@@ -68,6 +68,7 @@ impl RelayPool {
             state: SharedState::new(
                 builder.database,
                 builder.websocket_transport,
+                builder.gossip,
                 builder.admit_policy,
                 builder.authenticator,
                 builder.monitor,

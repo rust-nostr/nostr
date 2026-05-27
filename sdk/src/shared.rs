@@ -6,6 +6,7 @@ use std::sync::Arc;
 use lru::LruCache;
 use nostr::EventId;
 use nostr_database::NostrDatabase;
+use nostr_gossip::NostrGossip;
 use tokio::sync::Mutex;
 
 use crate::authenticator::Authenticator;
@@ -21,6 +22,7 @@ const MAX_VERIFICATION_CACHE_SIZE: usize = 128_000;
 pub(crate) struct SharedState {
     pub(crate) database: Arc<dyn NostrDatabase>,
     pub(crate) transport: Arc<dyn WebSocketTransport>,
+    pub(crate) gossip: Option<Arc<dyn NostrGossip>>,
     verification_cache: Arc<Mutex<LruCache<u64, ()>>>,
     pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
     pub(crate) authenticator: Option<Arc<dyn Authenticator>>,
@@ -31,6 +33,7 @@ impl SharedState {
     pub(crate) fn new(
         database: Arc<dyn NostrDatabase>,
         transport: Arc<dyn WebSocketTransport>,
+        gossip: Option<Arc<dyn NostrGossip>>,
         admit_policy: Option<Arc<dyn AdmitPolicy>>,
         authenticator: Option<Arc<dyn Authenticator>>,
         monitor: Option<Monitor>,
@@ -42,6 +45,7 @@ impl SharedState {
         Self {
             database,
             transport,
+            gossip,
             verification_cache: Arc::new(Mutex::new(LruCache::new(max_verification_cache_size))),
             admit_policy,
             authenticator,

@@ -4,6 +4,7 @@ use std::time::Duration;
 use nostr::event;
 use nostr::message::MessageHandleError;
 use nostr_database::DatabaseError;
+use nostr_gossip::error::GossipError;
 use tokio::sync::oneshot;
 
 use crate::policy::PolicyError;
@@ -20,6 +21,8 @@ pub enum Error {
     Policy(PolicyError),
     /// Database error
     Database(DatabaseError),
+    /// Gossip error
+    Gossip(GossipError),
     /// MessageHandle error
     MessageHandle(MessageHandleError),
     /// Event error
@@ -134,6 +137,7 @@ impl fmt::Display for Error {
             Self::Transport(e) => write!(f, "transport: {e}"),
             Self::Policy(e) => write!(f, "policy: {e}"),
             Self::Database(e) => write!(f, "database: {e}"),
+            Self::Gossip(e) => write!(f, "gossip: {e}"),
             Self::MessageHandle(e) => e.fmt(f),
             Self::Event(e) => e.fmt(f),
             Self::Hex(e) => e.fmt(f),
@@ -221,6 +225,12 @@ impl From<PolicyError> for Error {
 impl From<DatabaseError> for Error {
     fn from(e: DatabaseError) -> Self {
         Self::Database(e)
+    }
+}
+
+impl From<GossipError> for Error {
+    fn from(e: GossipError) -> Self {
+        Self::Gossip(e)
     }
 }
 

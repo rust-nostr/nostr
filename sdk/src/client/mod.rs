@@ -19,14 +19,12 @@ mod api;
 mod builder;
 mod error;
 mod gossip;
-mod middleware;
 mod notification;
 
 pub use self::api::*;
 pub use self::builder::*;
 pub use self::error::Error;
 use self::gossip::*;
-use self::middleware::AdmissionPolicyMiddleware;
 pub use self::notification::*;
 use crate::monitor::Monitor;
 use crate::pool::{RelayPool, RelayPoolBuilder};
@@ -106,16 +104,11 @@ impl Client {
     }
 
     fn from_builder(builder: ClientBuilder) -> Self {
-        // Construct admission policy middleware
-        let admit_policy_wrapper = AdmissionPolicyMiddleware {
-            gossip: builder.gossip.clone(),
-            external_policy: builder.admit_policy,
-        };
-
         // Construct relay pool builder
         let pool_builder: RelayPoolBuilder = RelayPoolBuilder {
             websocket_transport: builder.websocket_transport,
-            admit_policy: Some(Arc::new(admit_policy_wrapper)),
+            gossip: builder.gossip.clone(),
+            admit_policy: builder.admit_policy,
             authenticator: builder.authenticator,
             monitor: builder.monitor,
             database: builder.database,

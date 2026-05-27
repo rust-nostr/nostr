@@ -1272,6 +1272,11 @@ impl InnerRelay {
             }
         }
 
+        // Process event for gossip
+        if let Some(gossip) = &self.state.gossip {
+            gossip.process(&event, Some(&self.url)).await?;
+        }
+
         Ok(Some(RelayMessage::Event {
             subscription_id: Cow::Owned(subscription_id),
             event: Cow::Owned(event),

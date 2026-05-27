@@ -2,6 +2,7 @@ use std::num::NonZeroUsize;
 use std::sync::Arc;
 
 use nostr_database::NostrDatabase;
+use nostr_gossip::NostrGossip;
 
 use super::RelayPool;
 use crate::authenticator::Authenticator;
@@ -11,6 +12,7 @@ use crate::transport::websocket::WebSocketTransport;
 
 pub(crate) struct RelayPoolBuilder {
     pub(crate) websocket_transport: Arc<dyn WebSocketTransport>,
+    pub(crate) gossip: Option<Arc<dyn NostrGossip>>,
     pub(crate) admit_policy: Option<Arc<dyn AdmitPolicy>>,
     pub(crate) authenticator: Option<Arc<dyn Authenticator>>,
     pub(crate) monitor: Option<Monitor>,
