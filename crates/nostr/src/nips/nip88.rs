@@ -13,7 +13,9 @@ use core::num::ParseIntError;
 use core::str::FromStr;
 
 use super::util::{take_and_parse_from_str, take_relay_url, take_string, take_timestamp};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{
+    EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+};
 use crate::types::url;
 use crate::{Event, EventBuilder, EventId, Kind, RelayUrl, Timestamp};
 
@@ -231,9 +233,10 @@ impl Poll {
             ends_at,
         })
     }
+}
 
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for Poll {
+    fn build(self) -> EventBuilder {
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + self.options.len() + self.relays.len());
 
         tags.push(Nip88Tag::PollType(self.r#type).to_tag());
@@ -272,10 +275,8 @@ pub enum PollResponse {
         responses: Vec<String>,
     },
 }
-
-impl PollResponse {
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for PollResponse {
+    fn build(self) -> EventBuilder {
         let tags: Vec<Tag> = match self {
             Self::SingleChoice { poll_id, response } => {
                 vec![
