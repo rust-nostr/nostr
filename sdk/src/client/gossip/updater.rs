@@ -11,7 +11,9 @@ use super::{
     BrokenDownFilters, Gossip, GossipFilterPattern, GossipSemaphorePermit, find_filter_pattern,
 };
 use crate::client::{Client, Error, Output, SyncSummary};
-use crate::relay::{RelayCapabilities, ReqExitPolicy, SyncDirection, SyncOptions};
+use crate::relay::{
+    RelayCapabilities, RelayStreamEvent, ReqExitPolicy, SyncDirection, SyncOptions,
+};
 
 impl Client {
     async fn compute_gossip_update_candidates(
@@ -114,7 +116,11 @@ impl Client {
             missing_public_keys.remove(&event.pubkey);
         }
 
-        if !output.failed.is_empty() {
+        let has_success: bool = !output.success.is_empty();
+        let has_failed: bool = !output.failed.is_empty();
+
+        // At least one negentropy sync failed, so try a standard REQ fallback for those relays.
+        if has_failed {
             tracing::debug!(
                 sync_id,
                 relays = ?output.failed,
@@ -131,6 +137,7 @@ impl Client {
             )
             .await?;
 
+            // There are still missing public keys to update.
             if !missing_public_keys.is_empty() {
                 self.fetch_missing_gossip_lists_from_failed_relays(
                     sync_id,
@@ -141,7 +148,9 @@ impl Client {
                 )
                 .await?;
             }
-        } else if !missing_public_keys.is_empty() {
+        } else if !missing_public_keys.is_empty() && has_success {
+            // Mark the missing gossip public keys as checked only if we have at least one successful sync.
+            // A total failure, such as missing network, MUST NOT block retries until the TTL expires!
             self.mark_gossip_public_keys_checked(gossip.store(), gossip_kinds, missing_public_keys)
                 .await?;
         }
@@ -265,16 +274,17 @@ impl Client {
 
             while let Some((url, event)) = stream.next().await {
                 match event {
-                    Ok(event) => {
+                    RelayStreamEvent::Event(event) => {
                         for gossip_kind in gossip_kinds {
                             gossip
                                 .update_fetch_attempt(&event.pubkey, *gossip_kind)
                                 .await?;
                         }
                     }
-                    Err(e) => {
+                    RelayStreamEvent::Error(e) => {
                         tracing::error!(%url, error = %e, "Failed to fetch outdated gossip data from relay.");
                     }
+                    RelayStreamEvent::Completed => {}
                 }
             }
         }
@@ -322,11 +332,25 @@ impl Client {
             )
             .await?;
 
-        #[allow(clippy::redundant_pattern_matching)]
-        while let Some(..) = stream.next().await {}
+        let mut completed_fetch: bool = false;
 
-        self.mark_gossip_public_keys_checked(gossip, gossip_kinds, missing_public_keys)
-            .await?;
+        while let Some((url, event)) = stream.next().await {
+            match event {
+                RelayStreamEvent::Event(..) | RelayStreamEvent::Completed => {
+                    completed_fetch = true;
+                }
+                RelayStreamEvent::Error(e) => {
+                    tracing::error!(%url, error = %e, "Failed to fetch missing gossip data from relay.");
+                }
+            }
+        }
+
+        // Mark the missing gossip public keys as checked only if we have at least one successful fetch.
+        // A total failure, such as missing network, MUST NOT block retries until the TTL expires!
+        if completed_fetch {
+            self.mark_gossip_public_keys_checked(gossip, gossip_kinds, missing_public_keys)
+                .await?;
+        }
 
         Ok(())
     }
@@ -471,9 +495,57 @@ impl Client {
 
 #[cfg(test)]
 mod tests {
-    use nostr_gossip_memory::prelude::NostrGossipMemory;
+    use nostr_gossip_memory::prelude::*;
+    use nostr_relay_builder::prelude::*;
 
     use super::*;
+    use crate::client::GossipConfig;
+
+    fn client_with_gossip() -> Client {
+        let gossip = NostrGossipMemory::unbounded();
+        let config = GossipConfig::default()
+            .sync_initial_timeout(Duration::from_nanos(1))
+            .sync_idle_timeout(Duration::from_secs(1))
+            .fetch_timeout(Duration::from_secs(2))
+            .no_background_refresh();
+
+        Client::builder()
+            .gossip(gossip)
+            .gossip_config(config)
+            .build()
+    }
+
+    async fn assert_nip65_status(
+        client: &Client,
+        public_key: PublicKey,
+        expected_status: GossipPublicKeyStatus,
+    ) {
+        let status: GossipPublicKeyStatus = client
+            .gossip()
+            .unwrap()
+            .store()
+            .status(&public_key, GossipListKind::Nip65)
+            .await
+            .unwrap();
+
+        assert_eq!(status, expected_status);
+    }
+
+    async fn sync_nip65(client: &Client, public_key: PublicKey) {
+        let gossip = client.gossip().unwrap();
+
+        tokio::time::timeout(
+            Duration::from_secs(5),
+            client.sync_gossip_public_keys(
+                gossip,
+                BTreeSet::from([public_key]),
+                &[GossipListKind::Nip65],
+            ),
+        )
+        .await
+        .unwrap()
+        .unwrap();
+    }
 
     #[tokio::test]
     async fn test_mark_missing_gossip_key_as_updated() {
@@ -501,5 +573,69 @@ mod tests {
             .await
             .unwrap();
         assert!(matches!(status, GossipPublicKeyStatus::Updated));
+    }
+
+    #[tokio::test]
+    async fn test_marks_missing_gossip_key_checked_when_all_fallback_relays_active() {
+        let mock1 = MockRelay::run().await.unwrap();
+        let url1 = mock1.url().await;
+        let mock2 = MockRelay::run().await.unwrap();
+        let url2 = mock2.url().await;
+
+        let client = client_with_gossip();
+        client.add_relay(&url1).await.unwrap();
+        client.add_relay(&url2).await.unwrap();
+
+        let connect_output = client.try_connect().timeout(Duration::from_secs(3)).await;
+        assert_eq!(connect_output.success.len(), 2);
+        assert!(connect_output.failed.is_empty());
+
+        let public_key = Keys::generate().public_key();
+        assert_nip65_status(&client, public_key, GossipPublicKeyStatus::Missing).await;
+
+        sync_nip65(&client, public_key).await;
+
+        assert_nip65_status(&client, public_key, GossipPublicKeyStatus::Updated).await;
+    }
+
+    #[tokio::test]
+    async fn test_marks_missing_gossip_key_checked_when_some_fallback_relays_active() {
+        let mock1 = MockRelay::run().await.unwrap();
+        let url1 = mock1.url().await;
+
+        let inactive1 = RelayUrl::parse("ws://inactive1-fake.myfakedomain.local").unwrap();
+
+        let client = client_with_gossip();
+        client.add_relay(&url1).await.unwrap();
+        client.add_relay(&inactive1).await.unwrap();
+
+        let connect_output = client.try_connect().timeout(Duration::from_secs(3)).await;
+        assert_eq!(connect_output.success.len(), 1);
+        assert_eq!(connect_output.failed.len(), 1);
+
+        let public_key = Keys::generate().public_key();
+        assert_nip65_status(&client, public_key, GossipPublicKeyStatus::Missing).await;
+
+        sync_nip65(&client, public_key).await;
+
+        assert_nip65_status(&client, public_key, GossipPublicKeyStatus::Updated).await;
+    }
+
+    #[tokio::test]
+    async fn test_keeps_missing_gossip_key_unchecked_when_all_fallback_relays_inactive() {
+        let inactive1 = RelayUrl::parse("wss://inactive1.example.com").unwrap();
+        let inactive2 = RelayUrl::parse("wss://inactive2.example.com").unwrap();
+
+        let client = client_with_gossip();
+        client.add_relay(&inactive1).await.unwrap();
+        client.add_relay(&inactive2).await.unwrap();
+
+        let public_key = Keys::generate().public_key();
+        assert_nip65_status(&client, public_key, GossipPublicKeyStatus::Missing).await;
+
+        sync_nip65(&client, public_key).await;
+
+        // All relays are inactive, so the key should still be missing.
+        assert_nip65_status(&client, public_key, GossipPublicKeyStatus::Missing).await;
     }
 }

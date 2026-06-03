@@ -12,7 +12,7 @@ use std::vec::IntoIter;
 
 use async_utility::task;
 use futures::stream::FuturesUnordered;
-use futures::{Stream, StreamExt, future};
+use futures::{StreamExt, future};
 use nostr_database::prelude::*;
 use tokio::sync::{Mutex, RwLock, broadcast, mpsc};
 
@@ -25,14 +25,13 @@ use crate::client::{ClientNotification, InnerAckPolicy, Output, SendEventOutput,
 use crate::monitor::Monitor;
 use crate::policy::AdmitStatus;
 use crate::relay::{
-    self, AtomicRelayCapabilities, Relay, RelayCapabilities, RelayOptions, ReqExitPolicy,
-    SubscribeAutoCloseOptions, SyncOptions,
+    AtomicRelayCapabilities, Relay, RelayCapabilities, RelayOptions, RelayStreamEvent,
+    ReqExitPolicy, SubscribeAutoCloseOptions, SyncOptions,
 };
 use crate::shared::SharedState;
 use crate::stream::ReceiverStream;
 
 pub(super) type Relays = HashMap<RelayUrl, Relay>;
-type EventStream = Pin<Box<dyn Stream<Item = (RelayUrl, Result<Event, relay::Error>)> + Send>>;
 
 // IMPORTANT: we rely on the Drop trait for shutting down the pool,
 // so it's important that the RelayPool can't be cloned, otherwise may cause a non-expected shutdown.
@@ -744,7 +743,7 @@ impl RelayPool {
         id: Option<SubscriptionId>,
         timeout: Option<Duration>,
         policy: ReqExitPolicy,
-    ) -> Result<EventStream, Error> {
+    ) -> Result<ReceiverStream<(RelayUrl, RelayStreamEvent)>, Error> {
         // Check if `targets` map is empty
         if filters.is_empty() {
             return Err(Error::NoRelaysSpecified);
@@ -779,7 +778,7 @@ impl RelayPool {
                     .with_id(id.clone())
                     .maybe_timeout(timeout)
                     .policy(policy)
-                    .into_future(),
+                    .into_relay_event_stream(),
             );
         }
 
@@ -822,7 +821,7 @@ impl RelayPool {
                                     // Handle stream item
                                     res = stream.next() => {
                                         match res {
-                                            Some(Ok(event)) => {
+                                            Some(RelayStreamEvent::Event(event)) => {
                                                 let mut ids = ids.lock().await;
 
                                                 // Check if ID was already seen or insert into set.
@@ -831,16 +830,22 @@ impl RelayPool {
                                                     drop(ids);
 
                                                     // Send event
-                                                    if tx.send((url.clone(), Ok(event))).await.is_err() {
+                                                    if tx.send((url.clone(), RelayStreamEvent::Event(event))).await.is_err() {
                                                         break;
                                                     }
                                                 }
                                             }
-                                            Some(Err(e)) => {
+                                            Some(RelayStreamEvent::Error(e)) => {
                                                 // Send error
-                                                if tx.send((url.clone(), Err(e))).await.is_err() {
+                                                if tx.send((url.clone(), RelayStreamEvent::Error(e))).await.is_err() {
                                                     break;
                                                 }
+                                            }
+                                            Some(RelayStreamEvent::Completed) => {
+                                                if tx.send((url.clone(), RelayStreamEvent::Completed)).await.is_err() {
+                                                    break;
+                                                }
+                                                break;
                                             }
                                             None => break,
                                         }
@@ -853,7 +858,7 @@ impl RelayPool {
                     Err(e) => {
                         Box::pin(async move {
                             // Send error
-                            let _ = tx.send((url, Err(e))).await;
+                            let _ = tx.send((url, RelayStreamEvent::Error(e))).await;
                         })
                     }
                 };
@@ -869,7 +874,7 @@ impl RelayPool {
         });
 
         // Return stream
-        Ok(Box::pin(ReceiverStream::new(rx)))
+        Ok(ReceiverStream::new(rx))
     }
 }
 

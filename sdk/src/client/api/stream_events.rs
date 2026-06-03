@@ -3,7 +3,7 @@ use std::future::IntoFuture;
 use std::pin::Pin;
 use std::time::Duration;
 
-use futures::Stream;
+use futures::{Stream, StreamExt};
 use nostr::types::url::RelayUrl;
 use nostr::{Event, Filter, SubscriptionId};
 
@@ -11,7 +11,7 @@ use super::req_target::ReqTarget;
 use super::util::build_targets;
 use crate::client::{Client, Error};
 use crate::future::BoxedFuture;
-use crate::relay::{self, ReqExitPolicy};
+use crate::relay::{self, RelayStreamEvent, ReqExitPolicy};
 
 type EventStream = Pin<Box<dyn Stream<Item = (RelayUrl, Result<Event, relay::Error>)> + Send>>;
 
@@ -78,12 +78,20 @@ where
             let targets: HashMap<RelayUrl, Vec<Filter>> =
                 build_targets(self.client, self.target).await?;
 
-            // Stream
-            Ok(self
+            // Make the stream
+            let stream = self
                 .client
                 .pool()
                 .stream_events(targets, self.id, self.timeout, self.policy)
-                .await?)
+                .await?;
+
+            Ok(Box::pin(stream.filter_map(|(url, item)| async move {
+                match item {
+                    RelayStreamEvent::Event(event) => Some((url, Ok(event))),
+                    RelayStreamEvent::Error(error) => Some((url, Err(error))),
+                    RelayStreamEvent::Completed => None,
+                }
+            })) as EventStream)
         })
     }
 }

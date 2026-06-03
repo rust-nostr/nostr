@@ -3,7 +3,7 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use std::time::Duration;
 
-use futures::Stream;
+use futures::{Stream, StreamExt};
 use nostr::{Event, Filter, SubscriptionId};
 use tokio::sync::{mpsc, oneshot};
 
@@ -15,6 +15,12 @@ use crate::relay::{
 };
 
 type EventStream = Pin<Box<dyn Stream<Item = Result<Event, Error>> + Send>>;
+
+pub(crate) enum RelayStreamEvent {
+    Event(Event),
+    Error(Error),
+    Completed,
+}
 
 /// Stream events
 #[must_use = "Does nothing unless you await!"]
@@ -65,6 +71,35 @@ impl<'relay> StreamEvents<'relay> {
         self.policy = policy;
         self
     }
+
+    pub(crate) async fn into_relay_event_stream(
+        self,
+    ) -> Result<SubscriptionActivityEventStream, Error> {
+        // Create channels
+        let (tx, rx) = mpsc::channel(512);
+
+        // Compose auto-closing options
+        let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
+            .exit_policy(self.policy)
+            .timeout(self.timeout);
+
+        // Get or generate a subscription ID
+        let id: SubscriptionId = self.id.unwrap_or_else(SubscriptionId::generate);
+
+        // Subscribe
+        let (cancel_tx, cancel_rx) = oneshot::channel();
+        subscribe_auto_closing(
+            self.relay,
+            id,
+            self.filters,
+            opts,
+            Some(tx),
+            Some(cancel_rx),
+        )
+        .await?;
+
+        Ok(SubscriptionActivityEventStream::new(rx, cancel_tx))
+    }
 }
 
 impl<'relay> IntoFuture for StreamEvents<'relay> {
@@ -73,35 +108,18 @@ impl<'relay> IntoFuture for StreamEvents<'relay> {
 
     fn into_future(self) -> Self::IntoFuture {
         Box::pin(async move {
-            // Create channels
-            let (tx, rx) = mpsc::channel(512);
+            let stream = self.into_relay_event_stream().await?;
 
-            // Compose auto-closing options
-            let opts: SubscribeAutoCloseOptions = SubscribeAutoCloseOptions::default()
-                .exit_policy(self.policy)
-                .timeout(self.timeout);
-
-            // Get or generate a subscription ID
-            let id: SubscriptionId = self.id.unwrap_or_else(SubscriptionId::generate);
-
-            // Subscribe
-            let (cancel_tx, cancel_rx) = oneshot::channel();
-            subscribe_auto_closing(
-                self.relay,
-                id,
-                self.filters,
-                opts,
-                Some(tx),
-                Some(cancel_rx),
-            )
-            .await?;
-
-            Ok(Box::pin(SubscriptionActivityEventStream::new(rx, cancel_tx)) as EventStream)
+            Ok(Box::pin(stream.filter_map(async |e| match e {
+                RelayStreamEvent::Event(event) => Some(Ok(event)),
+                RelayStreamEvent::Error(e) => Some(Err(e)),
+                RelayStreamEvent::Completed => None,
+            })) as EventStream)
         })
     }
 }
 
-struct SubscriptionActivityEventStream {
+pub(crate) struct SubscriptionActivityEventStream {
     rx: mpsc::Receiver<SubscriptionActivity>,
     done: bool,
     cancel: Option<oneshot::Sender<()>>,
@@ -126,7 +144,7 @@ impl Drop for SubscriptionActivityEventStream {
 }
 
 impl Stream for SubscriptionActivityEventStream {
-    type Item = Result<Event, Error>;
+    type Item = RelayStreamEvent;
 
     fn poll_next(mut self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         if self.done {
@@ -135,19 +153,21 @@ impl Stream for SubscriptionActivityEventStream {
 
         match Pin::new(&mut self.rx).poll_recv(cx) {
             Poll::Ready(Some(activity)) => match activity {
-                SubscriptionActivity::ReceivedEvent(event) => Poll::Ready(Some(Ok(event))),
+                SubscriptionActivity::ReceivedEvent(event) => {
+                    Poll::Ready(Some(RelayStreamEvent::Event(event)))
+                }
                 SubscriptionActivity::Closed(reason) => match reason {
                     SubscriptionAutoClosedReason::AuthenticationFailed => {
                         self.done = true;
-                        Poll::Ready(Some(Err(Error::AuthenticationFailed)))
+                        Poll::Ready(Some(RelayStreamEvent::Error(Error::AuthenticationFailed)))
                     }
                     SubscriptionAutoClosedReason::Closed(message) => {
                         self.done = true;
-                        Poll::Ready(Some(Err(Error::RelayMessage(message))))
+                        Poll::Ready(Some(RelayStreamEvent::Error(Error::RelayMessage(message))))
                     }
                     SubscriptionAutoClosedReason::Completed => {
                         self.done = true;
-                        Poll::Ready(None)
+                        Poll::Ready(Some(RelayStreamEvent::Completed))
                     }
                 },
             },
