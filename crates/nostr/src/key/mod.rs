@@ -209,12 +209,6 @@ impl Keys {
         &self.secret_key
     }
 
-    /// Get keypair
-    #[inline]
-    pub fn keypair(&self) -> &Keypair {
-        &self.keypair
-    }
-
     /// Creates a schnorr signature of the [`Message`].
     ///
     /// This method uses a random number generator that retrieves randomness from the operating system (see [`SysRng`]).
