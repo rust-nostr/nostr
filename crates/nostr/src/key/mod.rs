@@ -265,6 +265,16 @@ impl FromStr for Keys {
     }
 }
 
+impl Drop for Keys {
+    #[inline]
+    fn drop(&mut self) {
+        // Erase the keypair.
+        //
+        // NOTE: we already erase the secret key in 'impl Drop for SecretKey'.
+        self.keypair.non_secure_erase();
+    }
+}
+
 impl GetPublicKey for Keys {
     type Error = Infallible;
 
