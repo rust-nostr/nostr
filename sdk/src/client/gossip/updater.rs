@@ -139,14 +139,26 @@ impl Client {
 
             // There are still missing public keys to update.
             if !missing_public_keys.is_empty() {
-                self.fetch_missing_gossip_lists_from_failed_relays(
-                    sync_id,
-                    gossip.store(),
-                    gossip_kinds,
-                    &output,
-                    missing_public_keys,
-                )
-                .await?;
+                let completed_fetch = self
+                    .fetch_missing_gossip_lists_from_failed_relays(
+                        sync_id,
+                        gossip_kinds,
+                        &output,
+                        &missing_public_keys,
+                    )
+                    .await?;
+
+                // Mark the missing gossip public keys as checked only if we have at least one
+                // successful relay response. A total failure, such as missing network, MUST NOT
+                // block retries until the TTL expires.
+                if has_success || completed_fetch {
+                    self.mark_gossip_public_keys_checked(
+                        gossip.store(),
+                        gossip_kinds,
+                        missing_public_keys,
+                    )
+                    .await?;
+                }
             }
         } else if !missing_public_keys.is_empty() && has_success {
             // Mark the missing gossip public keys as checked only if we have at least one successful sync.
@@ -295,11 +307,10 @@ impl Client {
     async fn fetch_missing_gossip_lists_from_failed_relays(
         &self,
         sync_id: u64,
-        gossip: &Arc<dyn NostrGossip>,
         gossip_kinds: &[GossipListKind],
         output: &Output<SyncSummary>,
-        missing_public_keys: BTreeSet<PublicKey>,
-    ) -> Result<(), Error> {
+        missing_public_keys: &BTreeSet<PublicKey>,
+    ) -> Result<bool, Error> {
         let mut kinds: Vec<Kind> = Vec::with_capacity(gossip_kinds.len());
 
         for gossip_kind in gossip_kinds {
@@ -345,14 +356,7 @@ impl Client {
             }
         }
 
-        // Mark the missing gossip public keys as checked only if we have at least one successful fetch.
-        // A total failure, such as missing network, MUST NOT block retries until the TTL expires!
-        if completed_fetch {
-            self.mark_gossip_public_keys_checked(gossip, gossip_kinds, missing_public_keys)
-                .await?;
-        }
-
-        Ok(())
+        Ok(completed_fetch)
     }
 
     /// Update the last check timestamp for the specified keys and list kinds.
