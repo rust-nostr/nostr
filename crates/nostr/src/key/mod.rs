@@ -5,15 +5,11 @@
 
 //! Keys
 
-#[cfg(not(feature = "std"))]
-use core::cell::OnceCell;
 use core::cmp::Ordering;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 #[cfg(feature = "std")]
 use core::str::FromStr;
-#[cfg(feature = "std")]
-use std::sync::OnceLock as OnceCell;
 
 #[cfg(feature = "std")]
 use secp256k1::rand::rngs::OsRng;
@@ -78,7 +74,7 @@ pub struct Keys {
     /// Public key
     pub public_key: PublicKey,
     secret_key: SecretKey,
-    key_pair: OnceCell<Keypair>,
+    keypair: Keypair,
 }
 
 impl fmt::Debug for Keys {
@@ -138,7 +134,7 @@ impl Keys {
         Self {
             public_key: PublicKey::from(public_key),
             secret_key,
-            key_pair: OnceCell::from(key_pair),
+            keypair: key_pair,
         }
     }
 
@@ -168,8 +164,6 @@ impl Keys {
     /// This constructor uses a random number generator that retrieves randomness from the operating system (see [`OsRng`]).
     ///
     /// Use [`Keys::generate_with_rng`] to specify a custom random source.
-    ///
-    /// Check [`Keys::generate_with_ctx`] to learn more about how this constructor works internally.
     #[inline]
     #[cfg(feature = "std")]
     pub fn generate() -> Self {
@@ -177,8 +171,6 @@ impl Keys {
     }
 
     /// Generate random keys using a custom random source
-    ///
-    /// Check [`Keys::generate_with_ctx`] to learn more about how this constructor works internally.
     #[inline]
     #[cfg(feature = "std")]
     pub fn generate_with_rng<R>(rng: &mut R) -> Self
@@ -189,23 +181,14 @@ impl Keys {
     }
 
     /// Generate random keys
-    ///
-    /// Generate random keys **without** construct the [`Keypair`].
-    /// This allows faster keys generation (i.e., for vanity pubkey mining).
-    /// The [`Keypair`] will be automatically created when needed and stored in a cell.
     #[inline]
     pub fn generate_with_ctx<C, R>(secp: &Secp256k1<C>, rng: &mut R) -> Self
     where
         C: Signing,
         R: Rng + ?Sized,
     {
-        let (secret_key, public_key) = secp.generate_keypair(rng);
-        let (public_key, _) = public_key.x_only_public_key();
-        Self {
-            public_key: PublicKey::from(public_key),
-            secret_key: SecretKey::from(secret_key),
-            key_pair: OnceCell::new(),
-        }
+        let (secret_key, ..) = secp.generate_keypair(rng);
+        Self::new_with_ctx(secp, SecretKey::from(secret_key))
     }
 
     /// Get public key
@@ -222,12 +205,12 @@ impl Keys {
 
     /// Get keypair
     #[inline]
-    pub fn key_pair<C>(&self, secp: &Secp256k1<C>) -> &Keypair
+    #[deprecated(since = "0.45.0")]
+    pub fn key_pair<C>(&self, _secp: &Secp256k1<C>) -> &Keypair
     where
         C: Signing,
     {
-        self.key_pair
-            .get_or_init(|| Keypair::from_secret_key(secp, &self.secret_key))
+        &self.keypair
     }
 
     /// Creates a schnorr signature of the [`Message`].
@@ -250,8 +233,7 @@ impl Keys {
         C: Signing,
         R: Rng + CryptoRng,
     {
-        let keypair: &Keypair = self.key_pair(secp);
-        secp.sign_schnorr_with_rng(message, keypair, rng)
+        secp.sign_schnorr_with_rng(message, &self.keypair, rng)
     }
 }
 
@@ -263,6 +245,16 @@ impl FromStr for Keys {
     #[inline]
     fn from_str(secret_key: &str) -> Result<Self, Self::Err> {
         Self::parse(secret_key)
+    }
+}
+
+impl Drop for Keys {
+    #[inline]
+    fn drop(&mut self) {
+        // Erase the keypair.
+        //
+        // NOTE: we already erase the secret key in 'impl Drop for SecretKey'.
+        self.keypair.non_secure_erase();
     }
 }
 
