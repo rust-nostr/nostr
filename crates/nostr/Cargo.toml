@@ -86,6 +86,7 @@ url = { version = "2.5", default-features = false, features = ["serde"] }
 
 [dev-dependencies]
 reqwest = { workspace = true, features = ["rustls-tls"] }
+nostr-sdk = { workspace = true, features = ["ring", "rustls-tls-webpki-roots"] }
 tokio = { workspace = true, features = ["macros", "rt-multi-thread"] }
 
 [[example]]
@@ -130,6 +131,10 @@ required-features = ["std", "rand", "os-rng", "nip98"]
 
 [[example]]
 name = "parser"
+required-features = ["std"]
+
+[[example]]
+name = "nip-pip"
 required-features = ["std"]
 
 [lints.rust]

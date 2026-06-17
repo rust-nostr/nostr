@@ -65,4 +65,5 @@ pub mod nip98;
 pub mod nipb0;
 pub mod nipb7;
 pub mod nipc0;
+pub mod pip;
 mod util;
