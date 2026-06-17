@@ -42,14 +42,14 @@ fn main() -> Result<()> {
         .lud16("pay@yukikishimoto.com")
         .custom_field("custom_field", "my value");
 
-    let event: Event = EventBuilder::metadata(&metadata).finalize(&keys)?;
+    let event: Event = metadata.finalize(&keys)?;
 
     // New text note
     let event: Event = EventBuilder::text_note("Hello from rust-nostr").finalize(&keys)?;
 
     // New POW text note
     let difficulty: NonZeroU8 = NonZeroU8::new(16).unwrap();
-    let unsigned: UnsignedEvent = EventBuilder::text_note("POW text note from rust-nostr").finalize_unsigned(keys.public_key);
+    let unsigned: UnsignedEvent = EventBuilder::text_note("POW text note from rust-nostr").finalize_unsigned(keys.public_key)?;
     let unsigned: UnsignedEvent = unsigned.mine(&SingleThreadPow, difficulty)?;
     let event: Event = unsigned.finalize(&keys)?;
 

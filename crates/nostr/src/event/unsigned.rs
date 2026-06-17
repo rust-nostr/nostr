@@ -219,14 +219,23 @@ impl From<Event> for UnsignedEvent {
 
 /// Finalize a builder into an unsigned event.
 pub trait FinalizeUnsignedEvent: Sized {
+    /// Error type
+    type Error: core::error::Error;
+
     /// Build the unsigned event with the supplied public key.
-    fn finalize_unsigned(self, public_key: PublicKey) -> UnsignedEvent;
+    fn finalize_unsigned(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error>;
 }
 
 /// Finalize a builder into an unsigned event asynchronously.
 pub trait FinalizeUnsignedEventAsync: Sized {
+    /// Error type
+    type Error: core::error::Error;
+
     /// Build the unsigned event with the supplied public key.
-    fn finalize_unsigned_async<'a>(self, public_key: PublicKey) -> BoxedFuture<'a, UnsignedEvent>
+    fn finalize_unsigned_async<'a>(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'a, Result<UnsignedEvent, Self::Error>>
     where
         Self: 'a;
 }

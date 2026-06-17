@@ -39,7 +39,10 @@ macro_rules! database_unit_tests {
                 .collect()
         }
 
-        fn build_event(keys: &Keys, builder: EventBuilder) -> Event {
+        fn build_event<T>(keys: &Keys, builder: T) -> Event
+        where
+            T: FinalizeEvent<Keys>
+        {
             builder.finalize(keys).expect("Failed to build and finalize event")
         }
 
@@ -51,12 +54,8 @@ macro_rules! database_unit_tests {
             let events = vec![
                 build_event(&keys_a, EventBuilder::text_note("Text Note A")),
                 build_event(&keys_b, EventBuilder::text_note("Text Note B")),
-                build_event(&keys_a, EventBuilder::metadata(
-                    &Metadata::new().name("account-a").display_name("Account A"),
-                )),
-                build_event(&keys_b, EventBuilder::metadata(
-                    &Metadata::new().name("account-b").display_name("Account B"),
-                )),
+                build_event(&keys_a, Metadata::new().name("account-a").display_name("Account A")),
+                build_event(&keys_b, Metadata::new().name("account-b").display_name("Account B")),
                 build_event(&keys_a, EventBuilder::new(Kind::Custom(33_333), "")
                     .tag(Tag::identifier("my-id-a"))),
                 build_event(&keys_b, EventBuilder::new(Kind::Custom(33_333), "")
@@ -277,7 +276,9 @@ macro_rules! database_unit_tests {
 
             // Create first replaceable event (kind 0 - metadata)
             let metadata1 = Metadata::new().name("First");
-            let event1 = EventBuilder::metadata(&metadata1)
+            let event1 = metadata1
+                .build()
+                .unwrap()
                 .custom_created_at(Timestamp::from_secs(1000))
                 .finalize(&keys)
                 .expect("Failed to finalize");
@@ -286,7 +287,9 @@ macro_rules! database_unit_tests {
 
             // Create newer replaceable event with later timestamp
             let metadata2 = Metadata::new().name("Second");
-            let event2 = EventBuilder::metadata(&metadata2)
+            let event2 = metadata2
+                .build()
+                .unwrap()
                 .custom_created_at(Timestamp::from_secs(2000))
                 .finalize(&keys)
                 .expect("Failed to finalize");
@@ -358,7 +361,7 @@ macro_rules! database_unit_tests {
 
             // Create deletion event
             let deletion =
-                EventBuilder::delete(EventDeletionRequest::new().id(event1.id).id(event2.id))
+                EventDeletionRequest::new().id(event1.id).id(event2.id)
                     .finalize(&keys)
                     .expect("Failed to finalize");
 
@@ -403,7 +406,7 @@ macro_rules! database_unit_tests {
             let req = EventDeletionRequest::new()
                 .coordinate(event.coordinate().unwrap());
             let deletion =
-                EventBuilder::delete(req)
+                req
                     .finalize(&keys)
                     .expect("Failed to finalize");
 
@@ -504,7 +507,7 @@ macro_rules! database_unit_tests {
 
             let (keys, expected_event) = add_event(
                     &store,
-                    EventBuilder::metadata(&metadata).custom_created_at(now - Duration::from_secs(120)),
+                    (&metadata).build().unwrap().custom_created_at(now - Duration::from_secs(120)),
                 )
                 .await;
 
@@ -525,7 +528,7 @@ macro_rules! database_unit_tests {
             // Replace previous event
             let (new_expected_event, status) = add_event_with_keys(
                     &store,
-                    EventBuilder::metadata(&metadata).custom_created_at(now),
+                    metadata.build().unwrap().custom_created_at(now),
                     &keys,
                 )
                 .await;

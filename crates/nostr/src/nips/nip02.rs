@@ -8,6 +8,7 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 
 use super::util::{take_and_parse_optional_relay_url, take_optional_string, take_public_key};
@@ -202,7 +203,9 @@ impl ContactListBuilder {
 }
 
 impl EventBuilderTemplate for ContactListBuilder {
-    fn build(self) -> EventBuilder {
+    type Error = Infallible;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         let tags = self.contacts.into_iter().map(|contact| {
             Nip02Tag::PublicKey {
                 public_key: contact.public_key,
@@ -211,7 +214,7 @@ impl EventBuilderTemplate for ContactListBuilder {
             }
             .to_tag()
         });
-        EventBuilder::new(Kind::ContactList, "").tags(tags)
+        Ok(EventBuilder::new(Kind::ContactList, "").tags(tags))
     }
 }
 

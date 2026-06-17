@@ -28,7 +28,7 @@ async fn main() -> Result<()> {
         .extension("rs")
         .license("MIT");
 
-    let event = EventBuilder::code_snippet(snippet).finalize(&keys)?;
+    let event = snippet.finalize(&keys)?;
 
     let output = client.send_event(&event).await?;
 

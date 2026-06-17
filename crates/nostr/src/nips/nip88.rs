@@ -8,12 +8,15 @@
 
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
 
 use super::util::{take_and_parse_from_str, take_relay_url, take_string, take_timestamp};
-use crate::event::{Tag, TagCodec, TagCodecError, impl_tag_codec_conversions};
+use crate::event::{
+    EventBuilderTemplate, Tag, TagCodec, TagCodecError, impl_tag_codec_conversions,
+};
 use crate::types::url;
 use crate::{Event, EventBuilder, EventId, Kind, RelayUrl, Timestamp};
 
@@ -231,9 +234,12 @@ impl Poll {
             ends_at,
         })
     }
+}
 
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+impl EventBuilderTemplate for Poll {
+    type Error = Infallible;
+
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         let mut tags: Vec<Tag> = Vec::with_capacity(1 + self.options.len() + self.relays.len());
 
         tags.push(Nip88Tag::PollType(self.r#type).to_tag());
@@ -250,7 +256,7 @@ impl Poll {
             tags.push(Nip88Tag::PollEndsAt(timestamp).to_tag());
         }
 
-        EventBuilder::new(Kind::Poll, self.title).tags(tags)
+        Ok(EventBuilder::new(Kind::Poll, self.title).tags(tags))
     }
 }
 
@@ -272,10 +278,10 @@ pub enum PollResponse {
         responses: Vec<String>,
     },
 }
+impl EventBuilderTemplate for PollResponse {
+    type Error = Infallible;
 
-impl PollResponse {
-    #[allow(clippy::wrong_self_convention)]
-    pub(crate) fn to_event_builder(self) -> EventBuilder {
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         let tags: Vec<Tag> = match self {
             Self::SingleChoice { poll_id, response } => {
                 vec![
@@ -296,7 +302,7 @@ impl PollResponse {
             }
         };
 
-        EventBuilder::new(Kind::PollResponse, "").tags(tags)
+        Ok(EventBuilder::new(Kind::PollResponse, "").tags(tags))
     }
 }
 

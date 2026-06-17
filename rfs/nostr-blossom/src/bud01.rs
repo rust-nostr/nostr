@@ -1,5 +1,6 @@
 //! Implements data structures specific to BUD-01
 
+use std::convert::Infallible;
 use std::fmt;
 
 use nostr::event::{EventBuilderTemplate, TagCodec};
@@ -82,10 +83,12 @@ impl BlossomAuthorizationVerb {
 }
 
 impl EventBuilderTemplate for BlossomAuthorization {
+    type Error = Infallible;
+
     /// Blossom authorization event
     ///
     /// <https://github.com/hzrd149/blossom/blob/master/buds/01.md>
-    fn build(self) -> EventBuilder {
+    fn build(self) -> Result<EventBuilder, Self::Error> {
         let mut tags: Vec<Tag> = Vec::new();
 
         match self.scope {
@@ -106,6 +109,6 @@ impl EventBuilderTemplate for BlossomAuthorization {
         // Add the 't' tag to say what this auth is for
         tags.push(Tag::hashtag(self.action.to_string()));
 
-        EventBuilder::new(Kind::BlossomAuth, self.content).tags(tags)
+        Ok(EventBuilder::new(Kind::BlossomAuth, self.content).tags(tags))
     }
 }

@@ -7,6 +7,7 @@
 use alloc::boxed::Box;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
+use core::convert::Infallible;
 use core::fmt;
 use core::ops::Range;
 
@@ -37,18 +38,23 @@ impl fmt::Display for WrongKindError {
 
 /// Template that can be converted into a generic [`EventBuilder`].
 pub trait EventBuilderTemplate: Sized {
+    /// Error type
+    type Error: core::error::Error;
+
     /// Convert into the generic event builder.
-    fn build(self) -> EventBuilder;
+    fn build(self) -> Result<EventBuilder, Self::Error>;
 }
 
 impl<B> FinalizeUnsignedEvent for B
 where
     B: EventBuilderTemplate,
 {
+    type Error = B::Error;
+
     #[inline]
-    fn finalize_unsigned(self, public_key: PublicKey) -> UnsignedEvent {
-        let builder: EventBuilder = self.build();
-        builder.finalize_unsigned(public_key)
+    fn finalize_unsigned(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error> {
+        let builder: EventBuilder = self.build()?;
+        Ok(builder.finalize_unsigned(public_key).unwrap_infallible())
     }
 }
 
@@ -60,15 +66,18 @@ where
     type Error = SignerError;
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
-        let builder: EventBuilder = self.build();
+        let builder: EventBuilder = self.build().map_err(SignerError::backend)?;
         builder.finalize(signer)
     }
 }
 
 /// Template that can asynchronously be converted into a generic [`EventBuilder`].
 pub trait EventBuilderTemplateAsync {
+    /// Error type
+    type Error: core::error::Error;
+
     /// Convert this typed builder into the generic event builder.
-    fn build_async<'a>(self) -> BoxedFuture<'a, EventBuilder>
+    fn build_async<'a>(self) -> BoxedFuture<'a, Result<EventBuilder, Self::Error>>
     where
         Self: 'a;
 }
@@ -77,8 +86,10 @@ impl<B> EventBuilderTemplateAsync for B
 where
     B: EventBuilderTemplate + Send,
 {
+    type Error = B::Error;
+
     #[inline]
-    fn build_async<'a>(self) -> BoxedFuture<'a, EventBuilder>
+    fn build_async<'a>(self) -> BoxedFuture<'a, Result<EventBuilder, Self::Error>>
     where
         Self: 'a,
     {
@@ -90,14 +101,22 @@ impl<B> FinalizeUnsignedEventAsync for B
 where
     B: EventBuilderTemplateAsync + Send,
 {
+    type Error = B::Error;
+
     #[inline]
-    fn finalize_unsigned_async<'a>(self, public_key: PublicKey) -> BoxedFuture<'a, UnsignedEvent>
+    fn finalize_unsigned_async<'a>(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'a, Result<UnsignedEvent, Self::Error>>
     where
         Self: 'a,
     {
         Box::pin(async move {
-            let builder: EventBuilder = self.build_async().await;
-            builder.finalize_unsigned_async(public_key).await
+            let builder: EventBuilder = self.build_async().await?;
+            Ok(builder
+                .finalize_unsigned_async(public_key)
+                .await
+                .unwrap_infallible())
         })
     }
 }
@@ -115,7 +134,7 @@ where
         S: 'a,
     {
         Box::pin(async move {
-            let builder: EventBuilder = self.build_async().await;
+            let builder: EventBuilder = self.build_async().await.map_err(SignerError::backend)?;
             builder.finalize_async(signer).await
         })
     }
@@ -181,29 +200,6 @@ impl EventBuilder {
     pub fn custom_created_at(mut self, created_at: Timestamp) -> Self {
         self.created_at = Some(created_at);
         self
-    }
-
-    /// Profile metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/01.md>
-    ///
-    /// # Example
-    /// ```rust,no_run
-    /// use nostr::prelude::*;
-    ///
-    /// let metadata = Metadata::new()
-    ///     .name("username")
-    ///     .display_name("My Username")
-    ///     .about("Description")
-    ///     .picture(Url::parse("https://example.com/avatar.png").unwrap())
-    ///     .nip05("username@example.com")
-    ///     .lud16("pay@yukikishimoto.com");
-    ///
-    /// let builder = EventBuilder::metadata(&metadata);
-    /// ```
-    #[inline]
-    pub fn metadata(metadata: &Metadata) -> Self {
-        Self::new(Kind::Metadata, metadata.as_json())
     }
 
     /// Relay list metadata
@@ -414,14 +410,6 @@ impl EventBuilder {
                     Nip18Tag::Kind(event.kind).to_tag(),
                 ])
         }
-    }
-
-    /// Event deletion request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/09.md>
-    #[inline]
-    pub fn delete(request: EventDeletionRequest) -> Self {
-        request.to_event_builder()
     }
 
     /// Request to vanish
@@ -1245,88 +1233,6 @@ impl EventBuilder {
         Self::new(Kind::UserStatus, content).tags(tags)
     }
 
-    /// Code Snippets
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/C0.md>
-    #[inline]
-    pub fn code_snippet(snippet: CodeSnippet) -> Self {
-        snippet.to_event_builder()
-    }
-
-    /// Git Repository Announcement
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_repository_announcement(announcement: GitRepositoryAnnouncement) -> Self {
-        announcement.to_event_builder()
-    }
-
-    /// Git Issue
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_issue(issue: GitIssue) -> Result<Self, nip34::Error> {
-        issue.to_event_builder()
-    }
-
-    /// Git Patch
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_patch(patch: GitPatch) -> Result<Self, nip34::Error> {
-        patch.to_event_builder()
-    }
-
-    /// Git Pull Request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_pull_request(pull_request: GitPullRequest) -> Result<Self, nip34::Error> {
-        pull_request.to_event_builder()
-    }
-
-    /// Git Pull Request Update
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_pull_request_update(update: GitPullRequestUpdate) -> Result<Self, nip34::Error> {
-        update.to_event_builder()
-    }
-
-    /// Git User Grasp List
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/34.md>
-    #[inline]
-    pub fn git_user_grasp_list(grasp_list: GitUserGraspList) -> Self {
-        grasp_list.to_event_builder()
-    }
-
-    /// Torrent metadata
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/35.md>
-    #[inline]
-    pub fn torrent(metadata: Torrent) -> Self {
-        metadata.to_event_builder()
-    }
-
-    // TODO: add `torrent_comment`
-
-    /// Create a poll
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
-    #[inline]
-    pub fn poll(poll: Poll) -> Self {
-        poll.to_event_builder()
-    }
-
-    /// Create a poll response
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/88.md>
-    #[inline]
-    pub fn poll_response(response: PollResponse) -> Self {
-        response.to_event_builder()
-    }
-
     /// Chat message
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/C7.md>
@@ -1411,14 +1317,6 @@ impl EventBuilder {
 
         Self::new(Kind::Comment, content).tags(tags)
     }
-
-    /// Web Bookmark
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/B0.md>
-    #[inline]
-    pub fn web_bookmark(web_bookmark: WebBookmark) -> Self {
-        web_bookmark.to_event_builder()
-    }
 }
 
 fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
@@ -1438,9 +1336,11 @@ fn has_nostr_event_uri(content: &str, event_id: &EventId) -> bool {
 }
 
 impl FinalizeUnsignedEvent for EventBuilder {
+    type Error = Infallible;
+
     #[inline]
-    fn finalize_unsigned(self, public_key: PublicKey) -> UnsignedEvent {
-        UnsignedEvent {
+    fn finalize_unsigned(self, public_key: PublicKey) -> Result<UnsignedEvent, Self::Error> {
+        Ok(UnsignedEvent {
             // Not compute event ID, as the user may want POW, so would be an unnecessary computation.
             id: None,
             pubkey: public_key,
@@ -1448,13 +1348,18 @@ impl FinalizeUnsignedEvent for EventBuilder {
             kind: self.kind,
             tags: self.tags,
             content: self.content,
-        }
+        })
     }
 }
 
 impl FinalizeUnsignedEventAsync for EventBuilder {
+    type Error = Infallible;
+
     #[inline]
-    fn finalize_unsigned_async<'a>(self, public_key: PublicKey) -> BoxedFuture<'a, UnsignedEvent>
+    fn finalize_unsigned_async<'a>(
+        self,
+        public_key: PublicKey,
+    ) -> BoxedFuture<'a, Result<UnsignedEvent, Self::Error>>
     where
         Self: 'a,
     {
@@ -1470,7 +1375,7 @@ where
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
         let public_key: PublicKey = signer.get_public_key().map_err(SignerError::backend)?;
-        let unsigned: UnsignedEvent = self.finalize_unsigned(public_key);
+        let unsigned: UnsignedEvent = self.finalize_unsigned(public_key).unwrap_infallible();
         signer.sign_event(unsigned).map_err(SignerError::backend)
     }
 }
@@ -1491,7 +1396,7 @@ where
                 .get_public_key_async()
                 .await
                 .map_err(SignerError::backend)?;
-            let unsigned: UnsignedEvent = self.finalize_unsigned(public_key);
+            let unsigned: UnsignedEvent = self.finalize_unsigned(public_key).unwrap_infallible();
             signer
                 .sign_event_async(unsigned)
                 .await

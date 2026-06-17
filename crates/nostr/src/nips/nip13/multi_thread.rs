@@ -137,7 +137,8 @@ pub mod tests {
     #[test]
     fn threaded_adapter() {
         let unsigned = EventBuilder::text_note("Wait, you guys are getting paid to find nonces? I'm just doing it for the leading zeros")
-            .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap());
+            .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap())
+            .unwrap_infallible();
 
         let unsigned = unsigned
             .mine(&MultiThreadPow, NonZeroU8::new(2).unwrap())
@@ -156,7 +157,8 @@ pub mod tests {
     fn multi_thread_mining_can_be_cancelled() {
         let cancel: Arc<AtomicBool> = Arc::new(AtomicBool::new(false));
         let unsigned = EventBuilder::text_note("multi thread cancellation test")
-            .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap());
+            .finalize_unsigned(PublicKey::from_slice(&[0; 32]).unwrap())
+            .unwrap_infallible();
 
         let worker_cancel: Arc<AtomicBool> = cancel.clone();
         let handle = thread::spawn(move || mine(unsigned, u8::MAX, worker_cancel));

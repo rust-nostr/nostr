@@ -195,7 +195,8 @@ mod tests {
                     "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                 )
                 .unwrap(),
-            );
+            )
+            .unwrap_infallible();
 
         assert!(is_valid_vanish_request_for_relay(
             all_relays.tags.as_slice(),
@@ -212,7 +213,8 @@ mod tests {
                     "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
                 )
                 .unwrap(),
-            );
+            )
+            .unwrap_infallible();
 
         assert!(is_valid_vanish_request_for_relay(
             single_relay.tags.as_slice(),
@@ -223,10 +225,14 @@ mod tests {
             Some(&relay_b)
         ));
 
-        let other_kind = EventBuilder::text_note("hello").finalize_unsigned(
-            PublicKey::from_hex("79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798")
+        let other_kind = EventBuilder::text_note("hello")
+            .finalize_unsigned(
+                PublicKey::from_hex(
+                    "79be667ef9dcbbac55a06295ce870b07029bfcdb2dce28d959f2815b16f81798",
+                )
                 .unwrap(),
-        );
+            )
+            .unwrap_infallible();
 
         assert!(!is_valid_vanish_request_for_relay(
             other_kind.tags.as_slice(),

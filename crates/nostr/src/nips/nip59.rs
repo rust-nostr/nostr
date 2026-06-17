@@ -442,8 +442,9 @@ mod tests {
                 .unwrap();
 
         // Compose Gift Wrap event
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("Test").finalize_unsigned(sender_keys.public_key);
+        let rumor: UnsignedEvent = EventBuilder::text_note("Test")
+            .finalize_unsigned(sender_keys.public_key)
+            .unwrap_infallible();
         let event: Event = GiftWrapBuilder::new(receiver_keys.public_key(), rumor.clone())
             .finalize(&sender_keys)
             .unwrap();
@@ -470,8 +471,9 @@ mod tests {
             Keys::parse("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap();
 
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("Test").finalize_unsigned(sender_keys.public_key);
+        let rumor: UnsignedEvent = EventBuilder::text_note("Test")
+            .finalize_unsigned(sender_keys.public_key)
+            .unwrap_infallible();
         let event: Event = GiftWrapBuilder::new(receiver_keys.public_key(), rumor)
             .finalize(&sender_keys)
             .unwrap();
@@ -491,8 +493,9 @@ mod tests {
             Keys::parse("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap();
 
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("Test").finalize_unsigned(sender_keys.public_key);
+        let rumor: UnsignedEvent = EventBuilder::text_note("Test")
+            .finalize_unsigned(sender_keys.public_key)
+            .unwrap_infallible();
         let seal = GiftWrapSealBuilder::new(rumor, receiver_keys.public_key())
             .finalize(&sender_keys)
             .unwrap();
@@ -510,8 +513,9 @@ mod tests {
             Keys::parse("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
                 .unwrap();
 
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("Test").finalize_unsigned(sender_keys.public_key);
+        let rumor: UnsignedEvent = EventBuilder::text_note("Test")
+            .finalize_unsigned(sender_keys.public_key)
+            .unwrap_infallible();
         let seal = GiftWrapSealBuilder::new(rumor, receiver_keys.public_key())
             .finalize_async(&sender_keys)
             .await
@@ -535,8 +539,9 @@ mod tests {
 
         // Construct a rumor that lies about its pubkey but is still wrapped/signed
         // by `sender_keys`. This mimics a spoofing attempt the recipient must reject.
-        let rumor: UnsignedEvent =
-            EventBuilder::text_note("spoofed").finalize_unsigned(impersonated_keys.public_key());
+        let rumor: UnsignedEvent = EventBuilder::text_note("spoofed")
+            .finalize_unsigned(impersonated_keys.public_key())
+            .unwrap_infallible();
 
         let gift_wrap: Event = GiftWrapBuilder::new(receiver_keys.public_key(), rumor)
             .finalize(&sender_keys)

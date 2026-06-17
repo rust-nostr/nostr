@@ -14,7 +14,7 @@ fn main() -> Result<()> {
 
     // Build unsigned event
     let unsigned: UnsignedEvent =
-        EventBuilder::text_note(msg_content).finalize_unsigned(keys.public_key);
+        EventBuilder::text_note(msg_content).finalize_unsigned(keys.public_key)?;
 
     #[cfg(not(feature = "pow-multi-thread"))]
     let adapter = SingleThreadPow;

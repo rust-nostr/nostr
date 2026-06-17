@@ -8,6 +8,7 @@
 
 use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
+use core::convert::Infallible;
 use core::fmt;
 use core::num::ParseIntError;
 use core::str::FromStr;
@@ -22,10 +23,10 @@ mod tags;
 pub use self::tags::*;
 use super::nip19::{self, FromBech32, Nip19Coordinate, ToBech32};
 use super::nip21::{FromNostrUri, ToNostrUri};
-use crate::event::TagCodecError;
+use crate::event::{EventBuilderTemplate, TagCodecError};
 use crate::types::url::{self, Url};
 use crate::util::impl_json_methods;
-use crate::{Filter, Kind, PublicKey, Tag, event, key};
+use crate::{EventBuilder, Filter, Kind, PublicKey, Tag, event, key};
 
 /// NIP-01 error
 #[derive(Debug, PartialEq)]
@@ -322,6 +323,30 @@ impl ToBech32 for CoordinateBorrow<'_> {
 impl ToNostrUri for CoordinateBorrow<'_> {}
 
 /// Metadata
+///
+/// # Examples
+///
+/// ## Building a user metadata event
+///
+/// ```rust,no_run
+/// # use nostr::prelude::*;
+/// # #[cfg(all(feature = "std", feature = "os-rng"))]
+/// # fn run() -> Result<(), Box<dyn std::error::Error>> {
+/// let metadata = Metadata::new()
+///     .name("username")
+///     .display_name("My Username")
+///     .about("Description")
+///     .picture(Url::parse("https://example.com/avatar.png")?)
+///     .nip05("username@example.com")
+///     .lud16("pay@yukikishimoto.com");
+///
+/// let keys = Keys::parse("nsec...")?;
+/// let event: Event = metadata.finalize(&keys)?;
+/// # _ = event;
+/// # Ok(())
+/// # }
+/// # fn main() {}
+/// ```
 #[derive(Debug, Clone, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct Metadata {
     /// Name
@@ -522,6 +547,24 @@ where
     }
 
     deserializer.deserialize_map(GenericTagsVisitor)
+}
+
+impl EventBuilderTemplate for &Metadata {
+    type Error = Infallible;
+
+    #[inline]
+    fn build(self) -> Result<EventBuilder, Self::Error> {
+        Ok(EventBuilder::new(Kind::Metadata, self.as_json()))
+    }
+}
+
+impl EventBuilderTemplate for Metadata {
+    type Error = Infallible;
+
+    #[inline]
+    fn build(self) -> Result<EventBuilder, Self::Error> {
+        (&self).build()
+    }
 }
 
 #[cfg(test)]
