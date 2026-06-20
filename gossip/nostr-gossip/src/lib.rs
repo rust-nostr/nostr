@@ -22,7 +22,7 @@ pub mod error;
 pub mod flags;
 pub mod prelude;
 
-use self::error::GossipError;
+use self::error::Error;
 
 /// Gossip list kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -203,28 +203,28 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         &'a self,
         event: &'a Event,
         relay_url: Option<&'a RelayUrl>,
-    ) -> BoxedFuture<'a, Result<(), GossipError>>;
+    ) -> BoxedFuture<'a, Result<(), Error>>;
 
     /// Check the [`PublicKey`] status
     fn status<'a>(
         &'a self,
         public_key: &'a PublicKey,
         list: GossipListKind,
-    ) -> BoxedFuture<'a, Result<GossipPublicKeyStatus, GossipError>>;
+    ) -> BoxedFuture<'a, Result<GossipPublicKeyStatus, Error>>;
 
     /// Update the last check timestamp for an [`PublicKey`].
     fn update_fetch_attempt<'a>(
         &'a self,
         public_key: &'a PublicKey,
         list: GossipListKind,
-    ) -> BoxedFuture<'a, Result<(), GossipError>>;
+    ) -> BoxedFuture<'a, Result<(), Error>>;
 
     /// Get up to `limit` outdated public keys for the specified list kind.
     fn outdated_public_keys(
         &self,
         list: GossipListKind,
         limit: NonZeroUsize,
-    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, GossipError>>;
+    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, Error>>;
 
     /// Get the best relays for a [`PublicKey`].
     fn get_best_relays<'a>(
@@ -232,7 +232,7 @@ pub trait NostrGossip: Any + Debug + Send + Sync {
         public_key: &'a PublicKey,
         selection: BestRelaySelection,
         allowed: GossipAllowedRelays,
-    ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>>;
+    ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, Error>>;
 }
 
 #[doc(hidden)]

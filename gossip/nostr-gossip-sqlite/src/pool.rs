@@ -8,7 +8,7 @@ use async_utility::task;
 use rusqlite::{Connection, OpenFlags};
 use tokio::sync::Mutex;
 
-use crate::error::Error;
+use crate::error::StoreError;
 
 #[derive(Debug, Clone)]
 pub(crate) struct Pool {
@@ -22,19 +22,19 @@ impl Pool {
         }
     }
 
-    pub(crate) fn open_in_memory() -> Result<Self, Error> {
+    pub(crate) fn open_in_memory() -> Result<Self, StoreError> {
         let conn: Connection = Connection::open_in_memory()?;
         Ok(Self::new(conn))
     }
 
     #[inline]
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) async fn open_with_path(path: PathBuf) -> Result<Self, Error> {
+    pub(crate) async fn open_with_path(path: PathBuf) -> Result<Self, StoreError> {
         let conn: Connection = task::spawn_blocking(move || Connection::open(path)).await??;
         Ok(Self::new(conn))
     }
 
-    pub(crate) async fn open_with_vfs<P>(path: P, vfs: &str) -> Result<Self, Error>
+    pub(crate) async fn open_with_vfs<P>(path: P, vfs: &str) -> Result<Self, StoreError>
     where
         P: AsRef<Path>,
     {
@@ -44,9 +44,9 @@ impl Pool {
     }
 
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn interact<F, R>(&self, f: F) -> Result<R, Error>
+    pub async fn interact<F, R>(&self, f: F) -> Result<R, StoreError>
     where
-        F: FnOnce(&mut Connection) -> Result<R, Error> + Send + 'static,
+        F: FnOnce(&mut Connection) -> Result<R, StoreError> + Send + 'static,
         R: Send + 'static,
     {
         let arc: Arc<Mutex<Connection>> = self.conn.clone();
@@ -55,9 +55,9 @@ impl Pool {
     }
 
     #[cfg(target_arch = "wasm32")]
-    pub async fn interact<F, R>(&self, f: F) -> Result<R, Error>
+    pub async fn interact<F, R>(&self, f: F) -> Result<R, StoreError>
     where
-        F: FnOnce(&mut Connection) -> Result<R, Error> + 'static,
+        F: FnOnce(&mut Connection) -> Result<R, StoreError> + 'static,
         R: 'static,
     {
         let mut conn = self.conn.lock().await;

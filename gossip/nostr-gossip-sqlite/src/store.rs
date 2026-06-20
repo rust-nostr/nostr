@@ -10,7 +10,7 @@ use nostr::nips::nip17;
 use nostr::nips::nip65::{self, RelayMetadata};
 use nostr::util::BoxedFuture;
 use nostr::{Event, Kind, PublicKey, RelayUrl, Timestamp};
-use nostr_gossip::error::GossipError;
+use nostr_gossip::error::Error;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{
     BestRelaySelection, GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip,
@@ -19,7 +19,7 @@ use nostr_gossip::{
 use rusqlite::{OptionalExtension, Transaction, params};
 
 use crate::constant::{READ_WRITE_FLAGS, RELAYS_QUERY_LIMIT, TTL_OUTDATED};
-use crate::error::Error;
+use crate::error::StoreError;
 use crate::migration;
 use crate::model::ListRow;
 use crate::pool::Pool;
@@ -84,7 +84,7 @@ impl NostrGossipSqlite {
         &self,
         event: &Event,
         relay_url: Option<&RelayUrl>,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         let event = event.clone();
         let relay_url = relay_url.cloned();
 
@@ -125,7 +125,7 @@ impl NostrGossipSqlite {
         &self,
         public_key: &PublicKey,
         list: GossipListKind,
-    ) -> Result<GossipPublicKeyStatus, Error> {
+    ) -> Result<GossipPublicKeyStatus, StoreError> {
         let public_key = *public_key;
 
         self.pool
@@ -174,7 +174,7 @@ impl NostrGossipSqlite {
         &self,
         public_key: PublicKey,
         list: GossipListKind,
-    ) -> Result<(), Error> {
+    ) -> Result<(), StoreError> {
         self.pool
             .interact(move |conn| {
                 let tx = conn.transaction()?;
@@ -202,7 +202,7 @@ impl NostrGossipSqlite {
         &self,
         list: GossipListKind,
         limit: NonZeroUsize,
-    ) -> Result<BTreeSet<OutdatedPublicKey>, Error> {
+    ) -> Result<BTreeSet<OutdatedPublicKey>, StoreError> {
         let now: i64 = Timestamp::now().as_secs() as i64;
         let threshold: i64 = now.saturating_sub(TTL_OUTDATED.as_secs() as i64);
         self.pool
@@ -255,7 +255,7 @@ impl NostrGossipSqlite {
         public_key: PublicKey,
         selection: BestRelaySelection,
         allowed: GossipAllowedRelays,
-    ) -> Result<HashSet<RelayUrl>, Error> {
+    ) -> Result<HashSet<RelayUrl>, StoreError> {
         let mut relays: HashSet<RelayUrl> = HashSet::new();
 
         match selection {
@@ -340,7 +340,7 @@ impl NostrGossipSqlite {
         flag: GossipFlags,
         allowed: GossipAllowedRelays,
         limit: u8,
-    ) -> Result<Vec<RelayUrl>, Error> {
+    ) -> Result<Vec<RelayUrl>, StoreError> {
         self.pool
             .interact(move |conn| {
                 let query = r#"
@@ -387,7 +387,7 @@ impl NostrGossipSqlite {
     }
 }
 
-fn get_or_save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Result<i32, Error> {
+fn get_or_save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Result<i32, StoreError> {
     match get_id_by_public_key(tx, public_key)? {
         Some(id) => Ok(id),
         None => save_public_key(tx, public_key),
@@ -397,7 +397,7 @@ fn get_or_save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Resul
 fn get_id_by_public_key(
     tx: &Transaction<'_>,
     public_key: &PublicKey,
-) -> Result<Option<i32>, Error> {
+) -> Result<Option<i32>, StoreError> {
     let pk_id: Option<i32> = tx
         .query_row(
             "SELECT id FROM public_keys WHERE public_key = ?1",
@@ -408,7 +408,7 @@ fn get_id_by_public_key(
     Ok(pk_id)
 }
 
-fn save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Result<i32, Error> {
+fn save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Result<i32, StoreError> {
     tx.execute(
         "INSERT INTO public_keys (public_key) VALUES (?1) ON CONFLICT (public_key) DO NOTHING",
         params![public_key.as_bytes().as_slice()],
@@ -421,14 +421,17 @@ fn save_public_key(tx: &Transaction<'_>, public_key: &PublicKey) -> Result<i32, 
     Ok(pk_id)
 }
 
-fn get_or_save_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<i32, Error> {
+fn get_or_save_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<i32, StoreError> {
     match get_id_by_relay_url(tx, relay_url)? {
         Some(id) => Ok(id),
         None => save_relay_url(tx, relay_url),
     }
 }
 
-fn get_id_by_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<Option<i32>, Error> {
+fn get_id_by_relay_url(
+    tx: &Transaction<'_>,
+    relay_url: &RelayUrl,
+) -> Result<Option<i32>, StoreError> {
     let relay_id: Option<i32> = tx
         .query_row(
             "SELECT id FROM relays WHERE url = ?1",
@@ -439,7 +442,7 @@ fn get_id_by_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<Opt
     Ok(relay_id)
 }
 
-fn save_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<i32, Error> {
+fn save_relay_url(tx: &Transaction<'_>, relay_url: &RelayUrl) -> Result<i32, StoreError> {
     tx.execute(
         "INSERT INTO relays (url) VALUES (?1) ON CONFLICT (url) DO NOTHING",
         params![relay_url.as_str_without_trailing_slash()],
@@ -456,7 +459,7 @@ fn remove_flag_from_user_relays(
     tx: &Transaction<'_>,
     public_key_id: i32,
     flags_to_remove: GossipFlags,
-) -> Result<(), Error> {
+) -> Result<(), StoreError> {
     tx.execute(
         "UPDATE relays_per_user SET bitflags = (bitflags & ~?1) WHERE public_key_id = ?2",
         params![flags_to_remove.as_u32(), public_key_id],
@@ -470,7 +473,7 @@ fn update_relay_per_user(
     public_key_id: i32,
     relay_url: &RelayUrl,
     flags: GossipFlags,
-) -> Result<(), Error> {
+) -> Result<(), StoreError> {
     let relay_id: i32 = get_or_save_relay_url(tx, relay_url)?;
 
     let now: u64 = Timestamp::now().as_secs();
@@ -491,7 +494,11 @@ fn update_relay_per_user(
     Ok(())
 }
 
-fn update_nip65_relays<I>(tx: &Transaction<'_>, public_key_id: i32, iter: I) -> Result<(), Error>
+fn update_nip65_relays<I>(
+    tx: &Transaction<'_>,
+    public_key_id: i32,
+    iter: I,
+) -> Result<(), StoreError>
 where
     I: IntoIterator<Item = (RelayUrl, Option<RelayMetadata>)>,
 {
@@ -526,7 +533,11 @@ where
     Ok(())
 }
 
-fn update_nip17_relays<I>(tx: &Transaction<'_>, public_key_id: i32, iter: I) -> Result<(), Error>
+fn update_nip17_relays<I>(
+    tx: &Transaction<'_>,
+    public_key_id: i32,
+    iter: I,
+) -> Result<(), StoreError>
 where
     I: IntoIterator<Item = RelayUrl>,
 {
@@ -556,7 +567,7 @@ where
     Ok(())
 }
 
-fn update_hints(tx: &Transaction<'_>, event: &Event) -> Result<(), Error> {
+fn update_hints(tx: &Transaction<'_>, event: &Event) -> Result<(), StoreError> {
     for tag in event.tags.iter().filter_map(|t| {
         if t.kind() != "p" {
             return None;
@@ -582,11 +593,11 @@ impl NostrGossip for NostrGossipSqlite {
         &'a self,
         event: &'a Event,
         relay_url: Option<&'a RelayUrl>,
-    ) -> BoxedFuture<'a, Result<(), GossipError>> {
+    ) -> BoxedFuture<'a, Result<(), Error>> {
         Box::pin(async move {
             self.process_event(event, relay_url)
                 .await
-                .map_err(GossipError::backend)
+                .map_err(Into::into)
         })
     }
 
@@ -594,23 +605,19 @@ impl NostrGossip for NostrGossipSqlite {
         &'a self,
         public_key: &'a PublicKey,
         list: GossipListKind,
-    ) -> BoxedFuture<'a, Result<GossipPublicKeyStatus, GossipError>> {
-        Box::pin(async move {
-            self.get_status(public_key, list)
-                .await
-                .map_err(GossipError::backend)
-        })
+    ) -> BoxedFuture<'a, Result<GossipPublicKeyStatus, Error>> {
+        Box::pin(async move { self.get_status(public_key, list).await.map_err(Into::into) })
     }
 
     fn update_fetch_attempt<'a>(
         &'a self,
         public_key: &'a PublicKey,
         list: GossipListKind,
-    ) -> BoxedFuture<'a, Result<(), GossipError>> {
+    ) -> BoxedFuture<'a, Result<(), Error>> {
         Box::pin(async move {
             self._update_fetch_attempt(*public_key, list)
                 .await
-                .map_err(GossipError::backend)
+                .map_err(Into::into)
         })
     }
 
@@ -618,11 +625,11 @@ impl NostrGossip for NostrGossipSqlite {
         &self,
         list: GossipListKind,
         limit: NonZeroUsize,
-    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, GossipError>> {
+    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, Error>> {
         Box::pin(async move {
             self.get_outdated_public_keys(list, limit)
                 .await
-                .map_err(GossipError::backend)
+                .map_err(Into::into)
         })
     }
 
@@ -631,11 +638,11 @@ impl NostrGossip for NostrGossipSqlite {
         public_key: &'a PublicKey,
         selection: BestRelaySelection,
         allowed: GossipAllowedRelays,
-    ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>> {
+    ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, Error>> {
         Box::pin(async move {
             self._get_best_relays(*public_key, selection, allowed)
                 .await
-                .map_err(GossipError::backend)
+                .map_err(Into::into)
         })
     }
 }

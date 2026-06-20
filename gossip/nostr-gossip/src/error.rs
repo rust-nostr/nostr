@@ -4,34 +4,50 @@
 
 //! Nostr Gossip error
 
-use std::fmt;
-
-/// Gossip Error
-#[derive(Debug)]
-pub enum GossipError {
-    /// An error happened in the underlying database backend.
-    Backend(Box<dyn std::error::Error + Send + Sync>),
-}
-
-impl std::error::Error for GossipError {}
-
-impl fmt::Display for GossipError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Backend(e) => e.fmt(f),
-        }
+opaquerr::define_kind! {
+    /// Nostr gossip error kind.
+    pub ErrorKind {
+        /// I/O error.
+        IO => "I/O error",
+        /// Storage error
+        Storage => "storage error",
+        /// Database migration error.
+        Migration => "migration error",
+        /// The operation is known but not supported.
+        Unsupported => "the operation is known but not supported",
+        /// Anything not covered by the stable categories above.
+        Other => "other error",
     }
 }
 
-impl GossipError {
-    /// Create a new backend error
-    ///
-    /// Shorthand for `Error::Backend(Box::new(error))`.
-    #[inline]
-    pub fn backend<E>(error: E) -> Self
+opaquerr::define_error! {
+    /// Nostr gossip error.
+    pub Error(ErrorKind)
+
+    from {
+        std::io::Error => ErrorKind::IO,
+    }
+}
+
+impl Error {
+    /// Storage error
+    pub fn storage<E>(error: E) -> Self
     where
-        E: std::error::Error + Send + Sync + 'static,
+        E: Into<Box<dyn std::error::Error + Send + Sync>>,
     {
-        Self::Backend(Box::new(error))
+        Self::new(ErrorKind::Storage, error)
+    }
+
+    /// Migration error
+    pub fn migration<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
+        Self::new(ErrorKind::Migration, error)
+    }
+
+    /// unsupported feature
+    pub const fn unsupported(message: &'static str) -> Self {
+        Self::with_static_message(ErrorKind::Unsupported, message)
     }
 }

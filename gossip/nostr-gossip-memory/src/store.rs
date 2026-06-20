@@ -11,7 +11,7 @@ use nostr::nips::nip17;
 use nostr::nips::nip65::{self, RelayMetadata};
 use nostr::util::BoxedFuture;
 use nostr::{Event, Kind, PublicKey, RelayUrl, Timestamp};
-use nostr_gossip::error::GossipError;
+use nostr_gossip::error::Error;
 use nostr_gossip::flags::GossipFlags;
 use nostr_gossip::{
     BestRelaySelection, GossipAllowedRelays, GossipListKind, GossipPublicKeyStatus, NostrGossip,
@@ -395,7 +395,7 @@ impl NostrGossip for NostrGossipMemory {
         &'a self,
         event: &'a Event,
         relay_url: Option<&'a RelayUrl>,
-    ) -> BoxedFuture<'a, Result<(), GossipError>> {
+    ) -> BoxedFuture<'a, Result<(), Error>> {
         Box::pin(async move {
             self.process_event(event, relay_url).await;
             Ok(())
@@ -406,7 +406,7 @@ impl NostrGossip for NostrGossipMemory {
         &'a self,
         public_key: &'a PublicKey,
         list: GossipListKind,
-    ) -> BoxedFuture<'a, Result<GossipPublicKeyStatus, GossipError>> {
+    ) -> BoxedFuture<'a, Result<GossipPublicKeyStatus, Error>> {
         Box::pin(async move { Ok(self.get_status(public_key, list).await) })
     }
 
@@ -414,7 +414,7 @@ impl NostrGossip for NostrGossipMemory {
         &'a self,
         public_key: &'a PublicKey,
         list: GossipListKind,
-    ) -> BoxedFuture<'a, Result<(), GossipError>> {
+    ) -> BoxedFuture<'a, Result<(), Error>> {
         Box::pin(async move {
             self._update_fetch_attempt(public_key, list).await;
             Ok(())
@@ -425,7 +425,7 @@ impl NostrGossip for NostrGossipMemory {
         &self,
         list: GossipListKind,
         limit: NonZeroUsize,
-    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, GossipError>> {
+    ) -> BoxedFuture<'_, Result<BTreeSet<OutdatedPublicKey>, Error>> {
         Box::pin(async move { Ok(self.collect_outdated_public_keys(list, limit).await) })
     }
 
@@ -434,7 +434,7 @@ impl NostrGossip for NostrGossipMemory {
         public_key: &'a PublicKey,
         selection: BestRelaySelection,
         allowed: GossipAllowedRelays,
-    ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, GossipError>> {
+    ) -> BoxedFuture<'a, Result<HashSet<RelayUrl>, Error>> {
         Box::pin(async move { Ok(self._get_best_relays(public_key, selection, allowed).await) })
     }
 }

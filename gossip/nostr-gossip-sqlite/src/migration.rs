@@ -2,11 +2,11 @@ use std::cmp::Ordering;
 
 use rusqlite::Transaction;
 
-use crate::error::{Error, MigrationError};
+use crate::error::{MigrationError, StoreError};
 
 const DB_VERSION: i64 = 1;
 
-pub(super) fn run(tx: &Transaction<'_>) -> Result<(), Error> {
+pub(super) fn run(tx: &Transaction<'_>) -> Result<(), StoreError> {
     // Get the current version
     let mut curr_version: i64 = curr_db_version(tx)?;
 
@@ -35,17 +35,17 @@ pub(super) fn run(tx: &Transaction<'_>) -> Result<(), Error> {
     Ok(())
 }
 
-fn curr_db_version(tx: &Transaction<'_>) -> Result<i64, Error> {
+fn curr_db_version(tx: &Transaction<'_>) -> Result<i64, StoreError> {
     let version: i64 = tx.query_row("PRAGMA user_version", [], |row| row.get(0))?;
     Ok(version)
 }
 
-fn set_db_version(tx: &Transaction<'_>, version: i64) -> Result<(), Error> {
+fn set_db_version(tx: &Transaction<'_>, version: i64) -> Result<(), StoreError> {
     tx.pragma_update(None, "user_version", version)?;
     Ok(())
 }
 
-fn mig_init(tx: &Transaction<'_>) -> Result<i64, Error> {
+fn mig_init(tx: &Transaction<'_>) -> Result<i64, StoreError> {
     tx.execute_batch(include_str!("../migrations/001_init.sql"))?;
     set_db_version(tx, 1)?;
     Ok(1)

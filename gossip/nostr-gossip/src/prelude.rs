@@ -10,6 +10,6 @@
 
 pub use nostr::prelude::*;
 
-pub use crate::error::*;
+pub use crate::error::{Error, ErrorKind};
 pub use crate::flags::*;
 pub use crate::*;

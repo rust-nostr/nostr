@@ -47,7 +47,7 @@ opaquerr::define_error! {
     from {
         nostr::error::Error => ErrorKind::Protocol,
         nostr_database::error::Error => ErrorKind::Database,
-        nostr_gossip::error::GossipError => ErrorKind::Gossip,
+        nostr_gossip::error::Error => ErrorKind::Gossip,
         serde_json::Error => ErrorKind::Protocol,
         faster_hex::Error => ErrorKind::Protocol,
         negentropy::Error => ErrorKind::Protocol,

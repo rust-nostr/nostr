@@ -1937,6 +1937,7 @@ name = "nostr-gossip"
 version = "0.45.0-alpha.1"
 dependencies = [
  "nostr",
+ "opaquerr",
 ]
 
 [[package]]

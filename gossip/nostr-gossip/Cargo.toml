@@ -13,3 +13,4 @@ keywords = ["nostr", "gossip"]
 
 [dependencies]
 nostr = { workspace = true, features = ["std"] }
+opaquerr.workspace = true
