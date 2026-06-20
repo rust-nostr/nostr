@@ -43,7 +43,7 @@ impl NostrConnect {
         // Check app keys
         if let NostrConnectUri::Client { public_key, .. } = &uri {
             if public_key != &client_keys.public_key {
-                return Err(Error::PublicKeyNotMatchAppKeys);
+                return Err(Error::public_key_not_match_app_keys());
             }
         }
 
@@ -73,16 +73,16 @@ impl NostrConnect {
     /// struct MyAuthUrlHandler;
     ///
     /// impl AuthUrlHandler for MyAuthUrlHandler {
-    ///     fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<'_, Result<()>> {
+    ///     fn on_auth_url(&self, auth_url: Url) -> BoxedFuture<'_, Result<(), Error>> {
     ///         Box::pin(async move {
-    ///         webbrowser::open(auth_url.as_str())?;
+    ///             webbrowser::open(auth_url.as_str()).map_err(Error::other)?;
     ///             Ok(())
     ///         })
     ///     }
     /// }
     ///
     /// #[tokio::main]
-    /// async fn main() -> Result<()> {
+    /// async fn main() -> Result<(), Box<dyn std::error::Error>> {
     ///     let uri = NostrConnectUri::parse("bunker://79dff8f82963424e0bb02708a22e44b4980893e3a4be0fa3cb60a43b946764e3?relay=wss://relay.nsec.app")?;
     ///     let client_keys = Keys::generate();
     ///     let timeout = Duration::from_secs(60);
@@ -264,7 +264,7 @@ impl NostrConnect {
                                 }
                             } else {
                                 if let Some(error) = response.error {
-                                    return Err(Error::Response(error));
+                                    return Err(Error::response(error));
                                 }
 
                                 if let Some(result) = response.result {
@@ -278,10 +278,10 @@ impl NostrConnect {
                 }
             }
 
-            Err(Error::Timeout)
+            Err(Error::timeout())
         })
         .await
-        .ok_or(Error::Timeout)?
+        .ok_or_else(Error::timeout)?
     }
 
     /// Connect bunker
@@ -302,7 +302,7 @@ impl NostrConnect {
             return Ok(());
         }
 
-        Err(Error::InvalidResponse(res.to_string()))
+        Err(Error::invalid_response(res.to_string()))
     }
 
     async fn _get_public_key(&self) -> Result<&PublicKey, Error> {
@@ -430,10 +430,10 @@ async fn get_remote_signer_public_key(
             }
         }
 
-        Err(Error::SignerPublicKeyNotFound)
+        Err(Error::signer_public_key_not_found())
     })
     .await
-    .ok_or(Error::Timeout)?
+    .ok_or_else(Error::timeout)?
 }
 
 fn is_valid_connect_response(response: &ResponseResult, expected_secret: Option<&str>) -> bool {

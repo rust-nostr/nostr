@@ -94,7 +94,7 @@ impl NostrConnectRemoteSigner {
                 signer.nostr_connect_client_public_key = Some(public_key);
                 Ok(signer)
             }
-            NostrConnectUri::Bunker { .. } => Err(Error::UnexpectedUri),
+            NostrConnectUri::Bunker { .. } => Err(Error::unexpected_uri()),
         }
     }
 
@@ -114,7 +114,7 @@ impl NostrConnectRemoteSigner {
 
     async fn send_connect_response(&self, public_key: PublicKey) -> Result<(), Error> {
         let Some(secret) = self.secret.clone() else {
-            return Err(Error::NoClientSecret);
+            return Err(Error::no_client_secret());
         };
 
         // TODO: Fix the request id, should we?

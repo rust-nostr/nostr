@@ -1907,6 +1907,7 @@ dependencies = [
  "nostr",
  "nostr-relay-builder",
  "nostr-sdk",
+ "opaquerr",
  "tokio",
  "tracing",
  "tracing-subscriber",

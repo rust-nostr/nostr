@@ -4,69 +4,85 @@
 
 //! Nostr Connect error
 
-use std::fmt;
-
 use nostr::PublicKey;
 use tokio::sync::SetError;
 
-/// Nostr Connect error
-#[derive(Debug)]
-pub enum Error {
-    /// Nostr protocol error
-    Protocol(nostr::error::Error),
-    /// Sdk
-    Sdk(nostr_sdk::error::Error),
-    /// Set user public key error
-    SetUserPublicKey(SetError<PublicKey>),
-    /// Invalid response from remote signer
-    InvalidResponse(String),
-    /// NIP46 response error
-    Response(String),
-    /// Signer public key not found
-    SignerPublicKeyNotFound,
-    /// Request timeout
-    Timeout,
-    /// Unexpected URI
-    UnexpectedUri,
-    /// Public key not match
-    PublicKeyNotMatchAppKeys,
-    /// Nostr connect client without a secret
-    NoClientSecret,
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Protocol(e) => e.fmt(f),
-            Self::Sdk(e) => e.fmt(f),
-            Self::SetUserPublicKey(e) => e.fmt(f),
-            Self::InvalidResponse(e) => e.fmt(f),
-            Self::Response(e) => e.fmt(f),
-            Self::SignerPublicKeyNotFound => f.write_str("signer public key not found"),
-            Self::Timeout => f.write_str("timeout"),
-            Self::UnexpectedUri => f.write_str("unexpected URI"),
-            Self::PublicKeyNotMatchAppKeys => f.write_str("public key not match app keys"),
-            Self::NoClientSecret => f.write_str("missing client secret"),
-        }
+opaquerr::define_kind! {
+    /// Nostr Connect error kind.
+    pub ErrorKind {
+        /// Nostr protocol error.
+        Protocol => "nostr protocol error",
+        /// SDK error.
+        Sdk => "SDK error",
+        /// Input is well-formed, but violates a signer invariant.
+        Invalid => "input violates a signer invariant",
+        /// The operation was rejected by the remote signer.
+        Rejected => "operation rejected",
+        /// The operation timed out.
+        Timeout => "timeout",
+        /// Required data was not found.
+        NotFound => "not found",
+        /// The operation cannot be completed in the current state.
+        State => "invalid state",
+        /// Anything not covered by the stable categories above.
+        Other => "other error",
     }
 }
 
-impl From<nostr::error::Error> for Error {
-    fn from(e: nostr::error::Error) -> Self {
-        Self::Protocol(e)
+opaquerr::define_error! {
+    /// Nostr Connect error.
+    pub Error(ErrorKind)
+
+    from {
+        nostr::error::Error => ErrorKind::Protocol,
+        nostr_sdk::error::Error => ErrorKind::Sdk,
+        SetError<PublicKey> => ErrorKind::State,
     }
 }
 
-impl From<nostr_sdk::error::Error> for Error {
-    fn from(e: nostr_sdk::error::Error) -> Self {
-        Self::Sdk(e)
+impl Error {
+    /// Creates a new Nostr error from a known kind of error as well as an arbitrary error payload.
+    ///
+    /// It is a shortcut for [`Error::new`] with [`ErrorKind::Other`].
+    #[inline]
+    pub fn other<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
+        Self::new(ErrorKind::Other, error)
     }
-}
 
-impl From<SetError<PublicKey>> for Error {
-    fn from(e: SetError<PublicKey>) -> Self {
-        Self::SetUserPublicKey(e)
+    pub(crate) fn invalid_response<S>(response: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(ErrorKind::Invalid, response.into())
+    }
+
+    pub(crate) fn response<S>(message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(ErrorKind::Rejected, message.into())
+    }
+
+    pub(crate) fn signer_public_key_not_found() -> Self {
+        Self::with_static_message(ErrorKind::NotFound, "signer public key not found")
+    }
+
+    pub(crate) fn timeout() -> Self {
+        Self::simple(ErrorKind::Timeout)
+    }
+
+    pub(crate) fn unexpected_uri() -> Self {
+        Self::with_static_message(ErrorKind::Invalid, "unexpected URI")
+    }
+
+    pub(crate) fn public_key_not_match_app_keys() -> Self {
+        Self::with_static_message(ErrorKind::Invalid, "public key not match app keys")
+    }
+
+    pub(crate) fn no_client_secret() -> Self {
+        Self::with_static_message(ErrorKind::State, "missing client secret")
     }
 }
