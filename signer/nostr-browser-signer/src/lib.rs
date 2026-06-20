@@ -15,7 +15,6 @@
 // Crate available only for WASM
 #![cfg(target_family = "wasm")]
 
-use std::fmt;
 use std::str::FromStr;
 
 use js_sys::{Array, Function, JsString, Object, Promise, Reflect};
@@ -24,6 +23,11 @@ use nostr::secp256k1::schnorr::Signature;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::JsFuture;
 use web_sys::Window;
+
+pub mod error;
+pub mod prelude;
+
+use self::error::Error;
 
 const GET_PUBLIC_KEY: &str = "getPublicKey";
 const SIGN_EVENT: &str = "signEvent";
@@ -36,79 +40,6 @@ enum CallFunc<'a> {
     Call0,
     Call1(&'a JsValue),
     Call2(&'a JsValue, &'a JsValue),
-}
-
-/// NIP07 browser/extension error
-#[derive(Debug)]
-pub enum ExtensionError {
-    /// Generic WASM error
-    Wasm(String),
-    /// Impossible to get window
-    NoGlobalWindowObject,
-    /// Namespace not found
-    NamespaceNotFound(String),
-    /// Object key not found
-    ObjectKeyNotFound(String),
-    /// Invalid type
-    TypeMismatch,
-}
-
-impl std::error::Error for ExtensionError {}
-
-impl fmt::Display for ExtensionError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Wasm(e) => write!(f, "{e}"),
-            Self::NoGlobalWindowObject => write!(f, "No global `window` object"),
-            Self::NamespaceNotFound(n) => write!(f, "`{n}` namespace not found"),
-            Self::ObjectKeyNotFound(n) => write!(f, "Key `{n}` not found in object"),
-            Self::TypeMismatch => write!(f, "Type mismatch"),
-        }
-    }
-}
-
-impl From<JsValue> for ExtensionError {
-    fn from(e: JsValue) -> Self {
-        Self::Wasm(format!("{e:?}"))
-    }
-}
-
-/// NIP-07 error
-#[derive(Debug)]
-pub enum Error {
-    /// Nostr protocol error
-    Protocol(nostr::error::Error),
-    /// Browser/Extension-related errors
-    Extension(ExtensionError),
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Protocol(e) => write!(f, "{e}"),
-            Self::Extension(e) => write!(f, "{e}"),
-        }
-    }
-}
-
-impl From<nostr::error::Error> for Error {
-    fn from(e: nostr::error::Error) -> Self {
-        Self::Protocol(e)
-    }
-}
-
-impl From<ExtensionError> for Error {
-    fn from(e: ExtensionError) -> Self {
-        Self::Extension(e)
-    }
-}
-
-impl From<JsValue> for Error {
-    fn from(e: JsValue) -> Self {
-        Self::Extension(ExtensionError::from(e))
-    }
 }
 
 /// Signer for interaction with browser extensions (ex. Alby)
@@ -128,44 +59,37 @@ unsafe impl Sync for BrowserSigner {}
 
 impl BrowserSigner {
     /// Compose new NIP07 Signer
-    pub fn new() -> Result<Self, ExtensionError> {
-        let window: Window = web_sys::window().ok_or(ExtensionError::NoGlobalWindowObject)?;
+    pub fn new() -> Result<Self, Error> {
+        let window: Window = web_sys::window().ok_or_else(Error::no_global_window_object)?;
         let namespace: JsValue = Reflect::get(&window, &JsValue::from_str("nostr"))
-            .map_err(|_| ExtensionError::NamespaceNotFound(String::from("nostr")))?;
+            .map_err(|_| Error::namespace_not_found("nostr"))?;
         let nostr_obj: Object = namespace
             .dyn_into()
-            .map_err(|_| ExtensionError::NamespaceNotFound(String::from("nostr")))?;
+            .map_err(|_| Error::namespace_not_found("nostr"))?;
         Ok(Self { nostr_obj })
     }
 
-    fn get_func(&self, obj: &Object, name: &str) -> Result<Function, ExtensionError> {
+    fn get_func(&self, obj: &Object, name: &str) -> Result<Function, Error> {
         let val: JsValue = Reflect::get(obj, &JsValue::from_str(name))
-            .map_err(|_| ExtensionError::NamespaceNotFound(name.to_string()))?;
-        val.dyn_into()
-            .map_err(|_| ExtensionError::NamespaceNotFound(name.to_string()))
+            .map_err(|_| Error::namespace_not_found(name))?;
+        val.dyn_into().map_err(|_| Error::namespace_not_found(name))
     }
 
-    fn get_sub_obj(&self, super_obj: &Object, name: &str) -> Result<Object, ExtensionError> {
+    fn get_sub_obj(&self, super_obj: &Object, name: &str) -> Result<Object, Error> {
         let namespace: JsValue = Reflect::get(super_obj, &JsValue::from_str(name))
-            .map_err(|_| ExtensionError::NamespaceNotFound(String::from(name)))?;
+            .map_err(|_| Error::namespace_not_found(name))?;
         namespace
             .dyn_into()
-            .map_err(|_| ExtensionError::NamespaceNotFound(String::from(name)))
+            .map_err(|_| Error::namespace_not_found(name))
     }
 
     /// Get value from object key
     #[inline]
-    fn get_value_by_key(&self, obj: &Object, key: &str) -> Result<JsValue, ExtensionError> {
-        Reflect::get(obj, &JsValue::from_str(key))
-            .map_err(|_| ExtensionError::ObjectKeyNotFound(key.to_string()))
+    fn get_value_by_key(&self, obj: &Object, key: &str) -> Result<JsValue, Error> {
+        Reflect::get(obj, &JsValue::from_str(key)).map_err(|_| Error::object_key_not_found(key))
     }
 
-    async fn call_func<T>(
-        &self,
-        obj: &Object,
-        name: &str,
-        args: CallFunc<'_>,
-    ) -> Result<T, ExtensionError>
+    async fn call_func<T>(&self, obj: &Object, name: &str, args: CallFunc<'_>) -> Result<T, Error>
     where
         T: JsCast,
     {
@@ -178,7 +102,7 @@ impl BrowserSigner {
         let promise: Promise = Promise::resolve(&temp);
         let result: JsValue = JsFuture::from(promise).await?;
 
-        result.dyn_into().map_err(|_| ExtensionError::TypeMismatch)
+        result.dyn_into().map_err(|_| Error::type_mismatch())
     }
 
     /// Get Public Key
@@ -242,9 +166,9 @@ impl BrowserSigner {
         let sig: String = self
             .get_value_by_key(&event_obj, "sig")?
             .as_string()
-            .ok_or(ExtensionError::TypeMismatch)?;
+            .ok_or_else(Error::type_mismatch)?;
         let sig: Signature = Signature::from_str(&sig).map_err(|e| {
-            Error::Protocol(nostr::error::Error::new(
+            Error::from(nostr::error::Error::new(
                 nostr::error::ErrorKind::Malformed,
                 e,
             ))

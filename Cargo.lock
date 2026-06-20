@@ -1874,6 +1874,7 @@ version = "0.45.0-alpha.1"
 dependencies = [
  "js-sys",
  "nostr",
+ "opaquerr",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
