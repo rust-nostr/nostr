@@ -1,6 +1,6 @@
 [package]
 name = "nostr-blossom"
-version = "0.45.0-alpha.1"
+version = "0.45.0-alpha.2"
 edition.workspace = true
 description = "A library for interacting with the Blossom protocol"
 authors.workspace = true
