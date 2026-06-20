@@ -1889,6 +1889,7 @@ dependencies = [
  "hyper",
  "hyper-util",
  "nostr",
+ "opaquerr",
  "serde",
  "serde_json",
  "tokio",

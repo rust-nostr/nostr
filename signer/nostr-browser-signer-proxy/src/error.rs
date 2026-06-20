@@ -4,75 +4,55 @@
 
 //! Error
 
-use std::{fmt, io};
-
 use hyper::http;
 use tokio::sync::oneshot::error::RecvError;
 
-/// Error
-#[derive(Debug)]
-pub enum Error {
-    /// Nostr protocol error
-    Protocol(nostr::error::Error),
-    /// I/O error
-    Io(io::Error),
-    /// HTTP error
-    Http(http::Error),
-    /// Json error
-    Json(serde_json::Error),
-    /// Oneshot channel receive error
-    OneShotRecv(RecvError),
-    /// Generic error
-    Generic(String),
-    /// Timeout
-    Timeout,
-    /// The server is shutdown
-    Shutdown,
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Self::Protocol(e) => write!(f, "{e}"),
-            Self::Io(e) => write!(f, "{e}"),
-            Self::Http(e) => write!(f, "{e}"),
-            Self::Json(e) => write!(f, "{e}"),
-            Self::OneShotRecv(e) => write!(f, "{e}"),
-            Self::Generic(e) => write!(f, "{e}"),
-            Self::Timeout => write!(f, "timeout"),
-            Self::Shutdown => write!(f, "server is shutdown"),
-        }
+opaquerr::define_kind! {
+    /// Nostr browser signer proxy error kind.
+    pub ErrorKind {
+        /// Nostr protocol error.
+        Protocol => "nostr protocol error",
+        /// I/O error.
+        IO => "I/O error",
+        /// HTTP error.
+        Http => "HTTP error",
+        /// JSON error.
+        Json => "JSON error",
+        /// The operation timed out.
+        Timeout => "timeout",
+        /// The operation cannot be completed in the current state.
+        State => "invalid state",
+        /// Anything not covered by the stable categories above.
+        Other => "other error",
     }
 }
 
-impl From<nostr::error::Error> for Error {
-    fn from(e: nostr::error::Error) -> Self {
-        Self::Protocol(e)
+opaquerr::define_error! {
+    /// Nostr browser signer proxy error.
+    pub Error(ErrorKind)
+
+    from {
+        nostr::error::Error => ErrorKind::Protocol,
+        std::io::Error => ErrorKind::IO,
+        http::Error => ErrorKind::Http,
+        serde_json::Error => ErrorKind::Json,
+        RecvError => ErrorKind::Other,
     }
 }
 
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Self {
-        Self::Io(e)
+impl Error {
+    pub(crate) fn generic<S>(message: S) -> Self
+    where
+        S: Into<String>,
+    {
+        Self::new(ErrorKind::Other, message.into())
     }
-}
 
-impl From<http::Error> for Error {
-    fn from(e: http::Error) -> Self {
-        Self::Http(e)
+    pub(crate) fn timeout() -> Self {
+        Self::simple(ErrorKind::Timeout)
     }
-}
 
-impl From<serde_json::Error> for Error {
-    fn from(e: serde_json::Error) -> Self {
-        Self::Json(e)
-    }
-}
-
-impl From<RecvError> for Error {
-    fn from(e: RecvError) -> Self {
-        Self::OneShotRecv(e)
+    pub(crate) fn shutdown() -> Self {
+        Self::with_static_message(ErrorKind::State, "server is shutdown")
     }
 }

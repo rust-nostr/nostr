@@ -10,6 +10,5 @@
 
 pub use nostr::prelude::*;
 
-#[allow(unused_imports)]
-pub use crate::error::*;
+pub use crate::error::{Error, ErrorKind};
 pub use crate::*;

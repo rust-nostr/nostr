@@ -299,7 +299,7 @@ impl BrowserSignerProxy {
     pub async fn start(&self) -> Result<(), Error> {
         // Ensure is not shutdown
         if self.inner.is_shutdown() {
-            return Err(Error::Shutdown);
+            return Err(Error::shutdown());
         }
 
         // Mark the proxy as started and check if was already started
@@ -407,10 +407,10 @@ impl BrowserSignerProxy {
         // Wait for response
         match time::timeout(self.inner.options.timeout, rx)
             .await
-            .map_err(|_| Error::Timeout)??
+            .map_err(|_| Error::timeout())??
         {
             Ok(res) => Ok(serde_json::from_value(res)?),
-            Err(error) => Err(Error::Generic(error)),
+            Err(error) => Err(Error::generic(error)),
         }
     }
 
