@@ -376,19 +376,13 @@ pub fn extract_parent(event: &Event) -> Option<CommentTarget<'_>> {
 }
 
 fn extract_data(event: &Event, is_root: bool) -> Option<CommentTarget<'_>> {
-    if event.kind != Kind::Comment {
-        return None;
-    }
-
     // Try to extract event
     if let Some((event_id, relay_hint, public_key)) = extract_event(event, is_root) {
-        let kind: Kind = extract_kind(event, is_root)?;
-
         return Some(CommentTarget::Event {
             id: event_id,
             relay_hint: relay_hint.map(Cow::Owned),
             pubkey_hint: public_key,
-            kind: Some(kind),
+            kind: extract_kind(event, is_root),
         });
     }
 
