@@ -1021,9 +1021,13 @@ impl InnerRelay {
                             Some(MachineReadablePrefix::Error) => HandleClosedMsg::Remove,
                             Some(MachineReadablePrefix::Unsupported) => HandleClosedMsg::Remove,
                             Some(MachineReadablePrefix::AuthRequired) => {
-                                // Authentication is handled in other parts of code,
-                                // so here just mark as closed.
-                                HandleClosedMsg::MarkAsClosed
+                                if self.state.is_authenticator_available() {
+                                    // Authentication is handled in other parts of code,
+                                    // so here just mark as closed for resubscribe.
+                                    HandleClosedMsg::MarkAsClosed
+                                } else {
+                                    HandleClosedMsg::Remove
+                                }
                             }
                             Some(MachineReadablePrefix::Restricted) => HandleClosedMsg::Remove,
                             _ => {
