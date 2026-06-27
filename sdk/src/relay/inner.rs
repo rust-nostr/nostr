@@ -327,6 +327,7 @@ impl InnerRelay {
 
         if update_subscribed_at {
             data.subscribed_at = Timestamp::now();
+            data.closed = false;
         }
     }
 
@@ -1454,7 +1455,15 @@ impl InnerRelay {
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
             if !filters.is_empty() && self.should_resubscribe(&id).await {
-                self.send_msg(ClientMessage::req(id, filters), None).await?;
+                self.update_subscription(id.clone(), filters.clone(), true)
+                    .await;
+                if let Err(e) = self
+                    .send_msg(ClientMessage::req(id.clone(), filters), None)
+                    .await
+                {
+                    self.subscription_closed(&id).await;
+                    return Err(e);
+                }
             } else {
                 tracing::debug!("Skip re-subscription of '{id}'");
             }
@@ -1800,6 +1809,7 @@ mod tests {
     use nostr::{EventBuilder, Filter, Keys, Kind, RelayUrl, SubscriptionId};
 
     use super::*;
+    use crate::authenticator::SignerAuthenticator;
     use crate::relay::{Relay, RelayOptions};
 
     #[tokio::test]
@@ -1848,6 +1858,58 @@ mod tests {
             }
             other => panic!("unexpected message: {other:?}"),
         }
+    }
+
+    #[tokio::test]
+    async fn test_auth_required_closed_remove_subscription_for_resubscribe_without_authenticator() {
+        let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let relay = Relay::new(url);
+        let subscription_id = SubscriptionId::new("test");
+        let filter = Filter::new().kind(Kind::TextNote);
+
+        relay
+            .inner
+            .update_subscription(subscription_id.clone(), vec![filter.clone()], true)
+            .await;
+
+        let (tx, _rx) = mpsc::unbounded_channel();
+        relay
+            .inner
+            .handle_relay_message(r#"["CLOSED","test","auth-required: you must auth"]"#, &tx)
+            .await;
+
+        assert!(relay.inner.subscription(&subscription_id).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_auth_required_closed_keeps_subscription_for_resubscribe() {
+        let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let keys = Keys::generate();
+        let authenticator = SignerAuthenticator::new(keys);
+        let relay = Relay::builder(url).authenticator(authenticator).build();
+        let subscription_id = SubscriptionId::new("test");
+        let filter = Filter::new().kind(Kind::TextNote);
+
+        relay
+            .inner
+            .update_subscription(subscription_id.clone(), vec![filter.clone()], true)
+            .await;
+
+        let (tx, _rx) = mpsc::unbounded_channel();
+        relay
+            .inner
+            .handle_relay_message(r#"["CLOSED","test","auth-required: you must auth"]"#, &tx)
+            .await;
+
+        assert!(relay.inner.subscription(&subscription_id).await.is_some());
+        assert!(relay.inner.should_resubscribe(&subscription_id).await);
+
+        relay
+            .inner
+            .update_subscription(subscription_id.clone(), vec![filter], true)
+            .await;
+
+        assert!(!relay.inner.should_resubscribe(&subscription_id).await);
     }
 }
 

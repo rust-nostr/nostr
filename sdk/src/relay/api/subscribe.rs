@@ -99,6 +99,13 @@ async fn subscribe_long_lived(
         return Err(Error::invalid_msg("filters cannot be empty"));
     }
 
+    // No auto-close subscription: update subscription filter before sending the
+    // REQ, so an immediate CLOSED can still mark the subscription for retry.
+    relay
+        .inner
+        .update_subscription(id.clone(), filters.clone(), true)
+        .await;
+
     // Compose REQ message
     let msg: ClientMessage = ClientMessage::Req {
         subscription_id: Cow::Borrowed(&id),
@@ -106,10 +113,13 @@ async fn subscribe_long_lived(
     };
 
     // Send REQ message
-    relay.send_msg(msg).await?;
+    if let Err(e) = relay.send_msg(msg).await {
+        // Remove previously added subscription
+        relay.inner.remove_subscription(&id).await;
 
-    // No auto-close subscription: update subscription filter
-    relay.inner.update_subscription(id, filters, true).await;
+        // Propagate error
+        return Err(e);
+    }
 
     // Return
     Ok(())
