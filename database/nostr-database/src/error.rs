@@ -53,4 +53,12 @@ impl Error {
     pub const fn unsupported(message: &'static str) -> Self {
         Self::with_static_message(ErrorKind::Unsupported, message)
     }
+
+    /// Other error
+    pub fn other<E>(error: E) -> Self
+    where
+        E: Into<Box<dyn std::error::Error + Send + Sync>>,
+    {
+        Self::new(ErrorKind::Other, error)
+    }
 }
