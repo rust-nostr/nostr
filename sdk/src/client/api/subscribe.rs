@@ -65,3 +65,84 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use futures::StreamExt;
+    use nostr::{Filter, SubscriptionId};
+    use nostr_relay_builder::prelude::*;
+
+    use crate::authenticator::SignerAuthenticator;
+    use crate::client::ClientNotification;
+    use crate::test_utils::{
+        setup_client, setup_client_with_authenticator, setup_nip42_read_local_relay,
+    };
+
+    #[tokio::test]
+    async fn test_client_subscribe_dont_resubscribes_after_auth_required_closed_without_authenticator()
+     {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let event = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(event).await.unwrap();
+
+        let client = setup_client(local.url().await).await;
+        let id = SubscriptionId::new("client-auth-required-subscribe");
+
+        let output = client
+            .subscribe(Filter::new().kind(Kind::TextNote).limit(1))
+            .with_id(id.clone())
+            .await
+            .unwrap();
+        assert!(output.failed.is_empty());
+
+        tokio::time::sleep(Duration::from_secs(1)).await;
+
+        assert!(!client.subscriptions().await.contains_key(&id));
+    }
+
+    #[tokio::test]
+    async fn test_client_subscribe_resubscribes_after_auth_required_closed() {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
+
+        let authenticator = SignerAuthenticator::new(keys);
+        let client = setup_client_with_authenticator(local.url().await, authenticator).await;
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+
+        let id = SubscriptionId::new("client-auth-required-subscribe");
+
+        let mut notifications = client.notifications();
+
+        let output = client.subscribe(filter).with_id(id.clone()).await.unwrap();
+        assert!(output.failed.is_empty());
+
+        let received = tokio::time::timeout(Duration::from_secs(5), async {
+            while let Some(notification) = notifications.next().await {
+                if let ClientNotification::Event {
+                    subscription_id,
+                    event,
+                    ..
+                } = notification
+                {
+                    if subscription_id == id {
+                        return event;
+                    }
+                }
+            }
+
+            panic!("notifications ended before event was received");
+        })
+        .await
+        .unwrap();
+
+        assert_eq!(received.id, expected.id);
+    }
+}

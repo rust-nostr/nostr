@@ -101,10 +101,16 @@ where
 mod tests {
     use std::time::Duration;
 
-    use nostr::{Filter, Kind, SubscriptionId};
-    use nostr_relay_builder::MockRelay;
+    use futures::StreamExt;
+    use nostr::message::MachineReadablePrefix;
+    use nostr::{Filter, SubscriptionId};
+    use nostr_relay_builder::prelude::*;
 
     use super::*;
+    use crate::authenticator::SignerAuthenticator;
+    use crate::test_utils::{
+        setup_client, setup_client_with_authenticator, setup_nip42_read_local_relay,
+    };
 
     #[tokio::test]
     async fn test_stream_terminates_on_drop() {
@@ -141,5 +147,62 @@ mod tests {
         // Now the subscription must not exist anymore
         let exists: bool = relay.subscription(&id).await.is_some();
         assert!(!exists);
+    }
+
+    #[tokio::test]
+    async fn test_client_stream_events_dont_resubscribes_after_auth_required_closed_without_authenticator()
+     {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
+
+        let client = setup_client(local.url().await).await;
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+
+        let mut stream = client
+            .stream_events(filter)
+            .timeout(Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        let (_url, res) = stream
+            .next()
+            .await
+            .expect("stream ended before error was received");
+        let err = res.unwrap_err();
+
+        assert_eq!(
+            MachineReadablePrefix::parse(&err.to_string()).unwrap(),
+            MachineReadablePrefix::AuthRequired
+        );
+    }
+
+    #[tokio::test]
+    async fn test_client_stream_events_resubscribes_after_auth_required_closed() {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
+
+        let authenticator = SignerAuthenticator::new(keys);
+        let client = setup_client_with_authenticator(local.url().await, authenticator).await;
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+
+        let mut stream = client
+            .stream_events(filter)
+            .timeout(Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        let (_url, event) = stream
+            .next()
+            .await
+            .expect("stream ended before event was received");
+        assert_eq!(event.unwrap().id, expected.id);
     }
 }

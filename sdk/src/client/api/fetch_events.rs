@@ -92,3 +92,61 @@ where
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use nostr::{EventBuilder, Filter, Keys, Kind};
+    use nostr_relay_builder::prelude::*;
+
+    use crate::authenticator::SignerAuthenticator;
+    use crate::test_utils::{
+        setup_client, setup_client_with_authenticator, setup_nip42_read_local_relay,
+    };
+
+    #[tokio::test]
+    async fn test_client_fetch_events_dont_resubscribes_after_auth_required_closed_without_authenticator()
+     {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
+
+        let client = setup_client(local.url().await).await;
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+
+        let events = client
+            .fetch_events(filter)
+            .timeout(Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        assert_eq!(events.len(), 0);
+    }
+
+    #[tokio::test]
+    async fn test_client_fetch_events_resubscribes_after_auth_required_closed() {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
+
+        let authenticator = SignerAuthenticator::new(keys);
+        let client = setup_client_with_authenticator(local.url().await, authenticator).await;
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+
+        let events = client
+            .fetch_events(filter)
+            .timeout(Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events.first().map(|event| event.id), Some(expected.id));
+    }
+}

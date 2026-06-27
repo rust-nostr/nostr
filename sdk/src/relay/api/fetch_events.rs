@@ -94,6 +94,7 @@ impl<'relay> IntoFuture for FetchEvents<'relay> {
 
 #[cfg(test)]
 mod tests {
+    use nostr::event::FinalizeEvent;
     use nostr::message::MachineReadablePrefix;
     use nostr::{EventBuilder, Keys, Kind, Metadata};
     use nostr_relay_builder::prelude::*;
@@ -101,6 +102,9 @@ mod tests {
     use super::*;
     use crate::authenticator::SignerAuthenticator;
     use crate::relay::{RelayOptions, RelayStatus};
+    use crate::test_utils::{
+        setup_nip42_read_local_relay, setup_relay, setup_relay_with_authenticator,
+    };
 
     /// Setup public (without NIP42 auth) relay with N events to test event fetching
     ///
@@ -168,25 +172,16 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_nip42_fetch_events_without_signer() {
-        // Mock relay
-        let opts = LocalRelayBuilderNip42 {
-            mode: LocalRelayBuilderNip42Mode::Read,
-        };
-        let mock = LocalRelay::builder().nip42(opts).build();
-        mock.run().await.unwrap();
-        let url = mock.url().await;
+    async fn test_fetch_events_dont_resubscribes_after_auth_required_closed_without_authenticator()
+    {
+        let local = setup_nip42_read_local_relay().await;
 
-        let relay: Relay = Relay::new(url);
-
-        relay.connect();
-
-        // Signer
         let keys = Keys::generate();
-
-        // Send an event
         let event = EventBuilder::text_note("Test").finalize(&keys).unwrap();
-        relay.send_event(&event).await.unwrap();
+        local.add_event(event.clone()).await.unwrap();
+
+        let url = local.url().await;
+        let relay: Relay = setup_relay(url).await;
 
         let filter = Filter::new().kind(Kind::TextNote).limit(3);
 
@@ -203,35 +198,26 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_nip42_fetch_events_with_signer() {
-        // Mock relay
-        let opts = LocalRelayBuilderNip42 {
-            mode: LocalRelayBuilderNip42Mode::Read,
-        };
-        let mock = LocalRelay::builder().nip42(opts).build();
-        mock.run().await.unwrap();
-        let url = mock.url().await;
+    async fn test_fetch_events_resubscribes_after_auth_required_closed() {
+        let local = setup_nip42_read_local_relay().await;
 
-        // Signer
         let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
 
-        let authenticator = SignerAuthenticator::new(keys.clone());
-        let relay: Relay = Relay::builder(url).authenticator(authenticator).build();
+        let authenticator = SignerAuthenticator::new(keys);
+        let relay: Relay = setup_relay_with_authenticator(local.url().await, authenticator).await;
 
-        relay.connect();
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
 
-        // Send an event
-        let event = EventBuilder::text_note("Test").finalize(&keys).unwrap();
-        relay.send_event(&event).await.unwrap();
-
-        let filter = Filter::new().kind(Kind::TextNote).limit(3);
-
-        // Authenticated fetch
-        let res = relay
+        let events = relay
             .fetch_events(filter)
             .timeout(Duration::from_secs(5))
-            .await;
-        assert!(res.is_ok());
+            .await
+            .unwrap();
+
+        assert_eq!(events.len(), 1);
+        assert_eq!(events.first().map(|event| event.id), Some(expected.id));
     }
 
     #[tokio::test]

@@ -284,6 +284,12 @@ impl InnerRelay {
         Ok(())
     }
 
+    #[cfg(test)]
+    pub(crate) async fn has_subscription(&self, id: &SubscriptionId) -> bool {
+        let subscription = self.atomic.subscriptions.read().await;
+        subscription.contains_key(id)
+    }
+
     /// Returns all long-lived (non-auto-closing) subscriptions
     pub async fn subscriptions(&self) -> HashMap<SubscriptionId, Vec<Filter>> {
         let subscription = self.atomic.subscriptions.read().await;

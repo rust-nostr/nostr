@@ -155,12 +155,16 @@ mod tests {
 
     use async_utility::time;
     use futures::StreamExt;
-    use nostr::{Event, EventBuilder, EventId, Keys, Kind};
+    use nostr::event::FinalizeEvent;
+    use nostr::{Event, EventBuilder, EventId, Filter, Keys, Kind, SubscriptionId};
     use nostr_relay_builder::prelude::*;
 
     use super::*;
-    use crate::prelude::RelayNotification;
-    use crate::relay::{RelayOptions, RelayStatus};
+    use crate::authenticator::SignerAuthenticator;
+    use crate::relay::{RelayNotification, RelayOptions, RelayStatus};
+    use crate::test_utils::{
+        setup_nip42_read_local_relay, setup_relay, setup_relay_with_authenticator,
+    };
 
     #[tokio::test]
     async fn test_subscribe_ban_relay() {
@@ -275,5 +279,75 @@ mod tests {
         tokio::time::timeout(Duration::from_secs(5), fut)
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_dont_resubscribes_after_auth_required_closed_without_authenticator() {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
+
+        let relay = setup_relay(local.url().await).await;
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+
+        let id = SubscriptionId::new("auth-required-subscribe");
+
+        relay.subscribe(filter).with_id(id.clone()).await.unwrap();
+
+        // sleep a bit
+        time::sleep(Duration::from_secs(2)).await;
+
+        // The subscription mustn't exist as we haven't an authenticator
+        assert!(!relay.inner.has_subscription(&id).await);
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_resubscribes_after_auth_required_closed() {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
+
+        let authenticator = SignerAuthenticator::new(keys);
+        let relay = setup_relay_with_authenticator(local.url().await, authenticator).await;
+
+        let filter = Filter::new().kind(Kind::TextNote).limit(1);
+
+        let id = SubscriptionId::new("auth-required-subscribe");
+
+        let mut notifications = relay.notifications();
+
+        relay.subscribe(filter).with_id(id.clone()).await.unwrap();
+
+        // sleep a bit
+        time::sleep(Duration::from_secs(2)).await;
+
+        // The subscription must exist as we have an authenticator
+        assert!(relay.inner.has_subscription(&id).await);
+
+        let received = tokio::time::timeout(Duration::from_secs(5), async {
+            while let Some(notification) = notifications.next().await {
+                if let RelayNotification::Event {
+                    subscription_id,
+                    event,
+                } = notification
+                {
+                    if subscription_id == id {
+                        return event;
+                    }
+                }
+            }
+
+            panic!("notifications ended before event was received");
+        })
+        .await
+        .unwrap();
+
+        assert_eq!(received.id, expected.id);
+        assert!(!relay.inner.should_resubscribe(&id).await);
     }
 }
