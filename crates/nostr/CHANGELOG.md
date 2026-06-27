@@ -88,6 +88,7 @@
 - Add `banner`, `self`, `terms_of_service` to `RelayInformationDocument` (https://github.com/rust-nostr/nostr/pull/1336)
 - Add `restricted_writes`, `default_limit` to `Limitation` (https://github.com/rust-nostr/nostr/pull/1336)
 - Add NIP-66 kinds and relay discovery tags (https://github.com/rust-nostr/nostr/pull/1346)
+- Add `Filter::tag` to add a generic single-letter tag from an already-constructed `Tag` (https://github.com/rust-nostr/nostr/issues/1359)
 
 ### Removed
 

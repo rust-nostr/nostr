@@ -21,7 +21,7 @@ use crate::error::{Error, ErrorKind};
 use crate::event::TagsIndexes;
 use crate::nips::nip01::Coordinate;
 use crate::util::impl_json_methods;
-use crate::{Event, EventId, Kind, PublicKey, Timestamp};
+use crate::{Event, EventId, Kind, PublicKey, Tag, Timestamp};
 
 type GenericTags = BTreeMap<SingleLetterTag, BTreeSet<String>>;
 
@@ -808,6 +808,27 @@ impl Filter {
         self.custom_tags(tag, [value])
     }
 
+    /// Add a generic tag from an already-constructed [`Tag`]
+    ///
+    /// Only single-letter tags can be indexed in a [`Filter`]. The value is
+    /// derived from the tag's serialized form (the element after the tag name).
+    /// If the `tag` has no single-letter representation or no value, the filter
+    /// is returned unchanged.
+    pub fn tag(self, tag: Tag) -> Self {
+        // Only single-letter tags can be indexed in a filter
+        let single_letter_tag: SingleLetterTag = match tag.single_letter_tag() {
+            Some(t) => t,
+            None => return self,
+        };
+
+        // Derive the value from the serialized form (the element after the tag name)
+        match tag.to_vec().into_iter().nth(1) {
+            Some(value) => self.custom_tag(single_letter_tag, value),
+            // No value to index: leave the filter unchanged
+            None => self,
+        }
+    }
+
     /// Add custom tags
     pub fn custom_tags<I, S>(mut self, tag: SingleLetterTag, values: I) -> Self
     where
@@ -1320,6 +1341,43 @@ mod tests {
 
         let filter = Filter::new().search("yuki kishimoto");
         assert!(filter.match_event(&event, MatchEventOptions::new()));
+    }
+
+    #[test]
+    fn test_filter_tag() {
+        // Happy path: a single-letter `t` (hashtag) tag is equivalent to the
+        // matching `custom_tag`/`hashtag` call
+        let filter: Filter = Filter::new().tag(Tag::hashtag("rust"));
+        assert_eq!(
+            filter,
+            Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::T), "rust")
+        );
+        assert_eq!(filter, Filter::new().hashtag("rust"));
+
+        // Multi-element single-letter tag: the indexed value is the element
+        // right after the tag name
+        let tag: Tag =
+            Tag::parse(["i", "github:yukibtc", "69d9980b6e6b5d77a3e1e369ccaca9ba"]).unwrap();
+        let filter: Filter = Filter::new().tag(tag);
+        assert_eq!(
+            filter,
+            Filter::new().custom_tag(SingleLetterTag::lowercase(Alphabet::I), "github:yukibtc")
+        );
+
+        // Chaining the same letter accumulates both values in the generic-tag set
+        let filter: Filter = Filter::new()
+            .tag(Tag::hashtag("rust"))
+            .tag(Tag::hashtag("nostr"));
+        assert_eq!(filter, Filter::new().hashtags(["rust", "nostr"]));
+
+        // No-op: a tag with no single-letter representation leaves the filter
+        // unchanged rather than panicking
+        let filter: Filter = Filter::new().tag(Tag::alt("just a summary"));
+        assert!(filter.is_empty());
+
+        // No-op: a single-letter tag with no value leaves the filter unchanged
+        let filter: Filter = Filter::new().tag(Tag::parse(["x"]).unwrap());
+        assert!(filter.is_empty());
     }
 }
 
