@@ -1,6 +1,6 @@
 [package]
 name = "nostr-connect"
-version = "0.45.0-alpha.2"
+version = "0.45.0-alpha.3"
 edition.workspace = true
 description = "Nostr Remote Signing (NIP46)"
 authors.workspace = true
@@ -37,7 +37,7 @@ tracing.workspace = true
 dialoguer = "0.12"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 webbrowser = "1.1"
-nostr-relay-builder = { workspace = true }
+nostr-relay-builder = { path = "../../crates/nostr-relay-builder", default-features = false }
 
 [[example]]
 name = "handle-auth-url"

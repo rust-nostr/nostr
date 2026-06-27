@@ -1,6 +1,6 @@
 [package]
 name = "nostr-sdk"
-version = "0.45.0-alpha.2"
+version = "0.45.0-alpha.3"
 edition.workspace = true
 description = "A full-featured SDK for building high-performance and reliable nostr applications."
 authors.workspace = true
@@ -41,13 +41,13 @@ tracing = { workspace = true, features = ["std"] }
 universal-time = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-nostr = { workspace = true, features = ["all-nips"] }
-nostr-connect.workspace = true
-nostr-lmdb.workspace = true
-nostr-ndb.workspace = true
-nostr-memory.workspace = true
-nostr-gossip-memory.workspace = true
-nostr-relay-builder.workspace = true
+nostr = { path = "../crates/nostr", default-features = false, features = ["all-nips"] }
+nostr-connect = { path = "../signer/nostr-connect", default-features = false }
+nostr-lmdb = { path = "../database/nostr-lmdb", default-features = false }
+nostr-ndb = { path = "../database/nostr-ndb", default-features = false }
+nostr-memory = { path = "../database/nostr-memory", default-features = false }
+nostr-gossip-memory = { path = "../gossip/nostr-gossip-memory", default-features = false }
+nostr-relay-builder = { path = "../crates/nostr-relay-builder", default-features = false }
 tokio = { workspace = true, features = ["macros", "rt"] }
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 
