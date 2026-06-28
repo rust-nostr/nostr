@@ -822,7 +822,7 @@ impl Filter {
         };
 
         // Derive the value from the serialized form (the element after the tag name)
-        match tag.to_vec().into_iter().nth(1) {
+        match tag.into_iter().nth(1) {
             Some(value) => self.custom_tag(single_letter_tag, value),
             // No value to index: leave the filter unchanged
             None => self,
