@@ -376,6 +376,21 @@ impl InnerRelay {
         Ok(())
     }
 
+    pub(crate) async fn update_auto_closing_subscription(
+        &self,
+        id: &SubscriptionId,
+        filters: Vec<Filter>,
+    ) -> Result<(), Error> {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+        let data = subscriptions
+            .get_mut(id)
+            .ok_or_else(|| Error::not_found("subscription not found"))?;
+
+        *data = SubscriptionData::auto_closing(filters);
+
+        Ok(())
+    }
+
     /// Mark subscription as closed
     async fn subscription_closed(&self, id: &SubscriptionId) {
         let mut subscriptions = self.atomic.subscriptions.write().await;
@@ -1721,11 +1736,30 @@ impl InnerRelay {
                     RelayNotification::Authenticated if require_resubscription => {
                         // Resend REQ
                         require_resubscription = false;
+
+                        if let Err(e) = self
+                            .update_auto_closing_subscription(id, filters.to_vec())
+                            .await
+                        {
+                            return Some(HandleAutoClosing {
+                                to_close: false,
+                                reason: Some(SubscriptionAutoClosedReason::Closed(e.to_string())),
+                            });
+                        }
+
                         let msg = ClientMessage::Req {
                             subscription_id: Cow::Borrowed(id),
                             filters: filters.iter().map(Cow::Borrowed).collect(),
                         };
-                        let _ = self.send_msg(msg, None).await;
+
+                        if let Err(e) = self.send_msg(msg, None).await {
+                            self.subscription_closed(id).await;
+
+                            return Some(HandleAutoClosing {
+                                to_close: false, // REQ wasn't sent, no need to send CLOSE.
+                                reason: Some(SubscriptionAutoClosedReason::Closed(e.to_string())),
+                            });
+                        }
                     }
                     RelayNotification::AuthenticationFailed => {
                         return Some(HandleAutoClosing {
@@ -2048,6 +2082,45 @@ mod tests {
             .unwrap_err();
 
         assert_eq!(err.to_string(), "subscription not found");
+    }
+
+    #[tokio::test]
+    async fn test_update_auto_closing_subscription_resets_previous_state() {
+        let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let relay = Relay::new(url);
+        let subscription_id = SubscriptionId::new("test");
+        let first_filter = Filter::new().kind(Kind::TextNote);
+        let second_filter = Filter::new().kind(Kind::Reaction);
+
+        relay
+            .inner
+            .add_auto_closing_subscription(subscription_id.clone(), vec![first_filter])
+            .await
+            .unwrap();
+        relay.inner.subscription_closed(&subscription_id).await;
+        relay.inner.received_eose(&subscription_id).await;
+
+        {
+            let subscriptions = relay.inner.atomic.subscriptions.read().await;
+            let data = subscriptions.get(&subscription_id).unwrap();
+            data.received_events.store(1, Ordering::SeqCst);
+            assert!(data.closed);
+            assert!(data.received_eose);
+        }
+
+        relay
+            .inner
+            .update_auto_closing_subscription(&subscription_id, vec![second_filter.clone()])
+            .await
+            .unwrap();
+
+        let subscriptions = relay.inner.atomic.subscriptions.read().await;
+        let data = subscriptions.get(&subscription_id).unwrap();
+        assert!(data.is_auto_closing);
+        assert_eq!(data.filters, vec![second_filter]);
+        assert!(!data.closed);
+        assert!(!data.received_eose);
+        assert_eq!(data.received_events.load(Ordering::SeqCst), 0);
     }
 
     #[tokio::test]

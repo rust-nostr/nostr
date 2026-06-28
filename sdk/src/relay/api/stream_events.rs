@@ -191,9 +191,8 @@ mod tests {
     use nostr::{Filter, Kind, SubscriptionId};
     use nostr_relay_builder::MockRelay;
 
-    use super::*;
     use crate::authenticator::SignerAuthenticator;
-    use crate::relay::{Relay, RelayOptions};
+    use crate::relay::{Relay, RelayOptions, ReqExitPolicy};
     use crate::test_utils::{
         setup_nip42_read_local_relay, setup_relay, setup_relay_with_authenticator,
     };
@@ -361,5 +360,35 @@ mod tests {
             .expect("stream ended before event was received")
             .unwrap();
         assert_eq!(event.id, expected.id);
+    }
+
+    #[tokio::test]
+    async fn test_stream_events_keeps_auto_closing_subscription_after_auth_required_resubscribe() {
+        let local = setup_nip42_read_local_relay().await;
+
+        let keys = Keys::generate();
+        let expected = EventBuilder::text_note("Test").finalize(&keys).unwrap();
+        local.add_event(expected.clone()).await.unwrap();
+
+        let authenticator = SignerAuthenticator::new(keys);
+        let relay = setup_relay_with_authenticator(local.url().await, authenticator).await;
+
+        let id = SubscriptionId::new("auto-closing-auth-required");
+        let mut stream = relay
+            .stream_events(Filter::new().kind(Kind::TextNote).limit(1))
+            .with_id(id.clone())
+            .policy(ReqExitPolicy::WaitDurationAfterEOSE(Duration::from_secs(2)))
+            .timeout(Duration::from_secs(5))
+            .await
+            .unwrap();
+
+        let event = stream
+            .next()
+            .await
+            .expect("stream ended before event was received")
+            .unwrap();
+        assert_eq!(event.id, expected.id);
+
+        assert!(relay.inner.has_subscription(&id).await);
     }
 }
