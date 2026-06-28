@@ -617,8 +617,6 @@ mod tests {
             Tag::event(event1),
             Tag::event(event2),
             Tag::identifier("test"),
-            Tag::alt("testing deduplication"),
-            Tag::alt("test"),
             long_e_tag_2.to_tag(),
             Tag::event(event2),
             Tag::protected(),
@@ -638,8 +636,6 @@ mod tests {
             Tag::event(event1),
             long_e_tag_2.to_tag(),
             Tag::identifier("test"),
-            Tag::alt("testing deduplication"),
-            Tag::alt("test"),
         ];
 
         assert_eq!(tags.to_vec(), expected);

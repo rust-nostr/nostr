@@ -28,7 +28,6 @@ use super::id::EventId;
 use crate::error::{Error, ErrorKind};
 use crate::nips::nip01::{Coordinate, Nip01Tag};
 use crate::nips::nip13::Nip13Tag;
-use crate::nips::nip31::Nip31Tag;
 use crate::nips::nip40::Nip40Tag;
 use crate::nips::nip70::Nip70Tag;
 use crate::{PublicKey, RelayUrl, SingleLetterTag, Timestamp};
@@ -307,19 +306,6 @@ impl Tag {
     #[inline]
     pub fn protected() -> Self {
         Nip70Tag::Protected.to_tag()
-    }
-
-    /// A short human-readable plaintext summary of what that event is about
-    ///
-    /// JSON: `["alt", "<summary>"]`
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/31.md>
-    #[inline]
-    pub fn alt<T>(summary: T) -> Self
-    where
-        T: Into<String>,
-    {
-        Nip31Tag::Alt(summary.into()).to_tag()
     }
 
     /// Compose custom tag

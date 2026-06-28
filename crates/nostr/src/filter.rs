@@ -1372,7 +1372,7 @@ mod tests {
 
         // No-op: a tag with no single-letter representation leaves the filter
         // unchanged rather than panicking
-        let filter: Filter = Filter::new().tag(Tag::alt("just a summary"));
+        let filter: Filter = Filter::new().tag(Tag::expiration(Timestamp::zero()));
         assert!(filter.is_empty());
 
         // No-op: a single-letter tag with no value leaves the filter unchanged

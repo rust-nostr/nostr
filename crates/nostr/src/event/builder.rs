@@ -319,25 +319,6 @@ impl EventBuilder {
         Self::new(Kind::LongFormTextNote, content)
     }
 
-    /// OpenTimestamps Attestations for Events
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/03.md>
-    #[cfg(feature = "nip03")]
-    pub fn opentimestamps(
-        event_id: EventId,
-        relay_hint: Option<RelayUrl>,
-    ) -> Result<Self, nostr_ots::Error> {
-        let ots: String = nostr_ots::timestamp_event(&event_id.to_hex())?;
-        Ok(Self::new(Kind::OpenTimestamps, ots).tag(
-            Nip01Tag::Event {
-                id: event_id,
-                relay_hint,
-                public_key: None,
-            }
-            .to_tag(),
-        ))
-    }
-
     /// Repost
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/18.md>
@@ -856,93 +837,6 @@ impl EventBuilder {
         Ok(EventBuilder::new(Kind::ProfileBadges, "").tags(tags))
     }
 
-    /// Data Vending Machine (DVM) - Job Request
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    pub fn job_request(kind: Kind) -> Result<Self, Error> {
-        if !kind.is_job_request() {
-            return Err(Error::with_static_message(
-                ErrorKind::Invalid,
-                "kind is not in the NIP90 job request range",
-            ));
-        }
-
-        Ok(Self::new(kind, ""))
-    }
-
-    /// Data Vending Machine (DVM) - Job Result
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    pub fn job_result<S>(
-        job_request: Event,
-        payload: S,
-        millisats: u64,
-        bolt11: Option<String>,
-    ) -> Result<Self, Error>
-    where
-        S: Into<String>,
-    {
-        let kind: Kind = job_request.kind + 1000;
-
-        // Check if Job Result kind
-        if !kind.is_job_result() {
-            return Err(Error::with_static_message(
-                ErrorKind::Invalid,
-                "kind is not in the NIP90 job result range",
-            ));
-        }
-
-        let mut tags: Vec<Tag> = job_request
-            .tags
-            .iter()
-            .filter_map(|t| {
-                if t.kind() == "i" {
-                    Some(t.clone())
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        tags.extend_from_slice(&[
-            Tag::event(job_request.id),
-            Tag::public_key(job_request.pubkey),
-            Nip90Tag::Request(job_request).to_tag(),
-            Nip90Tag::Amount { millisats, bolt11 }.to_tag(),
-        ]);
-
-        Ok(Self::new(kind, payload).tags(tags))
-    }
-
-    /// Data Vending Machine (DVM) - Job Feedback
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/90.md>
-    pub fn job_feedback(data: JobFeedbackData) -> Self {
-        let mut tags: Vec<Tag> = Vec::with_capacity(3);
-
-        tags.push(Tag::event(data.job_request_id));
-        tags.push(Tag::public_key(data.customer_public_key));
-        tags.push(
-            Nip90Tag::Status {
-                status: data.status,
-                extra_info: data.extra_info,
-            }
-            .to_tag(),
-        );
-
-        if let Some(millisats) = data.amount_msat {
-            tags.push(
-                Nip90Tag::Amount {
-                    millisats,
-                    bolt11: data.bolt11,
-                }
-                .to_tag(),
-            );
-        }
-
-        Self::new(Kind::JobFeedback, data.payload.unwrap_or_default()).tags(tags)
-    }
-
     /// File metadata
     ///
     /// <https://github.com/nostr-protocol/nips/blob/master/94.md>
@@ -963,26 +857,6 @@ impl EventBuilder {
     pub fn http_auth(data: HttpData) -> Self {
         let tags: Vec<Tag> = data.into();
         Self::new(Kind::HttpAuth, "").tags(tags)
-    }
-
-    /// Set stall data
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
-    #[inline]
-    pub fn stall_data(data: StallData) -> Self {
-        let content: String = data.as_json();
-        let tags: Vec<Tag> = data.into();
-        Self::new(Kind::SetStall, content).tags(tags)
-    }
-
-    /// Set product data
-    ///
-    /// <https://github.com/nostr-protocol/nips/blob/master/15.md>
-    #[inline]
-    pub fn product_data(data: ProductData) -> Self {
-        let content: String = data.as_json();
-        let tags: Vec<Tag> = data.into();
-        Self::new(Kind::SetProduct, content).tags(tags)
     }
 
     /// Private direct message relay list
