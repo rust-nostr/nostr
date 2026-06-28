@@ -256,7 +256,7 @@ async fn req_neg_events(
     relay
         .inner
         .add_auto_closing_subscription(down_sub_id.clone(), vec![filter.clone()])
-        .await;
+        .await?;
 
     // Send msg
     if let Err(e) = relay.send_msg(msg).await {

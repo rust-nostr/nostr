@@ -113,12 +113,25 @@ struct SubscriptionData {
     pub closed: bool,
 }
 
-impl Default for SubscriptionData {
-    fn default() -> Self {
+impl SubscriptionData {
+    #[inline]
+    fn long_lived(filters: Vec<Filter>) -> Self {
         Self {
-            filters: Vec::new(),
-            subscribed_at: Timestamp::zero(),
+            filters,
+            subscribed_at: Timestamp::now(),
             is_auto_closing: false,
+            received_eose: false,
+            received_events: AtomicUsize::new(0),
+            closed: false,
+        }
+    }
+
+    #[inline]
+    fn auto_closing(filters: Vec<Filter>) -> Self {
+        Self {
+            filters,
+            subscribed_at: Timestamp::zero(),
+            is_auto_closing: true,
             received_eose: false,
             received_events: AtomicUsize::new(0),
             closed: false,
@@ -309,32 +322,58 @@ impl InnerRelay {
         subscriptions.remove(id);
     }
 
+    /// Register a long-lived subscription.
+    pub(crate) async fn add_long_lived_subscription(
+        &self,
+        id: SubscriptionId,
+        filters: Vec<Filter>,
+    ) -> Result<(), Error> {
+        let mut subscriptions = self.atomic.subscriptions.write().await;
+
+        if subscriptions.contains_key(&id) {
+            return Err(Error::invalid_msg("subscription ID already exists"));
+        }
+
+        subscriptions.insert(id, SubscriptionData::long_lived(filters));
+
+        Ok(())
+    }
+
     /// Register an auto-closing subscription
     pub(crate) async fn add_auto_closing_subscription(
         &self,
         id: SubscriptionId,
         filters: Vec<Filter>,
-    ) {
+    ) -> Result<(), Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
-        let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
-        data.filters = filters;
-        data.is_auto_closing = true;
+
+        if subscriptions.contains_key(&id) {
+            return Err(Error::invalid_msg("subscription ID already exists"));
+        }
+
+        subscriptions.insert(id, SubscriptionData::auto_closing(filters));
+
+        Ok(())
     }
 
     pub(crate) async fn update_subscription(
         &self,
-        id: SubscriptionId,
+        id: &SubscriptionId,
         filters: Vec<Filter>,
         update_subscribed_at: bool,
-    ) {
+    ) -> Result<(), Error> {
         let mut subscriptions = self.atomic.subscriptions.write().await;
-        let data: &mut SubscriptionData = subscriptions.entry(id).or_default();
+        let data = subscriptions
+            .get_mut(id)
+            .ok_or_else(|| Error::not_found("subscription not found"))?;
         data.filters = filters;
 
         if update_subscribed_at {
             data.subscribed_at = Timestamp::now();
             data.closed = false;
         }
+
+        Ok(())
     }
 
     /// Mark subscription as closed
@@ -1461,12 +1500,14 @@ impl InnerRelay {
         let subscriptions = self.subscriptions().await;
         for (id, filters) in subscriptions.into_iter() {
             if !filters.is_empty() && self.should_resubscribe(&id).await {
-                self.update_subscription(id.clone(), filters.clone(), true)
-                    .await;
-                if let Err(e) = self
-                    .send_msg(ClientMessage::req(id.clone(), filters), None)
-                    .await
-                {
+                self.update_subscription(&id, filters.clone(), true).await?;
+
+                let msg = ClientMessage::Req {
+                    subscription_id: Cow::Borrowed(&id),
+                    filters: filters.into_iter().map(Cow::Owned).collect(),
+                };
+
+                if let Err(e) = self.send_msg(msg, None).await {
                     self.subscription_closed(&id).await;
                     return Err(e);
                 }
@@ -1816,6 +1857,7 @@ mod tests {
 
     use super::*;
     use crate::authenticator::SignerAuthenticator;
+    use crate::error::ErrorKind;
     use crate::relay::{Relay, RelayOptions};
 
     #[tokio::test]
@@ -1840,12 +1882,12 @@ mod tests {
         let subscription_id = SubscriptionId::new("test");
         relay
             .inner
-            .update_subscription(
+            .add_long_lived_subscription(
                 subscription_id.clone(),
                 vec![matching_filter, non_matching_filter],
-                true,
             )
-            .await;
+            .await
+            .unwrap();
 
         // Handle manually the event message
         let message = relay
@@ -1875,8 +1917,9 @@ mod tests {
 
         relay
             .inner
-            .update_subscription(subscription_id.clone(), vec![filter.clone()], true)
-            .await;
+            .add_long_lived_subscription(subscription_id.clone(), vec![filter.clone()])
+            .await
+            .unwrap();
 
         let (tx, _rx) = mpsc::unbounded_channel();
         relay
@@ -1885,6 +1928,126 @@ mod tests {
             .await;
 
         assert!(relay.inner.subscription(&subscription_id).await.is_none());
+    }
+
+    #[tokio::test]
+    async fn test_add_long_lived_subscription_rejects_existing_id() {
+        let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let relay = Relay::new(url);
+        let subscription_id = SubscriptionId::new("test");
+
+        relay
+            .inner
+            .add_long_lived_subscription(
+                subscription_id.clone(),
+                vec![Filter::new().kind(Kind::TextNote)],
+            )
+            .await
+            .unwrap();
+
+        let err = relay
+            .inner
+            .add_long_lived_subscription(subscription_id, vec![Filter::new().kind(Kind::Reaction)])
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.kind(), ErrorKind::Invalid);
+        assert_eq!(err.to_string(), "subscription ID already exists");
+    }
+
+    #[tokio::test]
+    async fn test_add_auto_closing_subscription_rejects_existing_id() {
+        let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let relay = Relay::new(url);
+        let subscription_id = SubscriptionId::new("test");
+
+        relay
+            .inner
+            .add_auto_closing_subscription(
+                subscription_id.clone(),
+                vec![Filter::new().kind(Kind::TextNote)],
+            )
+            .await
+            .unwrap();
+
+        let err = relay
+            .inner
+            .add_auto_closing_subscription(
+                subscription_id,
+                vec![Filter::new().kind(Kind::Reaction)],
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.kind(), ErrorKind::Invalid);
+        assert_eq!(err.to_string(), "subscription ID already exists");
+    }
+
+    #[tokio::test]
+    async fn test_add_long_lived_subscription_rejects_existing_id_across_subscription_types() {
+        let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let relay = Relay::new(url);
+        let subscription_id = SubscriptionId::new("test");
+
+        relay
+            .inner
+            .add_auto_closing_subscription(
+                subscription_id.clone(),
+                vec![Filter::new().kind(Kind::TextNote)],
+            )
+            .await
+            .unwrap();
+
+        let err = relay
+            .inner
+            .add_long_lived_subscription(
+                subscription_id.clone(),
+                vec![Filter::new().kind(Kind::Reaction)],
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::Invalid);
+        assert_eq!(err.to_string(), "subscription ID already exists");
+
+        relay.inner.remove_subscription(&subscription_id).await;
+
+        relay
+            .inner
+            .add_long_lived_subscription(
+                subscription_id.clone(),
+                vec![Filter::new().kind(Kind::TextNote)],
+            )
+            .await
+            .unwrap();
+
+        let err = relay
+            .inner
+            .add_auto_closing_subscription(
+                subscription_id,
+                vec![Filter::new().kind(Kind::Reaction)],
+            )
+            .await
+            .unwrap_err();
+        assert_eq!(err.kind(), ErrorKind::Invalid);
+        assert_eq!(err.to_string(), "subscription ID already exists");
+    }
+
+    #[tokio::test]
+    async fn test_update_subscription_requires_existing_id() {
+        let url = RelayUrl::parse("wss://relay.example.com").unwrap();
+        let relay = Relay::new(url);
+
+        let err = relay
+            .inner
+            .update_subscription(
+                &SubscriptionId::new("test"),
+                vec![Filter::new().kind(Kind::TextNote)],
+                true,
+            )
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.to_string(), "subscription not found");
     }
 
     #[tokio::test]
@@ -1898,8 +2061,9 @@ mod tests {
 
         relay
             .inner
-            .update_subscription(subscription_id.clone(), vec![filter.clone()], true)
-            .await;
+            .add_long_lived_subscription(subscription_id.clone(), vec![filter.clone()])
+            .await
+            .unwrap();
 
         let (tx, _rx) = mpsc::unbounded_channel();
         relay
@@ -1912,8 +2076,9 @@ mod tests {
 
         relay
             .inner
-            .update_subscription(subscription_id.clone(), vec![filter], true)
-            .await;
+            .update_subscription(&subscription_id, vec![filter], true)
+            .await
+            .unwrap();
 
         assert!(!relay.inner.should_resubscribe(&subscription_id).await);
     }

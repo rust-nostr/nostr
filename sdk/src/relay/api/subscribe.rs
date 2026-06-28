@@ -69,7 +69,7 @@ pub(super) async fn subscribe_auto_closing(
     relay
         .inner
         .add_auto_closing_subscription(id.clone(), filters.clone())
-        .await;
+        .await?;
 
     // Send REQ message
     if let Err(e) = relay.send_msg(msg).await {
@@ -99,12 +99,12 @@ async fn subscribe_long_lived(
         return Err(Error::invalid_msg("filters cannot be empty"));
     }
 
-    // No auto-close subscription: update subscription filter before sending the
+    // No auto-close subscription: add subscription filter before sending the
     // REQ, so an immediate CLOSED can still mark the subscription for retry.
     relay
         .inner
-        .update_subscription(id.clone(), filters.clone(), true)
-        .await;
+        .add_long_lived_subscription(id.clone(), filters.clone())
+        .await?;
 
     // Compose REQ message
     let msg: ClientMessage = ClientMessage::Req {
@@ -161,7 +161,8 @@ mod tests {
 
     use super::*;
     use crate::authenticator::SignerAuthenticator;
-    use crate::relay::{RelayNotification, RelayOptions, RelayStatus};
+    use crate::error::ErrorKind;
+    use crate::relay::{RelayNotification, RelayOptions, RelayStatus, ReqExitPolicy};
     use crate::test_utils::{
         setup_nip42_read_local_relay, setup_relay, setup_relay_with_authenticator,
     };
@@ -279,6 +280,72 @@ mod tests {
         tokio::time::timeout(Duration::from_secs(5), fut)
             .await
             .unwrap();
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_rejects_existing_id_without_overwriting_filters() {
+        let mock = MockRelay::run().await.unwrap();
+        let relay = Relay::new(mock.url().await);
+        relay
+            .try_connect()
+            .timeout(Duration::from_millis(500))
+            .await
+            .unwrap();
+
+        let id = SubscriptionId::new("duplicate-subscription");
+        let first_filter = Filter::new().kind(Kind::TextNote);
+        let second_filter = Filter::new().kind(Kind::Reaction);
+
+        relay
+            .subscribe(first_filter.clone())
+            .with_id(id.clone())
+            .await
+            .unwrap();
+
+        let err = relay
+            .subscribe(second_filter)
+            .with_id(id.clone())
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.kind(), ErrorKind::Invalid);
+        assert_eq!(err.to_string(), "subscription ID already exists");
+        assert_eq!(relay.subscription(&id).await.unwrap(), vec![first_filter]);
+    }
+
+    #[tokio::test]
+    async fn test_subscribe_auto_closing_rejects_existing_id_without_overwriting_filters() {
+        let mock = MockRelay::run().await.unwrap();
+        let relay = Relay::new(mock.url().await);
+        relay
+            .try_connect()
+            .timeout(Duration::from_millis(500))
+            .await
+            .unwrap();
+
+        let id = SubscriptionId::new("duplicate-auto-closing-subscription");
+        let first_filter = Filter::new().kind(Kind::TextNote);
+        let second_filter = Filter::new().kind(Kind::Reaction);
+        let close_opts = SubscribeAutoCloseOptions::default()
+            .exit_policy(ReqExitPolicy::WaitDurationAfterEOSE(Duration::from_secs(5)));
+
+        relay
+            .subscribe(first_filter.clone())
+            .with_id(id.clone())
+            .close_on(close_opts)
+            .await
+            .unwrap();
+
+        let err = relay
+            .subscribe(second_filter)
+            .with_id(id.clone())
+            .close_on(close_opts)
+            .await
+            .unwrap_err();
+
+        assert_eq!(err.kind(), ErrorKind::Invalid);
+        assert_eq!(err.to_string(), "subscription ID already exists");
+        assert_eq!(relay.subscription(&id).await.unwrap(), vec![first_filter]);
     }
 
     #[tokio::test]
