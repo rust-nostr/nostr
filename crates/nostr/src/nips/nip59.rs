@@ -12,6 +12,7 @@ use alloc::string::String;
 use alloc::vec::Vec;
 #[cfg(all(feature = "std", feature = "os-rng"))]
 use core::ops::Range;
+use core::time::Duration;
 
 use secp256k1::{Secp256k1, Verification};
 
@@ -247,6 +248,8 @@ pub struct GiftWrapBuilder {
     pub rumor: UnsignedEvent,
     /// Extra tags to add to the event
     pub extra_tags: Vec<Tag>,
+    /// NIP-40 expiration, relative to the gift wrap's `created_at`
+    pub expiration: Option<Duration>,
 }
 
 impl GiftWrapBuilder {
@@ -257,6 +260,7 @@ impl GiftWrapBuilder {
             receiver,
             rumor,
             extra_tags: Vec::new(),
+            expiration: None,
         }
     }
 
@@ -267,6 +271,18 @@ impl GiftWrapBuilder {
         T: IntoIterator<Item = Tag>,
     {
         self.extra_tags.extend(tags);
+        self
+    }
+
+    /// Set a NIP-40 expiration on the gift wrap.
+    ///
+    /// The expiration tag is anchored to the gift wrap's randomized `created_at`
+    /// so it doesn't leak the real send time.
+    /// `duration` should be greater than 2 days
+    /// or it may created in an expired state.
+    #[inline]
+    pub fn expiration(mut self, duration: Duration) -> Self {
+        self.expiration = Some(duration);
         self
     }
 }
@@ -280,7 +296,7 @@ where
 
     fn finalize(self, signer: &S) -> Result<Event, Self::Error> {
         let seal: Event = GiftWrapSealBuilder::new(self.rumor, self.receiver).finalize(signer)?;
-        make_gift_wrap(seal, self.receiver, self.extra_tags)
+        make_gift_wrap(seal, self.receiver, self.extra_tags, self.expiration)
     }
 }
 
@@ -300,13 +316,18 @@ where
             let seal: Event = GiftWrapSealBuilder::new(self.rumor, self.receiver)
                 .finalize_async(signer)
                 .await?;
-            make_gift_wrap(seal, self.receiver, self.extra_tags)
+            make_gift_wrap(seal, self.receiver, self.extra_tags, self.expiration)
         })
     }
 }
 
 #[cfg(all(feature = "std", feature = "os-rng"))]
-fn make_gift_wrap(seal: Event, receiver: PublicKey, extra_tags: Vec<Tag>) -> Result<Event, Error> {
+fn make_gift_wrap(
+    seal: Event,
+    receiver: PublicKey,
+    extra_tags: Vec<Tag>,
+    expiration: Option<Duration>,
+) -> Result<Event, Error> {
     // Generate the random keys
     let keys: Keys = Keys::generate();
 
@@ -325,10 +346,19 @@ fn make_gift_wrap(seal: Event, receiver: PublicKey, extra_tags: Vec<Tag>) -> Res
     // Push received public key
     tags.push(Tag::public_key(receiver));
 
-    // Build the event with a tweaked timestamp
+    // Use a tweaked timestamp to thwart time-analysis attacks
+    let created_at: Timestamp = Timestamp::tweaked(RANGE_RANDOM_TIMESTAMP_TWEAK);
+
+    // Anchor the NIP-40 expiration to the tweaked `created_at` so we don't
+    // leak the real creation time.
+    // `expiration - created_at` stays constant.
+    if let Some(duration) = expiration {
+        tags.push(Tag::expiration(created_at + duration));
+    }
+
     EventBuilder::new(Kind::GiftWrap, content)
         .tags(tags)
-        .custom_created_at(Timestamp::tweaked(RANGE_RANDOM_TIMESTAMP_TWEAK))
+        .custom_created_at(created_at)
         .finalize(&keys)
 }
 
@@ -511,6 +541,77 @@ mod tests {
                 .unwrap_err()
                 .kind(),
             sender_mismatch().kind()
+        );
+    }
+
+    #[test]
+    fn test_gift_wrap_expiration_anchored_to_created_at() {
+        let sender_keys =
+            Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+        let receiver_keys =
+            Keys::parse("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+
+        let duration: Duration = Duration::from_secs(7 * 24 * 3600);
+        let rumor: UnsignedEvent =
+            EventBuilder::text_note("Test").finalize_unsigned(sender_keys.public_key);
+        let event: Event = GiftWrapBuilder::new(receiver_keys.public_key(), rumor)
+            .expiration(duration)
+            .finalize(&sender_keys)
+            .unwrap();
+
+        assert_eq!(event.kind, Kind::GiftWrap);
+
+        // The expiration is anchored to the (tweaked) `created_at`, so the
+        // difference is exactly the requested duration and leaks no send time.
+        let expiration = event.tags.expiration().expect("missing expiration tag");
+        assert_eq!(
+            expiration.as_secs() - event.created_at.as_secs(),
+            duration.as_secs()
+        );
+    }
+
+    #[test]
+    fn test_gift_wrap_without_expiration() {
+        let sender_keys =
+            Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+        let receiver_keys =
+            Keys::parse("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+
+        let rumor: UnsignedEvent =
+            EventBuilder::text_note("Test").finalize_unsigned(sender_keys.public_key);
+        let event: Event = GiftWrapBuilder::new(receiver_keys.public_key(), rumor)
+            .finalize(&sender_keys)
+            .unwrap();
+
+        assert!(event.tags.expiration().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_gift_wrap_expiration_anchored_to_created_at_async() {
+        let sender_keys =
+            Keys::parse("6b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+        let receiver_keys =
+            Keys::parse("7b911fd37cdf5c81d4c0adb1ab7fa822ed253ab0ad9aa18d77257c88b29b718e")
+                .unwrap();
+
+        let duration: Duration = Duration::from_secs(7 * 24 * 3600);
+        let rumor: UnsignedEvent =
+            EventBuilder::text_note("Test").finalize_unsigned(sender_keys.public_key);
+        let event: Event = GiftWrapBuilder::new(receiver_keys.public_key(), rumor)
+            .expiration(duration)
+            .finalize_async(&sender_keys)
+            .await
+            .unwrap();
+
+        let expiration = event.tags.expiration().expect("missing expiration tag");
+        assert_eq!(
+            expiration.as_secs() - event.created_at.as_secs(),
+            duration.as_secs()
         );
     }
 }

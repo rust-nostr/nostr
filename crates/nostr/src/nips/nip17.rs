@@ -11,6 +11,7 @@
 use alloc::string::{String, ToString};
 use alloc::vec;
 use alloc::vec::Vec;
+use core::time::Duration;
 
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
 use super::nip44::{AsyncNip44, Nip44};
@@ -61,6 +62,8 @@ pub struct PrivateDirectMessageBuilder {
     pub rumor_extra_tags: Vec<Tag>,
     /// Extra tags to add to the **gift wrap** event.
     pub extra_tags: Vec<Tag>,
+    /// NIP-40 expiration for the **gift wrap**, relative to `created_at`.
+    pub expiration: Option<Duration>,
 }
 
 // TODO: should this be under the required features, like for the Finalize traits?
@@ -76,6 +79,7 @@ impl PrivateDirectMessageBuilder {
             message: message.into(),
             rumor_extra_tags: Vec::new(),
             extra_tags: Vec::new(),
+            expiration: None,
         }
     }
 
@@ -98,6 +102,18 @@ impl PrivateDirectMessageBuilder {
         self.extra_tags.extend(tags);
         self
     }
+
+    /// Set a NIP-40 expiration on the **gift wrap**.
+    ///
+    /// The expiration tag is relative to the gift wrap's `created_at`
+    /// so it doesn't leak the real send time.
+    /// Choose a `duration` greater than the 2 days
+    /// or the event may be created in an expired state.
+    #[inline]
+    pub fn expiration(mut self, duration: Duration) -> Self {
+        self.expiration = Some(duration);
+        self
+    }
 }
 
 #[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
@@ -115,9 +131,11 @@ where
             self.message,
             self.rumor_extra_tags,
         );
-        GiftWrapBuilder::new(self.receiver, rumor)
-            .extra_tags(self.extra_tags)
-            .finalize(signer)
+        let mut builder = GiftWrapBuilder::new(self.receiver, rumor).extra_tags(self.extra_tags);
+        if let Some(duration) = self.expiration {
+            builder = builder.expiration(duration);
+        }
+        builder.finalize(signer)
     }
 }
 
@@ -142,10 +160,12 @@ where
                 self.message,
                 self.rumor_extra_tags,
             );
-            GiftWrapBuilder::new(self.receiver, rumor)
-                .extra_tags(self.extra_tags)
-                .finalize_async(signer)
-                .await
+            let mut builder =
+                GiftWrapBuilder::new(self.receiver, rumor).extra_tags(self.extra_tags);
+            if let Some(duration) = self.expiration {
+                builder = builder.expiration(duration);
+            }
+            builder.finalize_async(signer).await
         })
     }
 }
@@ -255,5 +275,75 @@ mod tests {
         let tag = vec!["relay"];
         let err = Nip17Tag::parse(&tag).unwrap_err();
         assert_eq!(err.kind(), ErrorKind::Missing);
+    }
+}
+
+#[cfg(test)]
+#[cfg(all(feature = "std", feature = "os-rng", feature = "nip59"))]
+mod expiration_tests {
+    use core::time::Duration;
+
+    use super::*;
+    use crate::key::Keys;
+    use crate::nips::nip59::extract_rumor;
+
+    #[test]
+    fn test_private_dm_expiration_on_gift_wrap() {
+        let sender = Keys::generate();
+        let receiver = Keys::generate();
+        let duration: Duration = Duration::from_secs(7 * 24 * 3600);
+
+        let gift_wrap: Event = PrivateDirectMessageBuilder::new(receiver.public_key(), "hello")
+            .expiration(duration)
+            .finalize(&sender)
+            .unwrap();
+
+        assert_eq!(gift_wrap.kind, Kind::GiftWrap);
+
+        // Anchored to the gift wrap's tweaked `created_at`: no send-time leak.
+        let expiration = gift_wrap.tags.expiration().expect("missing expiration tag");
+        assert_eq!(
+            expiration.as_secs() - gift_wrap.created_at.as_secs(),
+            duration.as_secs()
+        );
+
+        // The DM still unwraps and the sender is verified.
+        let unwrapped = extract_rumor(&receiver, &gift_wrap).unwrap();
+        assert_eq!(unwrapped.sender, sender.public_key());
+        assert_eq!(unwrapped.rumor.kind, Kind::PrivateDirectMessage);
+
+        // Decision: expiration goes on the gift wrap only, not the inner rumor.
+        assert!(unwrapped.rumor.tags.expiration().is_none());
+    }
+
+    #[test]
+    fn test_private_dm_without_expiration() {
+        let sender = Keys::generate();
+        let receiver = Keys::generate();
+
+        let gift_wrap: Event = PrivateDirectMessageBuilder::new(receiver.public_key(), "hello")
+            .finalize(&sender)
+            .unwrap();
+
+        assert!(gift_wrap.tags.expiration().is_none());
+    }
+
+    #[tokio::test]
+    async fn test_private_dm_expiration_async() {
+        let sender = Keys::generate();
+        let receiver = Keys::generate();
+        let duration: Duration = Duration::from_secs(7 * 24 * 3600);
+
+        let gift_wrap: Event = PrivateDirectMessageBuilder::new(receiver.public_key(), "hello")
+            .expiration(duration)
+            .finalize_async(&sender)
+            .await
+            .unwrap();
+
+        let expiration = gift_wrap.tags.expiration().expect("missing expiration tag");
+        assert_eq!(
+            expiration.as_secs() - gift_wrap.created_at.as_secs(),
+            duration.as_secs()
+        );
     }
 }

@@ -89,6 +89,7 @@
 - Add `restricted_writes`, `default_limit` to `Limitation` (https://github.com/rust-nostr/nostr/pull/1336)
 - Add NIP-66 kinds and relay discovery tags (https://github.com/rust-nostr/nostr/pull/1346)
 - Add `Filter::tag` to add a generic single-letter tag from an already-constructed `Tag` (https://github.com/rust-nostr/nostr/issues/1359)
+- Add `GiftWrapBuilder::expiration` and `PrivateDirectMessageBuilder::expiration` to set a NIP-40 expiration relative to the gift wrap's `created_at` (https://github.com/rust-nostr/nostr/pull/1384)
 
 ### Removed
 
