@@ -12,22 +12,22 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
-use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
+use nostr::prelude::*;
 use nostr_memory::prelude::*;
-use nostr_sdk::client::SyncSummary;
-use nostr_sdk::prelude::*;
 use tokio::io::{AsyncRead, AsyncWrite};
 use tokio::net::TcpListener;
 use tokio::sync::{Notify, OnceCell, Semaphore, broadcast};
 
-use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
-use super::util;
-use crate::builder::{
+use super::super::builder::{
     LocalRelayBuilder, LocalRelayBuilderMode, LocalRelayBuilderNip42, LocalRelayTestOptions,
     QueryPolicy, QueryPolicyResult, RateLimit, WritePolicy, WritePolicyResult,
 };
+use super::session::{Nip42Session, RateLimiterResponse, Session, Tokens};
+use super::util;
+use crate::client::{Client, ClientNotification, Output, SyncSummary};
 use crate::error::{Error, ErrorKind};
+use crate::relay::SyncOptions;
 
 type WsTx<S> = SplitSink<WebSocketStream<S>, Message>;
 const P_TAG: SingleLetterTag = SingleLetterTag::lowercase(Alphabet::P);
@@ -55,12 +55,6 @@ pub(super) struct InnerLocalRelay {
     nip42: Option<LocalRelayBuilderNip42>,
     test: LocalRelayTestOptions,
     running: Arc<AtomicBool>,
-}
-
-impl AtomicDestroyer for InnerLocalRelay {
-    fn on_destroy(&self) {
-        self.shutdown();
-    }
 }
 
 impl InnerLocalRelay {
@@ -116,11 +110,16 @@ impl InnerLocalRelay {
             .await
     }
 
+    #[inline]
+    pub(super) fn is_running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
+    }
+
     /// Start socket to listen for new websocket connections
     ///
     /// Returns `true` if the relay has started, `false` if it's already running.
     pub async fn run(&self) -> Result<bool, Error> {
-        if self.running.load(Ordering::SeqCst) {
+        if self.is_running() {
             return Ok(false);
         }
 

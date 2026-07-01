@@ -1,10 +1,10 @@
 use std::time::Duration;
 
 use nostr::RelayUrl;
-use nostr_relay_builder::prelude::*;
 
 use crate::authenticator::Authenticator;
 use crate::client::Client;
+use crate::local_relay::*;
 use crate::relay::Relay;
 
 pub(crate) async fn setup_nip42_read_local_relay() -> LocalRelay {

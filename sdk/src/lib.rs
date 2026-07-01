@@ -11,6 +11,8 @@ pub mod client;
 pub mod error;
 mod events_tracker;
 mod future;
+#[cfg(any(feature = "local-relay", test))]
+pub mod local_relay;
 pub mod monitor;
 pub mod policy;
 mod pool;

@@ -271,10 +271,10 @@ mod tests {
     use std::time::Duration;
 
     use nostr::prelude::*;
-    use nostr_relay_builder::prelude::*;
 
     use super::*;
     use crate::authenticator::SignerAuthenticator;
+    use crate::local_relay::*;
 
     #[tokio::test]
     async fn test_ok_msg() {

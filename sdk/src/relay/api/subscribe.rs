@@ -157,11 +157,11 @@ mod tests {
     use futures::StreamExt;
     use nostr::event::FinalizeEvent;
     use nostr::{Event, EventBuilder, EventId, Filter, Keys, Kind, SubscriptionId};
-    use nostr_relay_builder::prelude::*;
 
     use super::*;
     use crate::authenticator::SignerAuthenticator;
     use crate::error::ErrorKind;
+    use crate::local_relay::*;
     use crate::relay::{RelayNotification, RelayOptions, RelayStatus, ReqExitPolicy};
     use crate::test_utils::{
         setup_nip42_read_local_relay, setup_relay, setup_relay_with_authenticator,

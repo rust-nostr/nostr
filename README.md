@@ -20,7 +20,6 @@ The project is split up into several crates:
 - Remote File Storage implementations:
     - [**nostr-blossom**](./rfs/nostr-blossom): A library for interacting with the Blossom protocol
 - [**nostr-keyring**](./crates/nostr-keyring): Nostr Keyring
-- [**nostr-relay-builder**](./crates/nostr-relay-builder): Build your own custom nostr relay
 - [**nostr-sdk**](./sdk): A full-featured SDK for building high-performance and reliable nostr applications
 - [**nwc**](./crates/nwc): Nostr Wallet Connect (NWC) client (NIP-47)
 

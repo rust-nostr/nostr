@@ -12,7 +12,7 @@ use nostr_connect::client::NostrConnect;
 use nostr_connect::signer::{
     NostrConnectKeys, NostrConnectRemoteSigner, NostrConnectSignerActions,
 };
-use nostr_relay_builder::LocalRelayBuilder;
+use nostr_sdk::local_relay::LocalRelayBuilder;
 
 struct MySignerActions;
 

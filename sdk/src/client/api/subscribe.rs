@@ -71,8 +71,8 @@ mod tests {
     use std::time::Duration;
 
     use futures::StreamExt;
-    use nostr::{Filter, SubscriptionId};
-    use nostr_relay_builder::prelude::*;
+    use nostr::event::{EventBuilder, FinalizeEvent};
+    use nostr::{Filter, Keys, Kind, SubscriptionId};
 
     use crate::authenticator::SignerAuthenticator;
     use crate::client::ClientNotification;

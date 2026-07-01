@@ -97,10 +97,10 @@ mod tests {
     use nostr::event::FinalizeEvent;
     use nostr::message::MachineReadablePrefix;
     use nostr::{EventBuilder, Keys, Kind, Metadata};
-    use nostr_relay_builder::prelude::*;
 
     use super::*;
     use crate::authenticator::SignerAuthenticator;
+    use crate::local_relay::*;
     use crate::relay::{RelayOptions, RelayStatus};
     use crate::test_utils::{
         setup_nip42_read_local_relay, setup_relay, setup_relay_with_authenticator,

@@ -2,8 +2,6 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! Relay Builder
-
 use std::borrow::Cow;
 use std::fmt;
 use std::net::{IpAddr, SocketAddr};
@@ -12,7 +10,7 @@ use std::time::Duration;
 
 use nostr_database::prelude::*;
 
-use crate::local::LocalRelay;
+use super::local::LocalRelay;
 
 /// Rate limit
 #[derive(Debug, Clone)]

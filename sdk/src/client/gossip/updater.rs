@@ -500,10 +500,10 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use nostr_gossip_memory::prelude::*;
-    use nostr_relay_builder::prelude::*;
 
     use super::*;
     use crate::client::GossipConfig;
+    use crate::local_relay::*;
 
     fn client_with_gossip() -> Client {
         let gossip = NostrGossipMemory::unbounded();

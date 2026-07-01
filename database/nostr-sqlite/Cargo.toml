@@ -29,7 +29,4 @@ tokio = { workspace = true, features = ["sync"] }
 
 [dev-dependencies]
 nostr-database-test-suite.workspace = true
-nostr-relay-builder = { path = "../../crates/nostr-relay-builder", default-features = false }
-tempfile.workspace = true
 tokio = { workspace = true, features = ["macros", "rt-multi-thread", "time"] }
-tracing-subscriber = { workspace = true, features = ["env-filter"] }

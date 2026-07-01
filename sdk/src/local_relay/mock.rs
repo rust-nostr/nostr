@@ -2,13 +2,11 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! A mock relay for (unit) tests.
-
 use std::ops::Deref;
 
-use crate::builder::{LocalRelayBuilder, LocalRelayTestOptions};
+use super::builder::{LocalRelayBuilder, LocalRelayTestOptions};
+use super::local::LocalRelay;
 use crate::error::Error;
-use crate::local::LocalRelay;
 
 /// A mock relay for (unit) tests.
 ///

@@ -2,13 +2,12 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! A local nostr relay
-
 use std::net::SocketAddr;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
-use atomic_destructor::AtomicDestructor;
-use nostr_sdk::client::SyncSummary;
-use nostr_sdk::prelude::*;
+use nostr::{Event, Filter, RelayUrl, RelayUrlArg};
+use nostr_database::SaveEventStatus;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod inner;
@@ -16,15 +15,39 @@ mod session;
 mod util;
 
 use self::inner::InnerLocalRelay;
-use crate::builder::LocalRelayBuilder;
+use super::builder::LocalRelayBuilder;
+use crate::client::{Output, SyncSummary};
 use crate::error::Error;
+use crate::relay::SyncOptions;
 
 /// A local nostr relay
 ///
 /// This is automatically shutdown when all instances/clones are dropped!
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct LocalRelay {
-    inner: AtomicDestructor<InnerLocalRelay>,
+    inner: InnerLocalRelay,
+    // Keep track of the atomic reference count to know when shutdown the relay.
+    atomic_counter: Arc<AtomicUsize>,
+}
+
+impl Clone for LocalRelay {
+    fn clone(&self) -> Self {
+        self.atomic_counter.fetch_add(1, Ordering::SeqCst);
+
+        Self {
+            inner: self.inner.clone(),
+            atomic_counter: self.atomic_counter.clone(),
+        }
+    }
+}
+
+impl Drop for LocalRelay {
+    fn drop(&mut self) {
+        // Shutdown exactly once when the last handle is dropped.
+        if self.atomic_counter.fetch_sub(1, Ordering::SeqCst) == 1 {
+            self.shutdown();
+        }
+    }
 }
 
 impl Default for LocalRelay {
@@ -52,7 +75,8 @@ impl LocalRelay {
     #[inline]
     pub(super) fn from_builder(builder: LocalRelayBuilder) -> Self {
         Self {
-            inner: AtomicDestructor::new(InnerLocalRelay::new(builder)),
+            inner: InnerLocalRelay::new(builder),
+            atomic_counter: Arc::new(AtomicUsize::new(1)),
         }
     }
 
@@ -117,5 +141,72 @@ impl LocalRelay {
         S: AsyncRead + AsyncWrite + Unpin,
     {
         self.inner.handle_upgraded_connection(stream, addr).await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use tokio::time;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_shutdown() {
+        let relay = LocalRelay::new();
+
+        assert!(!relay.inner.is_running());
+
+        relay.run().await.unwrap();
+
+        time::sleep(Duration::from_secs(1)).await;
+
+        assert!(relay.inner.is_running());
+
+        relay.shutdown();
+
+        time::sleep(Duration::from_millis(100)).await;
+
+        assert!(!relay.inner.is_running());
+    }
+
+    #[tokio::test]
+    async fn test_shutdown_on_drop() {
+        let inner: InnerLocalRelay = {
+            let relay: LocalRelay = LocalRelay::new();
+
+            assert!(!relay.inner.is_running());
+
+            relay.run().await.unwrap();
+
+            time::sleep(Duration::from_secs(1)).await;
+
+            assert!(relay.inner.is_running());
+
+            // Clone the inner relay
+            let inner: InnerLocalRelay = relay.inner.clone();
+
+            {
+                let r2: LocalRelay = relay.clone();
+                tokio::spawn(async move {
+                    assert_eq!(r2.atomic_counter.load(Ordering::SeqCst), 2);
+
+                    time::sleep(Duration::from_secs(1)).await;
+
+                    // r2 dropped here
+                });
+            }
+
+            time::sleep(Duration::from_secs(2)).await;
+
+            assert_eq!(relay.atomic_counter.load(Ordering::SeqCst), 1);
+
+            inner
+        }; // relay dropped here
+
+        time::sleep(Duration::from_secs(1)).await;
+
+        assert!(!inner.is_running());
     }
 }

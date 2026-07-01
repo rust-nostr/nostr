@@ -60,8 +60,8 @@ jobs:
           - nostr-keyring
           - nostr-keyring --features async
           - nostr-sdk
+          - nostr-sdk --features local-relay
           - nostr-sdk --target wasm32-unknown-unknown
-          - nostr-relay-builder
           - nostr-connect
           - nwc
           - nwc --target wasm32-unknown-unknown
