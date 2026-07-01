@@ -12,7 +12,6 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use async_utility::futures_util::stream::{self, SplitSink};
 use async_utility::futures_util::{SinkExt, StreamExt};
 use async_wsocket::native::{self, Message, WebSocketStream};
-use atomic_destructor::AtomicDestroyer;
 use negentropy::{Id, Negentropy, NegentropyStorageVector};
 use nostr::prelude::*;
 use nostr_memory::prelude::*;
@@ -56,12 +55,6 @@ pub(super) struct InnerLocalRelay {
     nip42: Option<LocalRelayBuilderNip42>,
     test: LocalRelayTestOptions,
     running: Arc<AtomicBool>,
-}
-
-impl AtomicDestroyer for InnerLocalRelay {
-    fn on_destroy(&self) {
-        self.shutdown();
-    }
 }
 
 impl InnerLocalRelay {
@@ -117,11 +110,16 @@ impl InnerLocalRelay {
             .await
     }
 
+    #[inline]
+    pub(super) fn is_running(&self) -> bool {
+        self.running.load(Ordering::SeqCst)
+    }
+
     /// Start socket to listen for new websocket connections
     ///
     /// Returns `true` if the relay has started, `false` if it's already running.
     pub async fn run(&self) -> Result<bool, Error> {
-        if self.running.load(Ordering::SeqCst) {
+        if self.is_running() {
             return Ok(false);
         }
 

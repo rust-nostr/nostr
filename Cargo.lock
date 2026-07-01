@@ -1971,7 +1971,6 @@ version = "0.45.0-alpha.3"
 dependencies = [
  "async-utility",
  "async-wsocket",
- "atomic-destructor",
  "base64",
  "faster-hex",
  "futures",

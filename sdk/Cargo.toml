@@ -23,12 +23,11 @@ native-tls-vendored = ["async-wsocket/native-tls-vendored"]
 ring = ["async-wsocket/ring"]
 rustls-tls-native-roots = ["async-wsocket/rustls-tls-native-roots"]
 rustls-tls-webpki-roots = ["async-wsocket/rustls-tls-webpki-roots"]
-local-relay = ["dep:atomic-destructor", "dep:nostr-memory", "tokio/net"]
+local-relay = ["dep:nostr-memory", "tokio/net"]
 
 [dependencies]
 async-utility.workspace = true
 async-wsocket = { workspace = true, features = ["socks"] }
-atomic-destructor = { workspace = true, optional = true }
 faster-hex = { workspace = true, features = ["std"] }
 futures = "0.3"
 lru.workspace = true
@@ -44,7 +43,6 @@ tracing = { workspace = true, features = ["std"] }
 universal-time = { workspace = true, features = ["std"] }
 
 [dev-dependencies]
-atomic-destructor.workspace = true
 base64 = { workspace = true, features = ["std"] }
 hyper = { version = "1.9", features = ["server", "http1"] }
 hyper-util = { version = "0.1", features = ["tokio"] }
