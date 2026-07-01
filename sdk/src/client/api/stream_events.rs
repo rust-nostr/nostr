@@ -102,12 +102,13 @@ mod tests {
     use std::time::Duration;
 
     use futures::StreamExt;
+    use nostr::event::FinalizeEvent;
     use nostr::message::MachineReadablePrefix;
-    use nostr::{Filter, SubscriptionId};
-    use nostr_relay_builder::prelude::*;
+    use nostr::{EventBuilder, Filter, Keys, Kind, SubscriptionId};
 
     use super::*;
     use crate::authenticator::SignerAuthenticator;
+    use crate::local_relay::*;
     use crate::test_utils::{
         setup_client, setup_client_with_authenticator, setup_nip42_read_local_relay,
     };

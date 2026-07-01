@@ -37,7 +37,7 @@ tracing.workspace = true
 dialoguer = "0.12"
 tracing-subscriber = { workspace = true, features = ["env-filter"] }
 webbrowser = "1.1"
-nostr-relay-builder = { path = "../../crates/nostr-relay-builder", default-features = false }
+nostr-sdk = { path = "../../sdk", features = ["local-relay"] }
 
 [[example]]
 name = "handle-auth-url"

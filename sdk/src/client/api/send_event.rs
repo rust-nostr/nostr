@@ -443,11 +443,11 @@ mod tests {
     use nostr::prelude::*;
     use nostr_gossip::GossipAllowedRelays;
     use nostr_gossip_memory::store::NostrGossipMemory;
-    use nostr_relay_builder::MockRelay;
 
     use super::*;
     use crate::client::{GossipConfig, GossipRelayLimits};
     use crate::error::ErrorKind;
+    use crate::local_relay::*;
 
     #[tokio::test]
     async fn test_send_event() {

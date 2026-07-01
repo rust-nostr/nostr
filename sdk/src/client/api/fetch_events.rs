@@ -97,8 +97,8 @@ where
 mod tests {
     use std::time::Duration;
 
+    use nostr::event::FinalizeEvent;
     use nostr::{EventBuilder, Filter, Keys, Kind};
-    use nostr_relay_builder::prelude::*;
 
     use crate::authenticator::SignerAuthenticator;
     use crate::test_utils::{

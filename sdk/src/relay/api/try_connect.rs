@@ -83,10 +83,10 @@ impl<'relay> IntoFuture for TryConnect<'relay> {
 mod tests {
     use async_utility::time;
     use nostr::RelayUrl;
-    use nostr_relay_builder::prelude::*;
 
     use super::*;
     use crate::error::ErrorKind;
+    use crate::local_relay::*;
 
     #[tokio::test]
     async fn test_try_connect() {

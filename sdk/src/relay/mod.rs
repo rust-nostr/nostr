@@ -460,10 +460,10 @@ mod tests {
     use std::sync::Arc;
 
     use async_utility::time;
-    use nostr_relay_builder::prelude::*;
 
     use super::*;
     use crate::error::{Error, ErrorKind};
+    use crate::local_relay::*;
     use crate::policy::{AdmitPolicy, AdmitStatus};
 
     #[derive(Debug)]

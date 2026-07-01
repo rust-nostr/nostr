@@ -16,6 +16,8 @@ pub use nostr_gossip::prelude::*;
 pub use crate::authenticator::{self, *};
 pub use crate::client::{self, *};
 pub use crate::error::{self, Error, ErrorKind};
+#[cfg(feature = "local-relay")]
+pub use crate::local_relay::{self, *};
 pub use crate::monitor::{self, *};
 pub use crate::policy::*;
 #[cfg(not(target_arch = "wasm32"))]

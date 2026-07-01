@@ -1,16 +1,17 @@
-// Copyright (c) 2022-2023 Yuki Kishimoto
-// Copyright (c) 2023-2025 Rust Nostr Developers
-// Distributed under the MIT software license
-
 use std::time::Duration;
 
-use nostr_relay_builder::prelude::*;
+use nostr_lmdb::NostrLmdb;
+use nostr_sdk::prelude::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     tracing_subscriber::fmt::init();
 
-    let relay = MockRelay::run().await?;
+    let db = NostrLmdb::open("./db/nostr-lmdb").await?;
+
+    let relay = LocalRelay::builder().port(7777).database(db).build();
+
+    relay.run().await?;
 
     let url = relay.url().await;
     println!("Url: {url}");

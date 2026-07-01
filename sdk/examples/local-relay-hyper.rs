@@ -15,7 +15,7 @@ use hyper::{Request, Response};
 use hyper_util::rt::TokioIo;
 use nostr::hashes::sha1::Hash as Sha1Hash;
 use nostr::hashes::{Hash, HashEngine};
-use nostr_relay_builder::LocalRelay;
+use nostr_sdk::local_relay::LocalRelay;
 use tokio::net::TcpListener;
 
 struct HttpServer {

@@ -635,11 +635,11 @@ mod tests {
     use std::time::Duration;
 
     use nostr_memory::prelude::*;
-    use nostr_relay_builder::prelude::*;
     use tokio::sync::broadcast;
 
     use super::*;
     use crate::error::ErrorKind;
+    use crate::local_relay::*;
     use crate::relay::{SyncDirection, SyncOptions};
 
     #[tokio::test]

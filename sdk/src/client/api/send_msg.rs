@@ -111,9 +111,9 @@ where
 #[cfg(test)]
 mod tests {
     use nostr::prelude::*;
-    use nostr_relay_builder::MockRelay;
 
     use super::*;
+    use crate::local_relay::*;
 
     #[tokio::test]
     async fn test_send_msg() {

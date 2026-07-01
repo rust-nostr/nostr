@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::net::SocketAddr;
 use std::time::Duration;
 
-use nostr_relay_builder::prelude::*;
+use nostr_sdk::prelude::*;
 
 /// Accept only certain event kinds
 #[derive(Debug)]

@@ -1849,7 +1849,6 @@ dependencies = [
  "dialoguer",
  "futures-core",
  "nostr",
- "nostr-relay-builder",
  "nostr-sdk",
  "opaquerr",
  "tokio",
@@ -1967,7 +1966,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "nostr-relay-builder"
+name = "nostr-sdk"
 version = "0.45.0-alpha.3"
 dependencies = [
  "async-utility",
@@ -1975,28 +1974,9 @@ dependencies = [
  "atomic-destructor",
  "base64",
  "faster-hex",
+ "futures",
  "hyper",
  "hyper-util",
- "negentropy",
- "nostr",
- "nostr-database",
- "nostr-lmdb",
- "nostr-memory",
- "nostr-sdk",
- "opaquerr",
- "tokio",
- "tracing",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "nostr-sdk"
-version = "0.45.0-alpha.3"
-dependencies = [
- "async-utility",
- "async-wsocket",
- "faster-hex",
- "futures",
  "lru",
  "negentropy",
  "nostr",
@@ -2007,7 +1987,6 @@ dependencies = [
  "nostr-lmdb",
  "nostr-memory",
  "nostr-ndb",
- "nostr-relay-builder",
  "opaquerr",
  "tokio",
  "tokio-stream",

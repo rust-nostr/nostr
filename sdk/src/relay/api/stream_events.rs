@@ -189,9 +189,9 @@ mod tests {
     use nostr::key::Keys;
     use nostr::message::MachineReadablePrefix;
     use nostr::{Filter, Kind, SubscriptionId};
-    use nostr_relay_builder::MockRelay;
 
     use crate::authenticator::SignerAuthenticator;
+    use crate::local_relay::*;
     use crate::relay::{Relay, RelayOptions, ReqExitPolicy};
     use crate::test_utils::{
         setup_nip42_read_local_relay, setup_relay, setup_relay_with_authenticator,

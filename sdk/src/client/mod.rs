@@ -1193,10 +1193,10 @@ impl Client {
 #[cfg(test)]
 mod tests {
     use nostr_gossip_memory::prelude::*;
-    use nostr_relay_builder::MockRelay;
 
     use super::*;
     use crate::error::ErrorKind;
+    use crate::local_relay::*;
     use crate::relay::RelayStatus;
 
     #[tokio::test]

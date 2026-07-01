@@ -2,13 +2,11 @@
 // Copyright (c) 2023-2025 Rust Nostr Developers
 // Distributed under the MIT software license
 
-//! A local nostr relay
-
 use std::net::SocketAddr;
 
 use atomic_destructor::AtomicDestructor;
-use nostr_sdk::client::SyncSummary;
-use nostr_sdk::prelude::*;
+use nostr::{Event, Filter, RelayUrl, RelayUrlArg};
+use nostr_database::SaveEventStatus;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 mod inner;
@@ -16,8 +14,10 @@ mod session;
 mod util;
 
 use self::inner::InnerLocalRelay;
-use crate::builder::LocalRelayBuilder;
+use super::builder::LocalRelayBuilder;
+use crate::client::{Output, SyncSummary};
 use crate::error::Error;
+use crate::relay::SyncOptions;
 
 /// A local nostr relay
 ///

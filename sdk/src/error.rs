@@ -13,6 +13,8 @@ opaquerr::define_kind! {
     pub ErrorKind {
         /// Nostr protocol error.
         Protocol => "nostr protocol error",
+        /// I/O error
+        IO => "I/O error",
         /// Transport error.
         Transport => "transport error",
         /// Database error.
@@ -46,13 +48,20 @@ opaquerr::define_error! {
 
     from {
         nostr::error::Error => ErrorKind::Protocol,
+        std::io::Error => ErrorKind::IO,
         nostr_database::error::Error => ErrorKind::Database,
         nostr_gossip::error::Error => ErrorKind::Gossip,
         serde_json::Error => ErrorKind::Protocol,
         faster_hex::Error => ErrorKind::Protocol,
         negentropy::Error => ErrorKind::Protocol,
+        #[cfg(any(feature = "local-relay", test))]
+        async_wsocket::Error => ErrorKind::Other,
         tokio::sync::oneshot::error::RecvError => ErrorKind::Other,
         tokio::sync::broadcast::error::RecvError => ErrorKind::Other,
+        #[cfg(any(feature = "local-relay", test))]
+        tokio::sync::TryAcquireError => ErrorKind::Other,
+        #[cfg(any(feature = "local-relay", test))]
+        tokio::sync::broadcast::error::SendError<nostr::event::Event> => ErrorKind::Other,
     }
 }
 
