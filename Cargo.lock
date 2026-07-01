@@ -2024,12 +2024,9 @@ dependencies = [
  "nostr",
  "nostr-database",
  "nostr-database-test-suite",
- "nostr-relay-builder",
  "rusqlite",
  "serde_json",
- "tempfile",
  "tokio",
- "tracing-subscriber",
 ]
 
 [[package]]
